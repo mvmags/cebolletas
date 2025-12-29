@@ -448,6 +448,197 @@
     }
     .file-meta { justify-self: start; }
     }
+
+    /* ===== Calendar Card ===== */
+
+    .cal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+    }
+
+    .cal-controls {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    }
+
+    .cal-btn {
+    width: 42px;
+    height: 42px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: rgba(255,255,255,.92);
+    box-shadow: var(--shadow);
+    color: var(--txt);
+    font-size: 24px;
+    line-height: 1;
+    cursor: pointer;
+    }
+
+    .cal-btn:hover { background: rgba(255,255,255,1); }
+
+    .cal-month {
+    font-weight: 700;
+    color: var(--txt);
+    min-width: 160px;
+    text-align: center;
+    }
+
+    .cal-grid {
+    margin-top: 14px;
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 10px;
+    }
+
+    .cal-dow {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--muted);
+    text-align: center;
+    padding: 6px 0;
+    }
+
+    .cal-day {
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: rgba(255,255,255,.7);
+    padding: 10px;
+    min-height: 84px;
+    cursor: pointer;
+    transition: transform .12s ease, box-shadow .12s ease, background .12s ease;
+    }
+
+    .cal-day:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow);
+    background: rgba(255,255,255,.95);
+    }
+
+    .cal-day.muted {
+    opacity: .45;
+    }
+
+    .cal-day-num {
+    font-weight: 800;
+    color: var(--txt);
+    font-size: 14px;
+    }
+
+    .cal-badges {
+    margin-top: 8px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    }
+
+    .cal-badge {
+    font-size: 12px;
+    padding: 3px 8px;
+    border-radius: 999px;
+    border: 1px solid rgba(37,99,235,.25);
+    background: rgba(37,99,235,.10);
+    color: var(--txt);
+    }
+
+    /* ===== Calendar Modal ===== */
+
+    .cal-modal {
+    position: fixed;
+    inset: 0;
+    display: none;
+    z-index: 1000;
+    }
+
+    .cal-modal.open { display: block; }
+
+    .cal-modal-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(2,6,23,.65);
+    }
+
+    .cal-modal-content {
+    position: relative;
+    max-width: 780px;
+    margin: 6vh auto;
+    padding: 16px;
+    border-radius: 18px;
+    background: rgba(255,255,255,.96);
+    border: 1px solid var(--border);
+    box-shadow: 0 20px 60px rgba(2,6,23,.25);
+    }
+
+    @media (max-width: 900px) {
+    .cal-modal-content { margin: 2vh 10px; }
+    }
+
+    .cal-modal-close {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 40px;
+    height: 40px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: rgba(255,255,255,.95);
+    cursor: pointer;
+    font-size: 18px;
+    }
+
+    .cal-modal-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+    }
+
+    .cal-modal-date {
+    font-weight: 900;
+    font-size: 18px;
+    color: var(--txt);
+    }
+
+    .cal-items {
+    display: grid;
+    gap: 10px;
+    }
+
+    .cal-item {
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 12px;
+    background: rgba(255,255,255,.8);
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 10px;
+    align-items: start;
+    }
+
+    .cal-item-title {
+    font-weight: 750;
+    color: var(--txt);
+    }
+
+    .cal-item-link a {
+    color: var(--acc);
+    text-decoration: none;
+    }
+    .cal-item-link a:hover { text-decoration: underline; }
+
+    .cal-item-actions button {
+    border: 1px solid var(--border);
+    background: rgba(255,255,255,.9);
+    border-radius: 12px;
+    padding: 8px 10px;
+    cursor: pointer;
+    }
+    .cal-item-actions button:hover { background: rgba(255,255,255,1); }
 </style>
 </head>
 
@@ -456,76 +647,88 @@
     <div class="wrap">
       <nav aria-label="Section menu">
         <a href="#overview">Inicio</a>
+        <a href="#location">Ubicaci&oacute;n</a>
         <a href="#gallery">Imagenes</a>
         <a href="#video">Video</a>
-        <a href="#download">Registro</a>
-        <a href="#faq">FAQ</a>
-        <a href="#location">Ubicaci&oacute;n</a>
+        <a href="#faq">Preguntas</a>
         <a href="#news">Noticias</a>
         <a href="#downloads">Descargas</a>
+        <a href="#calendar">Calendario</a>
       </nav>
     </div>
   </header>
 
   <main class="wrap">
     <section class="hero-header" id="overview">
-  <div class="hero-inner">
-    <img
-      src="assets/img/Cebolletas_logo_v4.png"
-      alt="Logo"
-      class="hero-logo"
-    />
+        <div class="hero-inner">
+            <img
+            src="assets/img/Cebolletas_logo_v5.png"
+            alt="Logo"
+            class="hero-logo"
+            />
 
-    <div class="hero-text">
-      <h1>Turismo de naturaleza</h1>
-      <p class="hero-subtitle">
-        Entender y disfrutar la naturaleza que nos rodea
-      </p>
-    </div>
-  </div>
-</section>
+            <div class="small" style="text-align: right;">® Cebolletas es una marca registrada</div>
+            <br/>
+            <div class="hero-text">
+            <h1>Turismo de naturaleza</h1>
+            <p class="hero-subtitle">
+                Entender y disfrutar la naturaleza que nos rodea. Calvillo Aguascalientes, M&eacute;xico.
+            </p>
+            </div>
+        </div>
+    </section>
+
+    <section id="location">
+        <div class="card">
+            <h2>Ubicaci&oacute;n</h2>
+
+            <p class="small">Da click en "Ver mapa mas grande" para abrir el mapa en una nueva pestaña</p>
+
+            <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d4150.755085413792!2d-102.64351218878981!3d21.880058857912264!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x8429cf726f698b17%3A0xdaf330ea4a656514!2sPuentes%20Colgantes%2C%20Cebolletas!5e1!3m2!1sen!2smx!4v1766967888001!5m2!1sen!2smx" width="600" height="450" style="border:0;" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+        </div>
+    </section>
 
     <section id="gallery">
-  <div class="card">
-    <h2>Galer&iacute;a de Imagenes</h2>
-    <p>Click any image to view it full size.</p>
+    <div class="card">
+        <h2>Galer&iacute;a de Imagenes</h2>
+        <p>Mejor vista en navegador de escritorio.</p>
 
-    <div class="carousel" aria-label="Image carousel">
-      <button class="carousel-btn prev" type="button" aria-label="Previous image">‹</button>
+        <div class="carousel" aria-label="Image carousel">
+        <button class="carousel-btn prev" type="button" aria-label="Previous image">‹</button>
 
-      <div class="carousel-track" id="carouselTrack">
-        <!-- Update src + alt + caption to your files -->
-        <figure class="carousel-item">
-          <img src="assets/img/puentes/img-01.jpg" alt="Gallery image 1" loading="lazy" />
-          <figcaption class="small">Caption 1</figcaption>
-        </figure>
+        <div class="carousel-track" id="carouselTrack">
+            <!-- Update src + alt + caption to your files -->
+            <figure class="carousel-item">
+            <img src="assets/img/puentes/img-01.jpg" alt="Gallery image 1" loading="lazy" />
+            <figcaption class="small">Caption 1</figcaption>
+            </figure>
 
-        <figure class="carousel-item">
-          <img src="assets/img/puentes/img-02.jpg" alt="Gallery image 2" loading="lazy" />
-          <figcaption class="small">Caption 2</figcaption>
-        </figure>
+            <figure class="carousel-item">
+            <img src="assets/img/puentes/img-02.jpg" alt="Gallery image 2" loading="lazy" />
+            <figcaption class="small">Caption 2</figcaption>
+            </figure>
 
-        <figure class="carousel-item">
-          <img src="assets/img/puentes/img-03.jpg" alt="Gallery image 3" loading="lazy" />
-          <figcaption class="small">Caption 3</figcaption>
-        </figure>
+            <figure class="carousel-item">
+            <img src="assets/img/puentes/img-03.jpg" alt="Gallery image 3" loading="lazy" />
+            <figcaption class="small">Caption 3</figcaption>
+            </figure>
 
-        <figure class="carousel-item">
-          <img src="assets/img/puentes/img-04.jpg" alt="Gallery image 4" loading="lazy" />
-          <figcaption class="small">Caption 4</figcaption>
-        </figure>
+            <figure class="carousel-item">
+            <img src="assets/img/puentes/img-04.jpg" alt="Gallery image 4" loading="lazy" />
+            <figcaption class="small">Caption 4</figcaption>
+            </figure>
 
-        <figure class="carousel-item">
-          <img src="assets/img/puentes/img-05.jpg" alt="Gallery image 5" loading="lazy" />
-          <figcaption class="small">Caption 5</figcaption>
-        </figure>
-      </div>
+            <figure class="carousel-item">
+            <img src="assets/img/puentes/img-05.jpg" alt="Gallery image 5" loading="lazy" />
+            <figcaption class="small">Caption 5</figcaption>
+            </figure>
+        </div>
 
-      <button class="carousel-btn next" type="button" aria-label="Next image">›</button>
+        <button class="carousel-btn next" type="button" aria-label="Next image">›</button>
+        </div>
+
+        <div class="carousel-dots" id="carouselDots" aria-label="Carousel pagination"></div>
     </div>
-
-    <div class="carousel-dots" id="carouselDots" aria-label="Carousel pagination"></div>
-  </div>
 </section>
 
 <!-- Lightbox Modal (put once, ideally near end of < main > or before < /body >) -->
@@ -549,43 +752,21 @@
     <section id="video">
       <div class="card">
         <h2>Video galer&iacute;a</h2>
-        <p>Keep it short. MP4 (H.264) is the safest choice for GitHub Pages.</p>
+        <p>Cebolletas en temporada de lluvia.</p>
         <video controls preload="metadata">
-          <source src="assets/video/intro.mp4" type="video/mp4" />
+          <source src="assets/video/cebolletas_video_001.mp4" type="video/mp4" />
           Your browser does not support the video tag.
         </video>
         <p class="small">Tip: Aim under ~25–50MB so it loads fast.</p>
       </div>
     </section>
 
-    <section id="download">
-      <div class="card">
-        <h2>Hoja de registro y aceptacion de reglamento</h2>
-        <p>Descarga el archivo, firmalo y envialo al administrador</p>
-        <p>
-          <a class="btn" href="assets/pdf/brochure.pdf" download>Descarga el archivo</a>
-          &nbsp;&nbsp;
-          <a class="btn" href="assets/pdf/registro_y_aceptacion.pdf" target="_blank" rel="noopener">Abrir en una nueva pestaña</a>
-        </p>
-      </div>
-    </section>
-
     <section id="faq">
       <div class="card">
-        <h2>FAQ</h2>
-        <p><b>Q:</b> Can I add more sections?<br><b>A:</b> Yes—just copy a <code>&lt;section&gt;</code> block and add a new menu link.</p>
-        <p><b>Q:</b> Does this work without any build step?<br><b>A:</b> Yes. It’s plain HTML/CSS/JS.</p>
+        <h2>Preguntas frecuentes</h2>
+        <p><b>P:</b> C&oacute;mo llego a Cebolletas?<br><b>R:</b> El acceso lo encuentras sobre la carretera a Calvillo, como referencia, a 2 km pasando la comunidad del Sauz.</p>
+        <p><b>P:</b> Hay alguna referencia que me ayude a ubicar el acceso?<br><b>R:</b> Si. Podras ver esta pared con el nombre de Cebolletas. <a class="file-link" href="assets/img/acceso.png">Referencia de acceso</a></p>
       </div>
-    </section>
-
-    <section id="location">
-        <div class="card">
-            <h2>Ubicaci&oacute;n</h2>
-
-            <p class="small">Da click en "Ver mapa mas grande" para abrir el mapa en una nueva pestaña</p>
-
-            <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d4150.755085413792!2d-102.64351218878981!3d21.880058857912264!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x8429cf726f698b17%3A0xdaf330ea4a656514!2sPuentes%20Colgantes%2C%20Cebolletas!5e1!3m2!1sen!2smx!4v1766967888001!5m2!1sen!2smx" width="600" height="450" style="border:0;" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
-        </div>
     </section>
 
     <section id="news">
@@ -620,7 +801,7 @@
                     Reglamento
                 </a>
                 <div class="file-desc">
-                    Reglamento de uso del campamento Cebolletas.
+                    Descarga, firma y env&iacute;a al administrador y confirma antes de llegar.
                 </div>
                 </div>
                 <div class="file-meta small">PDF</div>
@@ -642,9 +823,52 @@
             </div>
         </div>
     </section>
+    
+    <section id="calendar">
+        <div class="card">
+            <div class="cal-header">
+            <div>
+                <h2 style="margin-bottom:6px;">Calendario</h2>
+                <p class="small" style="margin:0;">
+                Haz clic en un día para ver o agregar información.
+                </p>
+            </div>
+
+            <div class="cal-controls" aria-label="Controles del calendario">
+                <button class="cal-btn" id="calPrev" type="button" aria-label="Mes anterior">‹</button>
+                <div class="cal-month" id="calMonthLabel" aria-live="polite"></div>
+                <button class="cal-btn" id="calNext" type="button" aria-label="Mes siguiente">›</button>
+            </div>
+            </div>
+
+            <div class="cal-grid" id="calGrid" aria-label="Calendario mensual"></div>
+
+            
+            <!-- Los eventos se publican desde el archivo <code>assets/calendar.json -->
+        </div>
+    </section>
+
+    <!-- Calendar Modal (put once, near end of < main > or before < /body > ) -->
+    <div class="cal-modal" id="calModal" aria-hidden="true">
+        <div class="cal-modal-backdrop" id="calModalBackdrop"></div>
+
+        <div class="cal-modal-content" role="dialog" aria-modal="true" aria-label="Day details">
+            <button class="cal-modal-close" id="calModalClose" type="button" aria-label="Close">✕</button>
+
+            <div class="cal-modal-top">
+                <div>
+                    <div class="cal-modal-date" id="calModalDate"></div>
+                    <div class="small" id="calModalSub"></div>
+                </div>
+                <!--  <button class="btn" id="calAddItem" type="button" >Agregar Nota / Enlace< /button -->
+                <div id="calAddItem">...</div>
+            </div>
+            <div class="cal-items" id="calItems"></div>
+        </div>
+    </div>
 
     <footer class="wrap">
-      <div class="small">© Your Name — Built for GitHub Pages</div>
+      <div class="small">® Administrado por Cebolletas Desarrollo Particular</div>
     </footer>
   </main>
 
@@ -653,131 +877,316 @@
       new Date(document.lastModified).toLocaleDateString();
   </script>
   <script>
-  // Keep your lastUpdated code if you have it
-  const lastUpdatedEl = document.getElementById("lastUpdated");
-  if (lastUpdatedEl) {
-    lastUpdatedEl.textContent = new Date(document.lastModified).toLocaleDateString();
-  }
+    // Keep your lastUpdated code if you have it
+    const lastUpdatedEl = document.getElementById("lastUpdated");
+    if (lastUpdatedEl) {
+        lastUpdatedEl.textContent = new Date(document.lastModified).toLocaleDateString();
+    }
 
-  // ===== Carousel + Lightbox =====
-  const track = document.getElementById("carouselTrack");
-  const items = track ? Array.from(track.querySelectorAll(".carousel-item")) : [];
-  const imgs = track ? Array.from(track.querySelectorAll("img")) : [];
-  const dotsWrap = document.getElementById("carouselDots");
+    // ===== Carousel + Lightbox =====
+    const track = document.getElementById("carouselTrack");
+    const items = track ? Array.from(track.querySelectorAll(".carousel-item")) : [];
+    const imgs = track ? Array.from(track.querySelectorAll("img")) : [];
+    const dotsWrap = document.getElementById("carouselDots");
 
-  let index = 0;
+    let index = 0;
 
-  function clamp(n, min, max) { return Math.max(min, Math.min(max, n)); }
+    function clamp(n, min, max) { return Math.max(min, Math.min(max, n)); }
 
-  function buildDots() {
-    if (!dotsWrap) return;
-    dotsWrap.innerHTML = "";
-    items.forEach((_, i) => {
-      const b = document.createElement("button");
-      b.type = "button";
-      b.className = "carousel-dot" + (i === 0 ? " active" : "");
-      b.setAttribute("aria-label", "Go to image " + (i + 1));
-      b.addEventListener("click", () => goTo(i));
-      dotsWrap.appendChild(b);
+    function buildDots() {
+        if (!dotsWrap) return;
+        dotsWrap.innerHTML = "";
+        items.forEach((_, i) => {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "carousel-dot" + (i === 0 ? " active" : "");
+        b.setAttribute("aria-label", "Go to image " + (i + 1));
+        b.addEventListener("click", () => goTo(i));
+        dotsWrap.appendChild(b);
+        });
+    }
+
+    function setDotsActive(i) {
+        if (!dotsWrap) return;
+        const dots = Array.from(dotsWrap.querySelectorAll(".carousel-dot"));
+        dots.forEach((d, di) => d.classList.toggle("active", di === i));
+    }
+
+    function goTo(i) {
+        index = clamp(i, 0, items.length - 1);
+        const w = track.clientWidth;
+        track.style.transform = `translateX(${-index * w}px)`;
+        setDotsActive(index);
+    }
+
+    function next() { goTo(index + 1); }
+    function prev() { goTo(index - 1); }
+
+    function bindCarouselButtons() {
+        const prevBtn = document.querySelector(".carousel-btn.prev");
+        const nextBtn = document.querySelector(".carousel-btn.next");
+        if (prevBtn) prevBtn.addEventListener("click", prev);
+        if (nextBtn) nextBtn.addEventListener("click", next);
+    }
+
+    // Make it responsive: recompute on resize
+    window.addEventListener("resize", () => goTo(index));
+
+    // ===== Lightbox =====
+    const lightbox = document.getElementById("lightbox");
+    const lbBackdrop = document.getElementById("lightboxBackdrop");
+    const lbClose = document.getElementById("lightboxClose");
+    const lbImg = document.getElementById("lightboxImg");
+    const lbCaption = document.getElementById("lightboxCaption");
+    const lbPrev = document.getElementById("lightboxPrev");
+    const lbNext = document.getElementById("lightboxNext");
+
+    let lightboxOpen = false;
+
+    function openLightbox(i) {
+        if (!lightbox || !lbImg) return;
+        index = clamp(i, 0, imgs.length - 1);
+
+        const img = imgs[index];
+        lbImg.src = img.src;
+        lbImg.alt = img.alt || "Gallery image";
+
+        // caption from figcaption if exists
+        const cap = img.closest("figure")?.querySelector("figcaption")?.textContent || "";
+        if (lbCaption) lbCaption.textContent = cap;
+
+        lightbox.classList.add("open");
+        lightbox.setAttribute("aria-hidden", "false");
+        lightboxOpen = true;
+
+        // keep carousel in sync
+        goTo(index);
+
+        // prevent background scroll
+        document.body.style.overflow = "hidden";
+    }
+
+    function closeLightbox() {
+        if (!lightbox) return;
+        lightbox.classList.remove("open");
+        lightbox.setAttribute("aria-hidden", "true");
+        lightboxOpen = false;
+        document.body.style.overflow = "";
+    }
+
+    function lightboxNext() { openLightbox(index + 1); }
+    function lightboxPrev() { openLightbox(index - 1); }
+
+    // Click-to-open from carousel
+    imgs.forEach((img, i) => img.addEventListener("click", () => openLightbox(i)));
+
+    // Close handlers
+    if (lbBackdrop) lbBackdrop.addEventListener("click", closeLightbox);
+    if (lbClose) lbClose.addEventListener("click", closeLightbox);
+
+    // Nav handlers
+    if (lbNext) lbNext.addEventListener("click", lightboxNext);
+    if (lbPrev) lbPrev.addEventListener("click", lightboxPrev);
+
+    // Keyboard: ESC closes; arrows navigate (only when modal open)
+    document.addEventListener("keydown", (e) => {
+        if (!lightboxOpen) return;
+        if (e.key === "Escape") closeLightbox();
+        if (e.key === "ArrowRight") lightboxNext();
+        if (e.key === "ArrowLeft") lightboxPrev();
     });
+
+    // Init
+    if (track && items.length) {
+        buildDots();
+        bindCarouselButtons();
+        goTo(0);
+    }
+</script>
+
+<script>
+  // ===== Calendario respaldado por repositorio (assets/calendar.json) =====
+
+  const calGrid = document.getElementById("calGrid");
+  const calMonthLabel = document.getElementById("calMonthLabel");
+  const calPrev = document.getElementById("calPrev");
+  const calNext = document.getElementById("calNext");
+
+  const calModal = document.getElementById("calModal");
+  const calModalBackdrop = document.getElementById("calModalBackdrop");
+  const calModalClose = document.getElementById("calModalClose");
+  const calModalDate = document.getElementById("calModalDate");
+  const calModalSub = document.getElementById("calModalSub");
+  const calItems = document.getElementById("calItems");
+  const calAddItem = document.getElementById("calAddItem");
+
+  const CAL_URL = "assets/calendar.json";
+  const LOCALE = "es-MX";
+
+  function pad2(n) { return String(n).padStart(2, "0"); }
+  function ymd(d) {
+    return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
   }
 
-  function setDotsActive(i) {
-    if (!dotsWrap) return;
-    const dots = Array.from(dotsWrap.querySelectorAll(".carousel-dot"));
-    dots.forEach((d, di) => d.classList.toggle("active", di === i));
+  function formatMonthLabel(d) {
+    return d.toLocaleDateString(LOCALE, { year: "numeric", month: "long" });
   }
 
-  function goTo(i) {
-    index = clamp(i, 0, items.length - 1);
-    const w = track.clientWidth;
-    track.style.transform = `translateX(${-index * w}px)`;
-    setDotsActive(index);
+  function startOfMonth(d) { return new Date(d.getFullYear(), d.getMonth(), 1); }
+  function getGridStartDate(viewDate) {
+    const first = startOfMonth(viewDate);
+    return new Date(first.getFullYear(), first.getMonth(), first.getDate() - first.getDay());
   }
 
-  function next() { goTo(index + 1); }
-  function prev() { goTo(index - 1); }
+  let viewDate = new Date();
+  let selectedDayKey = null;
+  let calendarDoc = { version: 1, items: {} };
 
-  function bindCarouselButtons() {
-    const prevBtn = document.querySelector(".carousel-btn.prev");
-    const nextBtn = document.querySelector(".carousel-btn.next");
-    if (prevBtn) prevBtn.addEventListener("click", prev);
-    if (nextBtn) nextBtn.addEventListener("click", next);
+  async function loadCalendarDoc() {
+    try {
+      const res = await fetch(CAL_URL, { cache: "no-store" });
+      calendarDoc = await res.json();
+    } catch {
+      calendarDoc = { version: 1, items: {} };
+    }
   }
 
-  // Make it responsive: recompute on resize
-  window.addEventListener("resize", () => goTo(index));
+  function renderCalendar() {
+    calMonthLabel.textContent = formatMonthLabel(viewDate);
+    calGrid.innerHTML = "";
 
-  // ===== Lightbox =====
-  const lightbox = document.getElementById("lightbox");
-  const lbBackdrop = document.getElementById("lightboxBackdrop");
-  const lbClose = document.getElementById("lightboxClose");
-  const lbImg = document.getElementById("lightboxImg");
-  const lbCaption = document.getElementById("lightboxCaption");
-  const lbPrev = document.getElementById("lightboxPrev");
-  const lbNext = document.getElementById("lightboxNext");
+    const dows = ["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"];
+    dows.forEach(d => {
+      const el = document.createElement("div");
+      el.className = "cal-dow";
+      el.textContent = d;
+      calGrid.appendChild(el);
+    });
 
-  let lightboxOpen = false;
+    const start = getGridStartDate(viewDate);
+    const month = viewDate.getMonth();
 
-  function openLightbox(i) {
-    if (!lightbox || !lbImg) return;
-    index = clamp(i, 0, imgs.length - 1);
+    for (let i = 0; i < 42; i++) {
+      const day = new Date(start);
+      day.setDate(start.getDate() + i);
+      const key = ymd(day);
 
-    const img = imgs[index];
-    lbImg.src = img.src;
-    lbImg.alt = img.alt || "Gallery image";
+      const cell = document.createElement("div");
+      cell.className = "cal-day" + (day.getMonth() !== month ? " muted" : "");
 
-    // caption from figcaption if exists
-    const cap = img.closest("figure")?.querySelector("figcaption")?.textContent || "";
-    if (lbCaption) lbCaption.textContent = cap;
+      const num = document.createElement("div");
+      num.className = "cal-day-num";
+      num.textContent = day.getDate();
 
-    lightbox.classList.add("open");
-    lightbox.setAttribute("aria-hidden", "false");
-    lightboxOpen = true;
+      const badges = document.createElement("div");
+      badges.className = "cal-badges";
 
-    // keep carousel in sync
-    goTo(index);
+      const items = calendarDoc.items[key] || [];
+      if (items.length) {
+        const badge = document.createElement("div");
+        badge.className = "cal-badge";
+        badge.textContent = `${items.length} evento${items.length === 1 ? "" : "s"}`;
+        badges.appendChild(badge);
+      }
 
-    // prevent background scroll
+      cell.appendChild(num);
+      cell.appendChild(badges);
+      cell.onclick = () => openDayModal(key, day);
+      calGrid.appendChild(cell);
+    }
+  }
+
+  function openDayModal(key, dateObj) {
+    selectedDayKey = key;
+    calModalDate.textContent = dateObj.toLocaleDateString(LOCALE, {
+      weekday: "long", year: "numeric", month: "long", day: "numeric"
+    });
+
+    calModalSub.textContent =
+      "";
+
+    renderDayItems();
+    calModal.classList.add("open");
     document.body.style.overflow = "hidden";
   }
 
-  function closeLightbox() {
-    if (!lightbox) return;
-    lightbox.classList.remove("open");
-    lightbox.setAttribute("aria-hidden", "true");
-    lightboxOpen = false;
+  function closeModal() {
+    calModal.classList.remove("open");
     document.body.style.overflow = "";
   }
 
-  function lightboxNext() { openLightbox(index + 1); }
-  function lightboxPrev() { openLightbox(index - 1); }
+  function renderDayItems() {
+    calItems.innerHTML = "";
+    const items = calendarDoc.items[selectedDayKey] || [];
 
-  // Click-to-open from carousel
-  imgs.forEach((img, i) => img.addEventListener("click", () => openLightbox(i)));
+    if (!items.length) {
+      calItems.textContent = "No hay eventos para este día.";
+      return;
+    }
 
-  // Close handlers
-  if (lbBackdrop) lbBackdrop.addEventListener("click", closeLightbox);
-  if (lbClose) lbClose.addEventListener("click", closeLightbox);
+    items.forEach(it => {
+      const row = document.createElement("div");
+      row.className = "cal-item";
 
-  // Nav handlers
-  if (lbNext) lbNext.addEventListener("click", lightboxNext);
-  if (lbPrev) lbPrev.addEventListener("click", lightboxPrev);
+      const left = document.createElement("div");
+      left.innerHTML = `<div class="cal-item-title">${it.text}</div>`;
 
-  // Keyboard: ESC closes; arrows navigate (only when modal open)
-  document.addEventListener("keydown", (e) => {
-    if (!lightboxOpen) return;
-    if (e.key === "Escape") closeLightbox();
-    if (e.key === "ArrowRight") lightboxNext();
-    if (e.key === "ArrowLeft") lightboxPrev();
-  });
+      if (it.url) {
+        left.innerHTML += `<div class="small"><a href="${it.url}" target="_blank" rel="noopener">Ver más</a></div>`;
+      }
 
-  // Init
-  if (track && items.length) {
-    buildDots();
-    bindCarouselButtons();
-    goTo(0);
+      row.appendChild(left);
+      calItems.appendChild(row);
+    });
   }
+
+  function addItemGenerate() {
+    const text = prompt("Escribe una nota corta (obligatorio):");
+    if (!text) return;
+
+    const url = prompt("Enlace opcional (https://...)") || "";
+    const id = crypto.randomUUID();
+
+    calendarDoc.items[selectedDayKey] = calendarDoc.items[selectedDayKey] || [];
+    calendarDoc.items[selectedDayKey].unshift({ id, text, url });
+
+    alert(
+      "Evento agregado en vista previa.\n\n" +
+      "Para publicarlo:\n" +
+      "1) Descarga el archivo calendar.json\n" +
+      "2) Reemplázalo en el repositorio\n" +
+      "3) Haz commit y push"
+    );
+
+    const blob = new Blob(
+      [JSON.stringify(calendarDoc, null, 2)],
+      { type: "application/json" }
+    );
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "calendar.json";
+    a.click();
+  }
+
+  calPrev.onclick = () => {
+    viewDate = new Date(viewDate.getFullYear(), viewDate.getMonth() - 1, 1);
+    renderCalendar();
+  };
+
+  calNext.onclick = () => {
+    viewDate = new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 1);
+    renderCalendar();
+  };
+
+  calAddItem.onclick = addItemGenerate;
+  calModalBackdrop.onclick = closeModal;
+  calModalClose.onclick = closeModal;
+
+  (async () => {
+    await loadCalendarDoc();
+    renderCalendar();
+  })();
 </script>
+
 </body>
 </html>
