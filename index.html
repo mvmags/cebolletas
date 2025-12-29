@@ -1025,6 +1025,7 @@
                 <div class="copybar">
                     <textarea class="textarea" id="br-output" readonly placeholder="Click “Procesar datos de reservación y enviar”..."></textarea>
                     <button class="btn2" id="br-copy" type="button">Copy</button>
+                    <br/><button class="btn2" id="br-whatsapp" type="button">Send via WhatsApp</button>
                 </div>
                 <div class="hint" id="br-copyhint" style="margin-top:6px;"></div>
                 </div>
@@ -1593,6 +1594,77 @@
         copyHint.textContent = "Copy failed — select text and copy manually.";
       }
     });
+
+    // Whatsapp button --> start
+    const whatsappBtn = document.getElementById("br-whatsapp");
+
+    function buildWhatsAppMessageFromForm() {
+        // expects these inputs exist (you added them earlier):
+        // br-name, br-date, br-persons, br-email, br-cell, plus the selected services & output JSON
+        const name = (document.getElementById("br-name")?.value || "").trim();
+        const date = (document.getElementById("br-date")?.value || "").trim();
+        const persons = (document.getElementById("br-persons")?.value || "").trim();
+        const email = (document.getElementById("br-email")?.value || "").trim();
+        const cell = (document.getElementById("br-cell")?.value || "").trim();
+
+        // If JSON exists, use it; else try to generate a minimal one from current fields
+        const json = (outputEl.value || "").trim();
+
+        // Pull required_services from the UI (so message stays accurate even if JSON wasn’t generated)
+        const checkedCbs = Array.from(
+        servicesWrap.querySelectorAll('input[type="checkbox"]:checked')
+        );
+
+        const services = checkedCbs
+        .map((cb) => cb.getAttribute("data-label") || "")
+        .filter(Boolean);
+
+        const servicesBlock = services.length
+        ? services.map((s) => `- ${s}`).join("\n")
+        : "(none)";
+
+        const header =
+        "Hola, quiero hacer una reservación.\n\n" +
+        `Nombre: ${name || "(sin nombre)"}\n` +
+        `Fecha: ${date || "(sin fecha)"}\n` +
+        `Personas: ${persons || "(sin dato)"}\n` +
+        `Email: ${email || "(sin email)"}\n` +
+        `Cel: ${cell || "(sin cel)"}\n\n` +
+        "Servicios requeridos:\n" +
+        servicesBlock;
+
+        const jsonBlock = json
+        ? `\n\nJSON:\n${json}`
+        : "";
+
+        return header + jsonBlock;
+    }
+
+    whatsappBtn.addEventListener("click", function () {
+        // WhatsApp recipient (Mexico example would be 521 + 10 digits; use what you want)
+        // If you want to send to your business number, set it here:
+        const recipientPhoneE164 = "524491576284"; 
+        // Leave empty to open WhatsApp without a fixed recipient (user picks contact).
+        // If you set it, use digits only, no +. Example: "5214491234567"
+
+        // Build message
+        const msg = buildWhatsAppMessageFromForm();
+
+        // IMPORTANT: wa.me uses URL-encoded text
+        const text = encodeURIComponent(msg);
+
+        // Build wa.me URL
+        const url = recipientPhoneE164
+        ? `https://wa.me/${recipientPhoneE164}?text=${text}`
+        : `https://wa.me/?text=${text}`;
+
+        // Open in new tab so the user doesn't lose the page
+        window.open(url, "_blank", "noopener,noreferrer");
+
+        // helpful hint
+        copyHint.textContent = "WhatsApp opened with a pre-filled message.";
+    });
+    // Whatsapp button --> end
 
     // helpers
     function escapeHtml(str) {
