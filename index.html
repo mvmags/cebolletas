@@ -640,6 +640,100 @@
     }
     .cal-item-actions button:hover { background: rgba(255,255,255,1); }
 </style>
+
+<!-- Booking Request Card (Plain JS, embeddable) -->
+<style>
+  .card {
+    max-width: 720px;
+    border: 1px solid rgba(0,0,0,.12);
+    border-radius: 16px;
+    background: #fff;
+    box-shadow: 0 1px 2px rgba(0,0,0,.06);
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+    color: #111827;
+  }
+  .card-header { padding: 16px; border-bottom: 1px solid rgba(0,0,0,.08); }
+  .card-title { margin: 0; font-size: 18px; font-weight: 700; }
+  .card-sub { margin: 6px 0 0; font-size: 13px; color: #6b7280; }
+  .card-body { padding: 16px; display: grid; gap: 14px; }
+
+  .label { font-size: 13px; font-weight: 600; margin-bottom: 6px; display: block; }
+  .input, .textarea, .qty {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid rgba(0,0,0,.16);
+    border-radius: 10px;
+    font-size: 14px;
+    outline: none;
+  }
+  .textarea { min-height: 96px; resize: vertical; }
+  .qty { padding: 8px 10px; font-size: 13px; border-radius: 10px; }
+
+  .list {
+    border: 1px solid rgba(0,0,0,.12);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .list-head {
+    padding: 10px 12px;
+    font-size: 13px;
+    font-weight: 700;
+    background: rgba(0,0,0,.02);
+    border-bottom: 1px solid rgba(0,0,0,.08);
+  }
+
+  .row {
+    display: grid;
+    grid-template-columns: 18px 1fr auto;
+    gap: 10px;
+    align-items: start;
+    padding: 10px 12px;
+    border-bottom: 1px solid rgba(0,0,0,.06);
+  }
+  .row:last-child { border-bottom: none; }
+  .row label { font-size: 14px; font-weight: 600; cursor: pointer; }
+  .desc { font-size: 12px; color: #6b7280; margin-top: 2px; }
+
+  .qty-wrap { display: none; min-width: 110px; }
+  .qty-wrap.show { display: block; }
+  .qty-caption { font-size: 11px; color: #6b7280; margin-top: 6px; text-align: right; }
+
+  .actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 4px;
+  }
+
+  .btn {
+    padding: 10px 12px;
+    border: 1px solid rgba(0,0,0,.14);
+    border-radius: 12px;
+    background: #111827;
+    color: white;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+
+  .hint { font-size: 12px; color: #6b7280; }
+  .msg { padding: 10px 12px; border-radius: 10px; font-size: 13px; }
+  .msg.err { border: 1px solid rgba(220,38,38,.25); background: rgba(220,38,38,.06); color: #b91c1c; }
+  .msg.ok { border: 1px solid rgba(16,185,129,.25); background: rgba(16,185,129,.06); color: #065f46; }
+
+  .copybar { display: flex; gap: 10px; align-items: center; }
+  .btn2 {
+    padding: 10px 12px;
+    border: 1px solid rgba(0,0,0,.14);
+    border-radius: 12px;
+    background: #fff;
+    color: #111827;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+</style>
 </head>
 
 <body>
@@ -654,6 +748,7 @@
         <a href="#news">Noticias</a>
         <a href="#downloads">Descargas</a>
         <a href="#calendar">Calendario</a>
+        <a href="#booking">Reserva</a>
       </nav>
     </div>
   </header>
@@ -870,6 +965,70 @@
 
             
             <!-- Los eventos se publican desde el archivo <code>assets/calendar.json -->
+        </div>
+    </section>
+
+    <section id="booking">
+        <div class="card" id="booking-card">
+            <div class="card-header">
+                <h3 class="card-title">Reserva</h3>
+                <p class="card-sub">
+                Selecciona los servicios, escribe los datos solicitados; despues da clicn en "generar datos de reserva" y envia esto por email o whatsapp. <br/> Enseguida te contactaremos para seguimiento.
+                </p>
+            </div>
+
+            <div class="card-body">
+                <div>
+                <span class="label">Nombre</span>
+                <input class="input" id="br-name" placeholder="el nombre de la persona que hace la reservac&iacute;n" />
+                </div>
+
+                <div>
+                <span class="label">Fecha</span>
+                <input class="input" id="br-date" type="date" />
+                </div>
+
+                <div>
+                <span class="label">Cantidad de personas</span>
+                <input class="input" id="br-persons" type="number" min="1" step="1" value="1" />
+                </div>
+
+                <div>
+                <span class="label">Email</span>
+                <input class="input" id="br-email" type="email" placeholder="name@example.com" />
+                </div>
+
+                <div>
+                <span class="label">N&uacute;mero de celular</span>
+                <input class="input" id="br-cell" type="tel" placeholder="+52 1 449 123 4567" />
+                </div>
+
+                <div class="list" aria-label="required services">
+                <div class="list-head">Servicios</div>
+                <div id="br-services"></div>
+                </div>
+
+                <div>
+                <span class="label">Informaci&oacute;n adicional</span>
+                <textarea class="textarea" id="br-additional" placeholder="preguntas adicionales"></textarea>
+                </div>
+
+                <div id="br-msg" style="display:none;"></div>
+
+                <div class="actions">
+                <div class="hint">Seleccionados: <span id="br-selected">0</span></div>
+                <button class="btn" id="br-generate">Procesar datos de reservaci&oacute;n</button>
+                </div>
+
+                <div>
+                <span class="label">Datos de reserva (copiar y enviar por Whatsapp o email)</span>
+                <div class="copybar">
+                    <textarea class="textarea" id="br-output" readonly placeholder="Click “Procesar datos de reservación y enviar”..."></textarea>
+                    <button class="btn2" id="br-copy-mail" type="button">Copiar & Enviar por email</button>
+                </div>
+                <div class="hint" id="br-copyhint" style="margin-top:6px;"></div>
+                </div>
+            </div>
         </div>
     </section>
 
@@ -1210,6 +1369,313 @@
   (async () => {
     await loadCalendarDoc();
     renderCalendar();
+  })();
+</script>
+
+<script>
+  // =========================
+  // CONFIG
+  // =========================
+
+  /**
+   * If a service has a quantity input and qty > 1, we must still send strings
+   * because the API expects required_services: string[].
+   *
+   * Choose how to embed quantity into the string:
+   * - "suffix":  "asador (x2)"
+   * - "prefix":  "2 asador"
+   */
+  const BOOKING_CONFIG = {
+    quantityFormat: "suffix" // "suffix" | "prefix"
+  };
+
+  /**
+   * IMPORTANT:
+   * - `label` is exactly what your backend expects in required_services[].
+   * - `defaultChecked` optionally starts the checkbox marked.
+   * - `showQuantity` optionally shows a numeric input for that item.
+   * - `defaultQty` optional default for quantity input.
+   */
+  const BOOKING_SERVICES = [
+    { id: "anafre", label: "anafre", defaultChecked: false,  showQuantity: false },
+    { id: "lenia-atajo", label: "atajo de leña (*)", defaultChecked: false, showQuantity: true,  defaultQty: 1 },
+    { id: "cafetera", label: "cafetera para calentar agua (*)", defaultChecked: false, showQuantity: false },
+    { id: "asador", label: "asador de gas portátil (*)", defaultChecked: false, showQuantity: false,  defaultQty: 1 },
+    { id: "camastro", label: "camastro (*)", defaultChecked: false, showQuantity: true, defaultQty: 1 },
+    { id: "casa2p", label: "casa de campaña para 2 personas (*)", defaultChecked: false, showQuantity: true },
+    { id: "carbon", label: "carbon (*)", defaultChecked: false, showQuantity: true },
+    { id: "agua-potable", label: "agua potable", defaultChecked: true, showQuantity: true }
+  ];
+
+  // =========================
+  // /CONFIG
+  // =========================
+
+  (function initBookingCard() {
+    const servicesWrap = document.getElementById("br-services");
+    const nameEl = document.getElementById("br-name");
+    const addEl = document.getElementById("br-additional");
+    const msgEl = document.getElementById("br-msg");
+    const selectedEl = document.getElementById("br-selected");
+    const outputEl = document.getElementById("br-output");
+    const generateBtn = document.getElementById("br-generate");
+    const copyBtn = document.getElementById("br-copy");
+    const copyHint = document.getElementById("br-copyhint");
+    
+    const dateEl = document.getElementById("br-date");
+    const personsEl = document.getElementById("br-persons");
+    const emailEl = document.getElementById("br-email");
+    const cellEl = document.getElementById("br-cell");
+
+    // Optional: default date = today (local)
+    if (dateEl && !dateEl.value) {
+        const d = new Date();
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, "0");
+        const dd = String(d.getDate()).padStart(2, "0");
+        dateEl.value = `${yyyy}-${mm}-${dd}`;
+    }
+
+    // Render checkbox list (+ optional qty)
+    servicesWrap.innerHTML = BOOKING_SERVICES.map(s => {
+      const checkedAttr = s.defaultChecked ? "checked" : "";
+      const qtyId = `qty-${s.id}`;
+      const qtyWrapClass = s.showQuantity ? "qty-wrap show" : "qty-wrap";
+      const qtyValue = (typeof s.defaultQty === "number" && s.defaultQty > 0) ? s.defaultQty : 1;
+
+      const descHtml = s.description ? `<div class="desc">${escapeHtml(s.description)}</div>` : "";
+      const qtyHtml = `
+        <div class="${qtyWrapClass}">
+          <input
+            class="qty"
+            type="number"
+            min="1"
+            step="1"
+            id="${escapeAttr(qtyId)}"
+            value="${escapeAttr(qtyValue)}"
+            aria-label="Quantity for ${escapeAttr(s.label)}"
+          />
+          <div class="qty-caption">Cant.</div>
+        </div>
+      `;
+
+      return `
+        <div class="row">
+          <input
+            type="checkbox"
+            id="svc-${escapeAttr(s.id)}"
+            data-label="${escapeAttr(s.label)}"
+            data-show-qty="${s.showQuantity ? "1" : "0"}"
+            data-qty-id="${escapeAttr(qtyId)}"
+            ${checkedAttr}
+          />
+          <div>
+            <label for="svc-${escapeAttr(s.id)}">${escapeHtml(s.label)}</label>
+            ${descHtml}
+          </div>
+          ${qtyHtml}
+        </div>
+      `;
+    }).join("");
+
+    // Update selected count
+    function updateSelectedCount() {
+      const checked = servicesWrap.querySelectorAll('input[type="checkbox"]:checked');
+      selectedEl.textContent = String(checked.length);
+    }
+    servicesWrap.addEventListener("change", updateSelectedCount);
+    updateSelectedCount();
+
+    function showMsg(kind, text) {
+      msgEl.style.display = "block";
+      msgEl.className = "msg " + (kind === "ok" ? "ok" : "err");
+      msgEl.textContent = text;
+    }
+    function clearMsg() {
+      msgEl.style.display = "none";
+      msgEl.className = "";
+      msgEl.textContent = "";
+    }
+
+    function formatWithQty(label, qty) {
+      if (!qty || qty <= 1) return label;
+      if (BOOKING_CONFIG.quantityFormat === "prefix") return `${qty} ${label}`;
+      return `${label} (x${qty})`; // suffix
+    }
+
+    function gather() {
+        const name = (nameEl.value || "").trim();
+        const additional_info = (addEl.value || "").trim();
+
+        const date = (dateEl?.value || "").trim(); // "YYYY-MM-DD"
+        const persons = Math.max(1, Math.floor(Number(personsEl?.value || 1) || 1));
+        const email = (emailEl?.value || "").trim();
+        const cell = (cellEl?.value || "").trim();
+
+        const checkedCbs = Array.from(
+        servicesWrap.querySelectorAll('input[type="checkbox"]:checked')
+        );
+
+        const required_services = checkedCbs
+        .map((cb) => {
+            const label = cb.getAttribute("data-label") || "";
+            const showQty = cb.getAttribute("data-show-qty") === "1";
+            if (!showQty) return label;
+
+            const qtyId = cb.getAttribute("data-qty-id");
+            const qtyEl = qtyId ? document.getElementById(qtyId) : null;
+            let qty = 1;
+            if (qtyEl && qtyEl.value != null) {
+            const n = Number(qtyEl.value);
+            qty = Number.isFinite(n) && n >= 1 ? Math.floor(n) : 1;
+            }
+            return formatWithQty(label, qty);
+        })
+        .filter(Boolean);
+
+        return {
+        name,
+        date,
+        persons,
+        email,
+        cell,
+        required_services,
+        additional_info,
+        };
+    }
+
+    generateBtn.addEventListener("click", function () {
+      clearMsg();
+      copyHint.textContent = "";
+
+      const payload = gather();
+
+      if (!payload.name) {
+        showMsg("err", "Nombre es requerido.");
+        outputEl.value = "";
+        return;
+      }
+      if (!payload.required_services.length) {
+        showMsg("err", "Select at least one service.");
+        outputEl.value = "";
+        return;
+      }
+
+      if (!payload.date) { showMsg("err", "Fecha es requerido.."); outputEl.value=""; return; }
+      if (!payload.email) { showMsg("err", "Email es requerido.."); outputEl.value=""; return; }
+      if (!payload.cell) { showMsg("err", "Cell number es requerido.."); outputEl.value=""; return; }
+      if (payload.persons < 1) { showMsg("err", "Quantity of persons must be at least 1."); outputEl.value=""; return; }
+
+      outputEl.value = JSON.stringify(payload, null, 2);
+      showMsg("ok", "JSON generated. Copy/paste it where you need.");
+    });
+
+    copyBtn.addEventListener("click", async function () {
+      copyHint.textContent = "";
+      const text = outputEl.value || "";
+      if (!text) {
+        copyHint.textContent = "Nothing to copy yet.";
+        return;
+      }
+
+      try {
+        await navigator.clipboard.writeText(text);
+        copyHint.textContent = "Copied.";
+        return;
+      } catch (e) {}
+
+      try {
+        outputEl.focus();
+        outputEl.select();
+        const ok = document.execCommand("copy");
+        copyHint.textContent = ok ? "Copied." : "Copy failed — select text and copy manually.";
+      } catch (e) {
+        copyHint.textContent = "Copy failed — select text and copy manually.";
+      }
+    });
+
+    // copy & email ---> start
+    const copyMailBtn = document.getElementById("br-copy-mail");
+    const downloadBtn = document.getElementById("br-download");
+
+    function safeFilePart(s) {
+        return String(s || "")
+        .trim()
+        .replaceAll(/[^\w\-]+/g, "_")
+        .replaceAll(/_+/g, "_")
+        .replaceAll(/^_+|_+$/g, "")
+        .slice(0, 60);
+    }
+
+    function buildSubjectFromForm() {
+        // expects you already added br-date and br-name inputs (as in the previous step)
+        const name = (document.getElementById("br-name")?.value || "").trim() || "booking";
+        const date = (document.getElementById("br-date")?.value || "").trim() || "no-date";
+        return `Booking ${date} - ${name}`;
+    }
+
+    function triggerDownload(text, filename) {
+        const blob = new Blob([text], { type: "application/json;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+    }
+
+    copyMailBtn.addEventListener("click", async function () {
+        const json = outputEl.value || "";
+        if (!json) {
+        copyHint.textContent = "Generate the JSON first.";
+        return;
+        }
+
+        // 1) Copy JSON
+        try {
+        await navigator.clipboard.writeText(json);
+        } catch (e) {
+        try {
+            outputEl.focus();
+            outputEl.select();
+            document.execCommand("copy");
+        } catch {}
+        }
+
+        // 2) Mailto with recipient + subject date/name + JSON in body
+        const recipient = "cebolletascalvillo@gmail.com";
+        const subjectRaw = buildSubjectFromForm();
+        const subject = encodeURIComponent(subjectRaw);
+
+        const body = encodeURIComponent(
+        "Hola,\n\n" +
+        "Adjunto (en el cuerpo del correo) la solicitud de reservación en formato JSON:\n\n" +
+        json +
+        "\n\nGracias."
+        );
+
+        // NOTE: mailto URLs have length limits; if your JSON becomes huge, some clients will truncate.
+        const mailtoUrl = `mailto:${recipient}?subject=${subject}&body=${body}`;
+        window.location.href = mailtoUrl;
+
+        copyHint.textContent = "Copied and email opened.";
+    });
+    // copy & email ---> end
+
+    // helpers
+    function escapeHtml(str) {
+      return String(str)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+    function escapeAttr(str) {
+      return escapeHtml(str).replaceAll("`", "&#096;");
+    }
   })();
 </script>
 
