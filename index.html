@@ -1017,20 +1017,22 @@
 
                 <div class="actions">
                 <div class="hint">Seleccionados: <span id="br-selected">0</span></div>
-                <button class="btn" id="br-generate">Procesar datos de reservaci&oacute;n y enviar</button>
+                <button class="btn" id="br-generate">Generar datos de reservaci&oacute;n</button>
                 </div>
 
                 <div>
                 <span class="label">Datos de reserva (copiar y enviar por Whatsapp o email)</span>
                 <div class="copybar">
-                    <textarea class="textarea" id="br-output" readonly placeholder="Click “Procesar datos de reservación y enviar”..."></textarea>
-                    <button class="btn2" id="br-copy" type="button">Copy</button>
-                    <br/><button class="btn2" id="br-whatsapp" type="button">Send via WhatsApp</button>
+                    <textarea class="textarea" id="br-output" readonly placeholder="Click “Generar datos de reservación y enviar por whatsapp o email”..."></textarea>
                 </div>
                 <div class="hint" id="br-copyhint" style="margin-top:6px;"></div>
                 </div>
             </div>
-            <div class="small" style="text-align: right;">WhatsApp: +52 449 157 6284 <br/> Email: cebolletascalvillo@gmail.com</div>
+            <button class="btn" id="br-whatsapp" type="button">Enviar por WhatsApp</button>
+            <button class="btn" id="br-copy-mail" type="button">Enviar por Email</button>
+            <button class="btn2" id="br-copy" type="button">Copiar</button>
+            <button class="btn2" id="br-download" type="button">Descargar datos</button>
+            <div class="small" style="text-align: left; padding-top: 20px;">WhatsApp: +52 449 157 6284 | Email: cebolletascalvillo@gmail.com</div>
         </div>
     </section>
 
@@ -1666,6 +1668,93 @@
         copyHint.textContent = "WhatsApp: +52 449 157 6284";
     });
     // Whatsapp button --> end
+
+    // Email button --> start
+    // Put this INSIDE initBookingCard() (so it can access outputEl, copyHint, etc.)
+
+    const copyMailBtn = document.getElementById("br-copy-mail");
+    const downloadBtn = document.getElementById("br-download");
+
+    function safeFilePart(s) {
+        return String(s || "")
+        .trim()
+        .replaceAll(/[^\w\-]+/g, "_")
+        .replaceAll(/_+/g, "_")
+        .replaceAll(/^_+|_+$/g, "")
+        .slice(0, 60);
+    }
+
+    function buildSubjectFromForm() {
+        // expects you already added br-date and br-name inputs (as in the previous step)
+        const name = (document.getElementById("br-name")?.value || "").trim() || "booking";
+        const date = (document.getElementById("br-date")?.value || "").trim() || "no-date";
+        return `Booking ${date} - ${name}`;
+    }
+
+    function triggerDownload(text, filename) {
+        const blob = new Blob([text], { type: "application/json;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+    }
+
+    copyMailBtn.addEventListener("click", async function () {
+        const json = outputEl.value || "";
+        if (!json) {
+        copyHint.textContent = "Generate the JSON first.";
+        return;
+        }
+
+        // 1) Copy JSON
+        try {
+        await navigator.clipboard.writeText(json);
+        } catch (e) {
+        try {
+            outputEl.focus();
+            outputEl.select();
+            document.execCommand("copy");
+        } catch {}
+        }
+
+        // 2) Mailto with recipient + subject date/name + JSON in body
+        const recipient = "cebolletascalvillo@gmail.com";
+        const subjectRaw = buildSubjectFromForm();
+        const subject = encodeURIComponent(subjectRaw);
+
+        const body = encodeURIComponent(
+        "Hola,\n\n" +
+        "Adjunto (en el cuerpo del correo) la solicitud de reservación en formato JSON:\n\n" +
+        json +
+        "\n\nGracias."
+        );
+
+        // NOTE: mailto URLs have length limits; if your JSON becomes huge, some clients will truncate.
+        const mailtoUrl = `mailto:${recipient}?subject=${subject}&body=${body}`;
+        window.location.href = mailtoUrl;
+
+        copyHint.textContent = "Copied and email opened.";
+    });
+
+    downloadBtn.addEventListener("click", function () {
+        const json = outputEl.value || "";
+        if (!json) {
+        copyHint.textContent = "Generate the JSON first.";
+        return;
+        }
+
+        const name = (document.getElementById("br-name")?.value || "").trim();
+        const date = (document.getElementById("br-date")?.value || "").trim();
+        const filename = `booking_${safeFilePart(date || "no-date")}_${safeFilePart(name || "no-name")}.json`;
+
+        triggerDownload(json, filename);
+        copyHint.textContent = `Downloaded: ${filename}`;
+    });
+    // Email button --> end
 
     // helpers
     function escapeHtml(str) {
