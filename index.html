@@ -980,7 +980,7 @@
             <div class="card-body">
                 <div>
                 <span class="label">Nombre</span>
-                <input class="input" id="br-name" placeholder="el nombre de la persona que hace la reservac&iacute;n" />
+                <input class="input" id="br-name" placeholder="el nombre de la persona que hace la reservaci&oacute;n" />
                 </div>
 
                 <div>
@@ -1017,14 +1017,14 @@
 
                 <div class="actions">
                 <div class="hint">Seleccionados: <span id="br-selected">0</span></div>
-                <button class="btn" id="br-generate">Procesar datos de reservaci&oacute;n</button>
+                <button class="btn" id="br-generate">Procesar datos de reservaci&oacute;n y enviar</button>
                 </div>
 
                 <div>
                 <span class="label">Datos de reserva (copiar y enviar por Whatsapp o email)</span>
                 <div class="copybar">
                     <textarea class="textarea" id="br-output" readonly placeholder="Click “Procesar datos de reservación y enviar”..."></textarea>
-                    <button class="btn2" id="br-copy-mail" type="button">Copiar & Enviar por email</button>
+                    <button class="btn2" id="br-copy" type="button">Copy</button>
                 </div>
                 <div class="hint" id="br-copyhint" style="margin-top:6px;"></div>
                 </div>
@@ -1397,14 +1397,14 @@
    * - `defaultQty` optional default for quantity input.
    */
   const BOOKING_SERVICES = [
+    { id: "agua-potable", label: "agua potable", defaultChecked: true, showQuantity: true },
+    { id: "cafetera", label: "cafetera para calentar agua (*)", defaultChecked: false, showQuantity: false },
     { id: "anafre", label: "anafre", defaultChecked: false,  showQuantity: false },
     { id: "lenia-atajo", label: "atajo de leña (*)", defaultChecked: false, showQuantity: true,  defaultQty: 1 },
-    { id: "cafetera", label: "cafetera para calentar agua (*)", defaultChecked: false, showQuantity: false },
     { id: "asador", label: "asador de gas portátil (*)", defaultChecked: false, showQuantity: false,  defaultQty: 1 },
     { id: "camastro", label: "camastro (*)", defaultChecked: false, showQuantity: true, defaultQty: 1 },
     { id: "casa2p", label: "casa de campaña para 2 personas (*)", defaultChecked: false, showQuantity: true },
-    { id: "carbon", label: "carbon (*)", defaultChecked: false, showQuantity: true },
-    { id: "agua-potable", label: "agua potable", defaultChecked: true, showQuantity: true }
+    { id: "carbon", label: "carbon (*)", defaultChecked: false, showQuantity: true }
   ];
 
   // =========================
@@ -1551,7 +1551,7 @@
       const payload = gather();
 
       if (!payload.name) {
-        showMsg("err", "Nombre es requerido.");
+        showMsg("err", "Name is required.");
         outputEl.value = "";
         return;
       }
@@ -1561,9 +1561,9 @@
         return;
       }
 
-      if (!payload.date) { showMsg("err", "Fecha es requerido.."); outputEl.value=""; return; }
-      if (!payload.email) { showMsg("err", "Email es requerido.."); outputEl.value=""; return; }
-      if (!payload.cell) { showMsg("err", "Cell number es requerido.."); outputEl.value=""; return; }
+      if (!payload.date) { showMsg("err", "Date is required."); outputEl.value=""; return; }
+      if (!payload.email) { showMsg("err", "Email is required."); outputEl.value=""; return; }
+      if (!payload.cell) { showMsg("err", "Cell number is required."); outputEl.value=""; return; }
       if (payload.persons < 1) { showMsg("err", "Quantity of persons must be at least 1."); outputEl.value=""; return; }
 
       outputEl.value = JSON.stringify(payload, null, 2);
@@ -1593,76 +1593,6 @@
         copyHint.textContent = "Copy failed — select text and copy manually.";
       }
     });
-
-    // copy & email ---> start
-    const copyMailBtn = document.getElementById("br-copy-mail");
-    const downloadBtn = document.getElementById("br-download");
-
-    function safeFilePart(s) {
-        return String(s || "")
-        .trim()
-        .replaceAll(/[^\w\-]+/g, "_")
-        .replaceAll(/_+/g, "_")
-        .replaceAll(/^_+|_+$/g, "")
-        .slice(0, 60);
-    }
-
-    function buildSubjectFromForm() {
-        // expects you already added br-date and br-name inputs (as in the previous step)
-        const name = (document.getElementById("br-name")?.value || "").trim() || "booking";
-        const date = (document.getElementById("br-date")?.value || "").trim() || "no-date";
-        return `Booking ${date} - ${name}`;
-    }
-
-    function triggerDownload(text, filename) {
-        const blob = new Blob([text], { type: "application/json;charset=utf-8" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        URL.revokeObjectURL(url);
-    }
-
-    copyMailBtn.addEventListener("click", async function () {
-        const json = outputEl.value || "";
-        if (!json) {
-        copyHint.textContent = "Generate the JSON first.";
-        return;
-        }
-
-        // 1) Copy JSON
-        try {
-        await navigator.clipboard.writeText(json);
-        } catch (e) {
-        try {
-            outputEl.focus();
-            outputEl.select();
-            document.execCommand("copy");
-        } catch {}
-        }
-
-        // 2) Mailto with recipient + subject date/name + JSON in body
-        const recipient = "cebolletascalvillo@gmail.com";
-        const subjectRaw = buildSubjectFromForm();
-        const subject = encodeURIComponent(subjectRaw);
-
-        const body = encodeURIComponent(
-        "Hola,\n\n" +
-        "Adjunto (en el cuerpo del correo) la solicitud de reservación en formato JSON:\n\n" +
-        json +
-        "\n\nGracias."
-        );
-
-        // NOTE: mailto URLs have length limits; if your JSON becomes huge, some clients will truncate.
-        const mailtoUrl = `mailto:${recipient}?subject=${subject}&body=${body}`;
-        window.location.href = mailtoUrl;
-
-        copyHint.textContent = "Copied and email opened.";
-    });
-    // copy & email ---> end
 
     // helpers
     function escapeHtml(str) {
