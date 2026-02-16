@@ -105,20 +105,26 @@
 						<header class="major">
 							<h2>Cont&aacute;ctanos</h2>
 						</header>
+						<!--
 						<form method="post" action="#">
+							-->
 							<div class="row gtr-uniform">
-								<div class="col-6 col-12-xsmall"><input type="text" name="name" id="name" placeholder="Nombre" /></div>
-								<div class="col-6 col-12-xsmall"><input type="email" name="email" id="email" placeholder="Email" /></div>
-								<div class="col-6 col-12-xsmall"><input type="email" name="celular" id="email" placeholder="Celular" /></div>
-								<div class="col-12"><textarea name="message" id="message" placeholder="Mensaje" rows="4"></textarea></div>
+								<div class="col-6 col-12-xsmall"><input type="text" name="name" id="br-name" placeholder="Nombre" /></div>
+								<div class="col-6 col-12-xsmall"><input type="email" name="email" id="br-email" placeholder="Email" /></div>
+								<div class="col-6 col-12-xsmall"><input type="text" name="celular" id="br-cell" placeholder="Celular" /></div>
+								<div class="col-12"><textarea name="message" id="br-msg" placeholder="Mensaje" rows="4"></textarea></div>
+								<div class="col-12"><textarea class="textarea" style="display: none;" id="br-output" readonly ></textarea></div>
+								<div id="br-alert" style="display:none;"></div>
 								<div class="col-12">
 									<ul class="actions special">
-										<li><input type="submit" value="Enviar mensaje" class="primary" id="br-copy-mail"/></li>
+										<li><input type="submit" value="Enviar mensaje" class="primary" id="br-send-email"/></li>
 										<li><input type="submit" value="Enviar por whatsapp" class="primary" id="br-whatsapp"/></li>
 									</ul>
 								</div>
 							</div>
+							<!--
 						</form>
+						-->
 					</div>
 					<a href="#footer" class="goto-next scrolly">Next</a>
 				</div>
@@ -144,7 +150,7 @@
 								</a>
 							</li>
 							<li>
-								<a href="mailto:contacto@cebolletas.mx">
+								<a href="mailto:cebolletascalvillo@gmail.com">
 									<span class="icon major fa-envelope"></span>
 									<h3>Email</h3>
 								</a>
@@ -163,6 +169,7 @@
 			<script src="assets/js/breakpoints.min.js"></script>
 			<script src="assets/js/util.js"></script>
 			<script src="assets/js/main.js"></script>
+			<script src="assets/js/cebolletas.js"></script>
 
 	</body>
 </html>
