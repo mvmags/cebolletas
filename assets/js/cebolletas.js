@@ -157,17 +157,38 @@ const BOOKING_SERVICES = [
     // Whatsapp button --> end
 
     // send email buttion --> start
+    // sendEmailBtn.addEventListener('click', () => {
+    //     const recipient = "cebolletascalvillo@gmail.com";
+    //     const subjectRaw = buildSubjectFromForm();
+    //     const subject = encodeURIComponent(subjectRaw);
+    //     const msg = buildWhatsAppMessageFromForm();
+    //     const mailtoUrl = `mailto:${recipient}?subject=${subject}&body=${encodeURIComponent(msg)}`;
+
+    //     console.log('>>> Abriendo cliente de mensajeria');
+    //     window.location.href = mailtoUrl;
+
+    // });
+
     sendEmailBtn.addEventListener('click', () => {
         const recipient = "cebolletascalvillo@gmail.com";
+        const recipient2 = "elcrio88@gmail.com";
         const subjectRaw = buildSubjectFromForm();
         const subject = encodeURIComponent(subjectRaw);
-        const msg = buildWhatsAppMessageFromForm();
-        const mailtoUrl = `mailto:${recipient}?subject=${subject}&body=${encodeURIComponent(msg)}`;
+        const msg = encodeURIComponent(buildWhatsAppMessageFromForm());
+        const mailtoUrl = `mailto:${recipient},${recipient2}?subject=${subject}&body=${msg}`;
 
-        console.log('>>> Abriendo cliente de mensajeria');
-        window.location.href = mailtoUrl;
+        // Show modal (you need a <div id="modal"> in your HTML)
+        const modal = document.getElementById("modal");
+        modal.style.display = "block";
+        modal.textContent = "Opening email...";
 
+        // Trigger email & close modal after 500ms
+        window.open(mailtoUrl);
+        setTimeout(() => {
+            modal.style.display = "none";
+        }, 500);
     });
+
     // send email buttion --> end
 
     // Email button --> start
