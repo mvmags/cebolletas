@@ -270,6 +270,12 @@ const BOOKING_SERVICES = [
     }
 
     whatsappBtn.addEventListener("click", () => {
+        const validation = validateAndSanitizeFormWithFieldErrors();
+        
+        if (!validation.isValid) {
+            return; // Errors are displayed under each field
+        }
+        
         /* 
         WhatsApp recipient (Mexico example would be 521 + 10 digits; use what you want)
         If you want to send to your business number, set it here:
@@ -308,8 +314,8 @@ const BOOKING_SERVICES = [
         const validation = validateAndSanitizeFormWithFieldErrors();
         
         if (!validation.isValid) {
-        return; // Errors are displayed under each field
-    }
+            return; // Errors are displayed under each field
+        }
 
         showModalWindow("Abriendo email...");
 
