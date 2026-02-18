@@ -208,18 +208,7 @@ const BOOKING_SERVICES = [
             fieldErrors.name = "El nombre es demasiado largo (max 100 caracteres).";
             showFieldError(nameEl, fieldErrors.name);
         }
-        
-        // Validate date
-        const date = (dateEl?.value || "").trim();
-
-        if (!date) {
-            fieldErrors.date = "La fecha es requerida";
-            showFieldError(dateEl, fieldErrors.date);
-        } else if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-            fieldErrors.date = "Formato de fecha inválido (YYYY-MM-DD).";
-            showFieldError(dateEl, fieldErrors.date);
-        }
-        
+                
         // Validate email (optional but if provided, must be valid)
         const email = (emailEl?.value || "").trim();
 
@@ -256,17 +245,20 @@ const BOOKING_SERVICES = [
             showFieldError(msgEl, fieldErrors.msg);
         }
         
-        return {
+        const result = {
             isValid: Object.keys(fieldErrors).length === 0,
             errors: fieldErrors,
             data: {
                 name: sanitize(name),
-                date: date,
                 email: sanitize(email),
                 cell: sanitize(cell),
                 msg: sanitize(msg)
             }
         };
+
+        console.log("Validation result:", result);
+
+        return result;
     }
 
     whatsappBtn.addEventListener("click", () => {
@@ -275,7 +267,7 @@ const BOOKING_SERVICES = [
         if (!validation.isValid) {
             return; // Errors are displayed under each field
         }
-        
+
         /* 
         WhatsApp recipient (Mexico example would be 521 + 10 digits; use what you want)
         If you want to send to your business number, set it here:
@@ -311,12 +303,16 @@ const BOOKING_SERVICES = [
 
     // send email button ---> start
     sendEmailBtn.addEventListener("click", function () {
+        console.log("Abriendo email...");
         const validation = validateAndSanitizeFormWithFieldErrors();
         
         if (!validation.isValid) {
             return; // Errors are displayed under each field
+        } else {
+            console.log("Validación exitosa, datos sanitizados:", validation.data);
         }
 
+        console.log("Post validación, construyendo email...");
         showModalWindow("Abriendo email...");
 
         const recipient = "cebolletascalvillo@gmail.com";
