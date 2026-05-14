@@ -3146,4 +3146,5 @@ input, select, textarea {
 {
 	width: 290px;
 	height: 150px;
+	border: #000;
 }
