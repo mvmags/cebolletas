@@ -19,6 +19,7 @@ const copy = {
     bookingEyebrow: "Reserva", bookingTitle: "Cuéntanos sobre tu visita.",
     bookingText: "Comparte tus datos y el plan que tienes en mente para revisar disponibilidad y ayudarte a preparar tu estancia.",
     fields: ["Nombre", "Email", "Celular", "Mensaje"],
+    fieldsWithIds: [{label: "Nombre", id: "br-name"}, {label: "Email", id: "br-email"}, {label: "Celular", id: "br-cell"}, {label: "Mensaje", id: "br-msg"}],
     requestTypes: ["Envíame información", "Enviar mensaje"],
     actions: ["Solicitar", "Enviar"],
     note: "Se habilitarán próximamente."
@@ -42,6 +43,7 @@ const copy = {
     bookingEyebrow: "Booking", bookingTitle: "Tell us about your visit.",
     bookingText: "Share your details and the experience you have in mind to review availability and help prepare your stay.",
     fields: ["Name", "Email", "Phone", "Message"],
+    fieldsWithIds: [{label: "Name", id: "br-name"}, {label: "Email", id: "br-email"}, {label: "Phone", id: "br-cell"}, {label: "Message", id: "br-msg"}],
     requestTypes: ["Send me information", "Send a message"],
     actions: ["Request", "Send"],
     note: "It will be enabled soon."
@@ -109,18 +111,18 @@ function booking(t) {
   return `<section class="booking-section" id="booking" aria-labelledby="booking-title">
     <div class="booking-intro"><p class="section-label">${t.bookingEyebrow}</p><h2 id="booking-title">${t.bookingTitle}</h2><p>${t.bookingText}</p></div>
     <form class="booking-form">
-      <label><span>${t.fields[0]}</span><input type="text" placeholder="${t.fields[0]}"></label>
-      <label><span>${t.fields[1]}</span><input type="email" placeholder="${t.fields[1]}"></label>
-      <label class="full-field"><span>${t.fields[2]}</span><input type="tel" placeholder="${t.fields[2]}"></label>
+      <label><span>${t.fieldsWithIds[0].label}</span><input type="text" placeholder="${t.fieldsWithIds[0].label}" id: "${t.fieldsWithIds[0].id}"></label>
+      <label><span>${t.fieldsWithIds[1].label}</span><input type="email" placeholder="${t.fieldsWithIds[1].label}" id: "${t.fieldsWithIds[1].id}"></label>
+      <label class="full-field"><span>${t.fieldsWithIds[2].label}</span><input type="tel" placeholder="${t.fieldsWithIds[2].label}" id: "${t.fieldsWithIds[2].id}"></label>
       <fieldset class="request-type full-field">
         <legend>${t.bookingEyebrow}</legend>
         <label><input type="radio" name="request-type" value="information" checked><span>${t.requestTypes[0]}</span></label>
         <label><input type="radio" name="request-type" value="message"><span>${t.requestTypes[1]}</span></label>
       </fieldset>
-      <label class="message-field full-field" hidden><span>${t.fields[3]}</span><textarea rows="5" placeholder="${t.fields[3]}"></textarea></label>
+      <label class="message-field full-field" hidden><span>${t.fieldsWithIds[3].label}</span><textarea rows="5" placeholder="${t.fieldsWithIds[3].label}" id: "${t.fieldsWithIds[3].id}"></textarea></label>
       <div class="booking-actions full-field">
-        <button type="button" data-booking-action="request" aria-disabled="true">${t.actions[0]}</button>
-        <button type="button" data-booking-action="send" aria-disabled="true" hidden>${t.actions[1]}</button>
+        <button type="button" data-booking-action="request" aria-disabled="true" id="br-request">${t.actions[0]}</button>
+        <button type="button" data-booking-action="send" aria-disabled="true" hidden id="br-whatsapp">${t.actions[1]}</button>
       </div>
       <p class="form-note full-field">${t.note}</p>
     </form>
