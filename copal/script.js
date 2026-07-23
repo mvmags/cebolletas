@@ -7,21 +7,21 @@ const copy = {
     menu: "Abrir menú",
     placeEyebrow: "El lugar",
     placeTitle: "Lo esencial para disfrutar la naturaleza.",
-    placeIntro: "Un espacio privado pensado para descansar, cocinar, convivir y explorar el entorno de Cebolletas con comodidad.",
+    placeIntro: "Un espacio privado pensado para descansar, convivir y explorar el entorno de Cebolletas con comodidad.",
     amenityGroups: [
       ["Entorno y aventura", "Puentes colgantes", "Senderos", "Vistas espectaculares", "Área reservada", "Fogatero"],
       ["Descanso y convivencia", "Sofá cama", "Recámara con clóset", "Juegos de mesa", "Asador", "Mesas tipo picnic"],
       ["Comodidades", "Regadera caliente", "Cocina equipada", "Tetera, té y café", "Estacionamiento"]
     ],
     galleryEyebrow: "Galería", galleryTitle: "Conoce cada rincón.",
-    galleryIntro: "Imágenes temporales para definir la estructura de la galería. Próximamente serán reemplazadas por la sesión fotográfica final.",
-    photoTour: "Recorrido fotográfico", temporary: "Fotografía temporal",
+    galleryIntro: "Próximamente serán reemplazadas por la sesión fotográfica final.",
+    photoTour: "Recorrido fotográfico", temporary: "",
     bookingEyebrow: "Reserva", bookingTitle: "Cuéntanos sobre tu visita.",
-    bookingText: "Comparte tus datos y el plan que tienes en mente. Te contactaremos para revisar disponibilidad y ayudarte a preparar tu estancia.",
+    bookingText: "Comparte tus datos y el plan que tienes en mente para revisar disponibilidad y ayudarte a preparar tu estancia.",
     fields: ["Nombre", "Email", "Celular", "Mensaje"],
     requestTypes: ["Envíame información", "Enviar mensaje"],
     actions: ["Solicitar", "Enviar"],
-    note: "Formulario visual. El envío y la consulta de disponibilidad se habilitarán próximamente."
+    note: "Se habilitarán próximamente."
   },
   en: {
     eyebrow: "Glamping in Calvillo · Aguascalientes, Mexico",
@@ -30,21 +30,21 @@ const copy = {
     parent: "Part of the private Cebolletas development.",
     menu: "Open menu",
     placeEyebrow: "The place", placeTitle: "Everything you need to enjoy nature.",
-    placeIntro: "A private space designed for resting, cooking, sharing and exploring the Cebolletas landscape in comfort.",
+    placeIntro: "A private space designed for resting, sharing and exploring the Cebolletas landscape in comfort.",
     amenityGroups: [
       ["Nature and adventure", "Suspension bridges", "Trails", "Scenic views", "Private area", "Fire pit"],
       ["Rest and gathering", "Sofa bed", "Bedroom with closet", "Board games", "Grill", "Picnic tables"],
       ["Comforts", "Hot shower", "Equipped kitchen", "Kettle, tea and coffee", "Parking"]
     ],
     galleryEyebrow: "Gallery", galleryTitle: "Explore every corner.",
-    galleryIntro: "Temporary images used to define the gallery structure. They will be replaced by the final photo session.",
-    photoTour: "Photo tour", temporary: "Temporary photograph",
+    galleryIntro: "They will be replaced by the final photo session.",
+    photoTour: "Photo tour", temporary: "",
     bookingEyebrow: "Booking", bookingTitle: "Tell us about your visit.",
-    bookingText: "Share your details and the experience you have in mind. We will contact you to review availability and help prepare your stay.",
+    bookingText: "Share your details and the experience you have in mind to review availability and help prepare your stay.",
     fields: ["Name", "Email", "Phone", "Message"],
     requestTypes: ["Send me information", "Send a message"],
     actions: ["Request", "Send"],
-    note: "Visual form only. Submission and availability requests will be enabled soon."
+    note: "It will be enabled soon."
   }
 };
 
