@@ -118,7 +118,15 @@ function sectionFromHash() {
 function scrollToSection(section, behavior = "smooth") {
   const target = region.querySelector(`#${section}`);
   if (!target) return;
-  target.scrollIntoView({ behavior, block: "start" });
+
+  const reducedMotion = window.matchMedia(
+    "(prefers-reduced-motion: reduce)"
+  ).matches;
+
+  target.scrollIntoView({
+    behavior: reducedMotion ? "auto" : behavior,
+    block: "start",
+  });
 }
 
 function observeSections() {
