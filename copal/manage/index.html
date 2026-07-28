@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="theme-color" content="#183f32">
+    <title>Gestión | Cebolletas Copal</title>
+    <link rel="stylesheet" href="./manage.css">
+    <script type="module" src="./manage.js"></script>
+  </head>
+  <body>
+    <main id="login-view" class="login-shell">
+      <section class="login-brand">
+        <div class="brand-lockup">
+          <span class="logo-mark" aria-hidden="true">⌁</span>
+          <div><span>Cebolletas</span><strong>Copal</strong></div>
+        </div>
+        <div>
+          <p class="eyebrow light">Centro de gestión</p>
+          <h1>La operación, en un solo lugar.</h1>
+          <p class="brand-copy">Organiza contactos, servicios, reservaciones y la información que compartes con tus visitantes.</p>
+        </div>
+        <small>Calvillo, Aguascalientes</small>
+      </section>
+
+      <section class="login-panel">
+        <form id="login-form" class="login-card">
+          <p class="eyebrow">Acceso administrativo</p>
+          <h2>Bienvenido</h2>
+          <p class="muted">Ingresa con la misma cuenta autorizada para administrar Copal.</p>
+          <label for="email">Correo electrónico</label>
+          <input id="email" name="email" type="email" autocomplete="username" required>
+          <label for="password">Contraseña</label>
+          <input id="password" name="password" type="password" autocomplete="current-password" required>
+          <button class="primary-button" type="submit">Ingresar</button>
+          <p id="login-error" class="message error" role="alert"></p>
+        </form>
+      </section>
+    </main>
+
+    <main id="app-view" class="app-shell hidden">
+      <header class="topbar">
+        <button id="menu-button" class="menu-button" type="button" aria-label="Abrir navegación" aria-expanded="false">☰</button>
+        <a class="brand-lockup compact" href="../">
+          <span class="logo-mark" aria-hidden="true">⌁</span>
+          <div><span>Cebolletas</span><strong>Copal</strong></div>
+        </a>
+        <div class="account">
+          <span id="account-name">Administrador</span>
+          <button id="logout-button" class="text-button" type="button">Cerrar sesión</button>
+        </div>
+      </header>
+
+      <div class="app-layout">
+        <aside id="sidebar" class="sidebar">
+          <div>
+            <p class="sidebar-label">Gestión</p>
+            <nav aria-label="Módulos de gestión">
+              <button class="nav-item active" data-view="overview" type="button"><span>⌂</span>Resumen</button>
+              <button class="nav-item" data-view="whatsapp" type="button"><span>◉</span>WhatsApp</button>
+              <button class="nav-item" data-view="services" type="button"><span>◇</span>Servicios</button>
+              <button class="nav-item" data-view="bookings" type="button"><span>▤</span>Reservaciones</button>
+              <button class="nav-item" data-view="send" type="button"><span>➤</span>Enviar información</button>
+            </nav>
+          </div>
+          <div class="iteration-note">
+            <span>Versión 7 · Iteración 0</span>
+            <p>Prototipo visual sin funciones operativas.</p>
+          </div>
+        </aside>
+
+        <section class="content">
+          <section class="view active" data-page="overview">
+            <div class="page-heading">
+              <div>
+                <p class="eyebrow">Centro de gestión</p>
+                <h1>Resumen</h1>
+                <p class="muted">Una vista general de la operación de Cebolletas Copal.</p>
+              </div>
+              <span class="prototype-badge">Vista preliminar</span>
+            </div>
+
+            <div class="stats">
+              <article><span>Contactos de WhatsApp</span><strong>—</strong><small>Sin datos en esta iteración</small></article>
+              <article><span>Servicios activos</span><strong>—</strong><small>Sin datos en esta iteración</small></article>
+              <article><span>Reservaciones</span><strong>—</strong><small>Sin datos en esta iteración</small></article>
+              <article><span>Seguimientos pendientes</span><strong>—</strong><small>Sin datos en esta iteración</small></article>
+            </div>
+
+            <div class="overview-grid">
+              <article class="panel">
+                <div class="panel-head"><div><p class="eyebrow">Accesos directos</p><h2>¿Qué deseas gestionar?</h2></div></div>
+                <div class="quick-grid">
+                  <button data-go="whatsapp" type="button"><span>◉</span><strong>WhatsApp</strong><small>Contactos y número principal</small></button>
+                  <button data-go="services" type="button"><span>◇</span><strong>Servicios</strong><small>Catálogo y precios</small></button>
+                  <button data-go="bookings" type="button"><span>▤</span><strong>Reservaciones</strong><small>Estadías y precios acordados</small></button>
+                  <button data-go="send" type="button"><span>➤</span><strong>Enviar información</strong><small>WhatsApp y correo</small></button>
+                </div>
+              </article>
+              <article class="panel activity-panel">
+                <div class="panel-head"><div><p class="eyebrow">Actividad</p><h2>Movimientos recientes</h2></div></div>
+                <div class="empty-state compact">
+                  <span>○</span>
+                  <strong>Aún no hay actividad</strong>
+                  <p>Los movimientos aparecerán cuando los módulos estén conectados.</p>
+                </div>
+              </article>
+            </div>
+          </section>
+
+          <section class="view" data-page="whatsapp">
+            <div class="page-heading">
+              <div><p class="eyebrow">Contactos</p><h1>WhatsApp</h1><p class="muted">Administra los números que reciben información y define el contacto principal.</p></div>
+              <button class="primary-action" type="button" disabled>+ Agregar número</button>
+            </div>
+            <div class="toolbar"><input type="search" placeholder="Buscar por nombre o número" disabled><select disabled><option>Todos los contactos</option></select></div>
+            <article class="panel table-panel">
+              <div class="table-head"><span>Contacto</span><span>Número</span><span>Estado</span><span></span></div>
+              <div class="empty-state"><span>◉</span><h2>No hay números registrados</h2><p>Aquí podrás mantener tus contactos y elegir uno como predeterminado.</p><small>Disponible en la Iteración 1</small></div>
+            </article>
+          </section>
+
+          <section class="view" data-page="services">
+            <div class="page-heading">
+              <div><p class="eyebrow">Catálogo</p><h1>Servicios</h1><p class="muted">Mantén actualizados los servicios, descripciones y precios ofrecidos.</p></div>
+              <button class="primary-action" type="button" disabled>+ Agregar servicio</button>
+            </div>
+            <div class="toolbar"><input type="search" placeholder="Buscar servicio" disabled><select disabled><option>Todos los estados</option></select></div>
+            <article class="panel table-panel">
+              <div class="table-head services"><span>Servicio</span><span>Descripción</span><span>Precio</span><span>Estado</span></div>
+              <div class="empty-state"><span>◇</span><h2>El catálogo está vacío</h2><p>Los servicios y sus precios aparecerán en esta sección.</p><small>Disponible en la Iteración 2</small></div>
+            </article>
+          </section>
+
+          <section class="view" data-page="bookings">
+            <div class="page-heading">
+              <div><p class="eyebrow">Operación</p><h1>Reservaciones</h1><p class="muted">Consulta huéspedes, fechas, servicios y los precios acordados.</p></div>
+              <button class="primary-action" type="button" disabled>+ Nueva reservación</button>
+            </div>
+            <div class="toolbar bookings-toolbar"><input type="search" placeholder="Buscar folio o huésped" disabled><select disabled><option>Todos los estados</option></select><button type="button" disabled>Seleccionar fechas</button></div>
+            <article class="panel table-panel">
+              <div class="table-head bookings"><span>Folio / huésped</span><span>Fechas</span><span>Servicios</span><span>Total acordado</span><span>Estado</span></div>
+              <div class="empty-state"><span>▤</span><h2>No hay reservaciones</h2><p>Aquí se conservará toda la información y el precio establecido para cada reservación.</p><small>Disponible en la Iteración 3</small></div>
+            </article>
+          </section>
+
+          <section class="view" data-page="send">
+            <div class="page-heading">
+              <div><p class="eyebrow">Comunicación</p><h1>Enviar información</h1><p class="muted">Prepara servicios y precios para compartirlos por WhatsApp, correo o ambos.</p></div>
+              <span class="prototype-badge">Vista preliminar</span>
+            </div>
+            <div class="composer">
+              <article class="panel form-panel">
+                <div class="section-title"><span>1</span><div><h2>Destinatario</h2><p>Datos de la persona que recibirá la información.</p></div></div>
+                <div class="form-grid"><label>Nombre<input type="text" placeholder="Nombre completo" disabled></label><label>WhatsApp<input type="tel" placeholder="+52 449 000 0000" disabled></label><label class="full">Correo electrónico<input type="email" placeholder="correo@ejemplo.com" disabled></label></div>
+                <div class="section-title"><span>2</span><div><h2>Servicios</h2><p>Selecciona uno o más elementos del catálogo.</p></div></div>
+                <div class="empty-selection">El catálogo aún no contiene servicios.<small>Se habilitará en una iteración posterior.</small></div>
+              </article>
+              <aside class="panel preview-panel">
+                <p class="eyebrow">Vista previa</p><h2>Resumen del mensaje</h2>
+                <div class="message-preview"><strong>Cebolletas Copal</strong><p>Los servicios seleccionados y sus precios aparecerán aquí antes de enviar.</p><hr><span>Total</span><b>—</b></div>
+                <fieldset disabled><legend>Enviar mediante</legend><label><input type="checkbox"> WhatsApp</label><label><input type="checkbox"> Correo electrónico</label></fieldset>
+                <button class="primary-button" type="button" disabled>Enviar información</button>
+                <small class="availability">Disponible en las Iteraciones 4 y 5</small>
+              </aside>
+            </div>
+          </section>
+        </section>
+      </div>
+      <div id="sidebar-scrim" class="sidebar-scrim"></div>
+    </main>
+  </body>
+</html>
