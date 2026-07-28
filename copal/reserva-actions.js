@@ -3,10 +3,16 @@
 (function initReservaActions() {
   "use strict";
 
+//  const RESERVA_CONTACT = Object.freeze({
+//    whatsapp: "524491028878",
+//    email: "cebolletascalvillo@gmail.com",
+//    emailCc: "elcrio88@gmail.com"
+//  });
+
   const RESERVA_CONTACT = Object.freeze({
-    whatsapp: "524491028878",
+    whatsapp: "524491576284",
     email: "cebolletascalvillo@gmail.com",
-    emailCc: "elcrio88@gmail.com"
+    emailCc: "thecoyoteco@gmail.com"
   });
 
   const limits = Object.freeze({
