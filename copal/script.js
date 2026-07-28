@@ -7,22 +7,34 @@ const copy = {
     menu: "Abrir menú",
     placeEyebrow: "El lugar",
     placeTitle: "Lo esencial para disfrutar la naturaleza.",
-    placeIntro: "Un espacio privado pensado para descansar, convivir y explorar el entorno de Cebolletas con comodidad.",
+    placeIntro: "Un espacio privado pensado para descansar, cocinar, convivir y explorar el entorno de Cebolletas con comodidad.",
     amenityGroups: [
       ["Entorno y aventura", "Puentes colgantes", "Senderos", "Vistas espectaculares", "Área reservada", "Fogatero"],
       ["Descanso y convivencia", "Sofá cama", "Recámara con clóset", "Juegos de mesa", "Asador", "Mesas tipo picnic"],
       ["Comodidades", "Regadera caliente", "Cocina equipada", "Tetera, té y café", "Estacionamiento"]
     ],
     galleryEyebrow: "Galería", galleryTitle: "Conoce cada rincón.",
-    galleryIntro: "Próximamente serán reemplazadas por la sesión fotográfica final.",
-    photoTour: "Recorrido fotográfico", temporary: "",
+    galleryIntro: "Imágenes temporales para definir la estructura de la galería. Próximamente serán reemplazadas por la sesión fotográfica final.",
+    photoTour: "Recorrido fotográfico", temporary: "Fotografía temporal",
     bookingEyebrow: "Reserva", bookingTitle: "Cuéntanos sobre tu visita.",
-    bookingText: "Comparte tus datos y el plan que tienes en mente para revisar disponibilidad y ayudarte a preparar tu estancia.",
-    fields: ["Nombre", "Email", "Celular", "Mensaje"],
-    fieldsWithIds: [{label: "Nombre", id: "br-name"}, {label: "Email", id: "br-email"}, {label: "Celular", id: "br-cell"}, {label: "Mensaje", id: "br-msg"}],
-    requestTypes: ["Envíame información", "Enviar mensaje"],
-    actions: ["Solicitar", "Enviar"],
-    note: "DESARROLLO EN PROGRESO... Se habilitarán próximamente. ENVIA WHATSAPP AL +52 449 102 8878 "
+    bookingText: "Comparte tus datos y el plan que tienes en mente. Te contactaremos para revisar disponibilidad y ayudarte a preparar tu estancia.",
+    fields: {
+      checkin: "Fecha llegada",
+      checkout: "Fecha salida",
+      nights: "Noches",
+      weekendNights: "Noches de fin de semana",
+      weekdayNights: "Noches entre semana",
+      adults: "Adultos",
+      kids: "Niños",
+      name: "Nombre",
+      email: "Email",
+      cell: "Celular",
+      otherDetails: "Preguntas o información adicional"
+    },
+    requestedInfo: "¿Qué info solicitas?",
+    infoOptions: ["Hospedarse en Cebolletas Copal", "Acampar", "Otro"],
+    action: "Solicitar Información",
+    note: "Al continuar, se abrirán WhatsApp y tu aplicación de correo con la información preparada. Tú confirmarás cada envío."
   },
   en: {
     eyebrow: "Glamping in Calvillo · Aguascalientes, Mexico",
@@ -31,22 +43,34 @@ const copy = {
     parent: "Part of the private Cebolletas development.",
     menu: "Open menu",
     placeEyebrow: "The place", placeTitle: "Everything you need to enjoy nature.",
-    placeIntro: "A private space designed for resting, sharing and exploring the Cebolletas landscape in comfort.",
+    placeIntro: "A private space designed for resting, cooking, sharing and exploring the Cebolletas landscape in comfort.",
     amenityGroups: [
       ["Nature and adventure", "Suspension bridges", "Trails", "Scenic views", "Private area", "Fire pit"],
       ["Rest and gathering", "Sofa bed", "Bedroom with closet", "Board games", "Grill", "Picnic tables"],
       ["Comforts", "Hot shower", "Equipped kitchen", "Kettle, tea and coffee", "Parking"]
     ],
     galleryEyebrow: "Gallery", galleryTitle: "Explore every corner.",
-    galleryIntro: "They will be replaced by the final photo session.",
-    photoTour: "Photo tour", temporary: "",
+    galleryIntro: "Temporary images used to define the gallery structure. They will be replaced by the final photo session.",
+    photoTour: "Photo tour", temporary: "Temporary photograph",
     bookingEyebrow: "Booking", bookingTitle: "Tell us about your visit.",
-    bookingText: "Share your details and the experience you have in mind to review availability and help prepare your stay.",
-    fields: ["Name", "Email", "Phone", "Message"],
-    fieldsWithIds: [{label: "Name", id: "br-name"}, {label: "Email", id: "br-email"}, {label: "Phone", id: "br-cell"}, {label: "Message", id: "br-msg"}],
-    requestTypes: ["Send me information", "Send a message"],
-    actions: ["Request", "Send"],
-    note: "It will be enabled soon."
+    bookingText: "Share your details and the experience you have in mind. We will contact you to review availability and help prepare your stay.",
+    fields: {
+      checkin: "Check-in",
+      checkout: "Checkout",
+      nights: "Nights",
+      weekendNights: "Weekend nights",
+      weekdayNights: "Weekday nights",
+      adults: "Adults",
+      kids: "Kids",
+      name: "Name",
+      email: "Email",
+      cell: "Cellphone",
+      otherDetails: "Questions or additional information"
+    },
+    requestedInfo: "What information do you need?",
+    infoOptions: ["Staying at Cebolletas Copal", "Camping", "Other"],
+    action: "Request info",
+    note: "Continuing will open WhatsApp and your email application with the prepared information. You will confirm each send."
   }
 };
 
@@ -79,7 +103,7 @@ function home(t) {
     <img src="./assets/copal-hero.webp" alt="Cebolletas Copal y su entorno natural">
     <div class="hero-overlay"></div>
     <div class="hero-copy"><p>${t.eyebrow}</p><h1 id="hero-title">${t.title}</h1></div>
-    <div class="hero-identity"><img src="./assets/logo-copal_v2.png" alt="Cebolletas Copal"><p>${t.parent}</p></div>
+    <div class="hero-identity"><img src="./assets/logo-copal.png" alt="Cebolletas Copal"><p>${t.parent}</p></div>
   </section></div>`;
 }
 
@@ -110,20 +134,28 @@ function gallery(t) {
 function booking(t) {
   return `<section class="booking-section" id="booking" aria-labelledby="booking-title">
     <div class="booking-intro"><p class="section-label">${t.bookingEyebrow}</p><h2 id="booking-title">${t.bookingTitle}</h2><p>${t.bookingText}</p></div>
-    <form class="booking-form">
-      <label><span>${t.fieldsWithIds[0].label}</span><input type="text" placeholder="${t.fieldsWithIds[0].label}" id: "${t.fieldsWithIds[0].id}"></label>
-      <label><span>${t.fieldsWithIds[1].label}</span><input type="email" placeholder="${t.fieldsWithIds[1].label}" id: "${t.fieldsWithIds[1].id}"></label>
-      <label class="full-field"><span>${t.fieldsWithIds[2].label}</span><input type="tel" placeholder="${t.fieldsWithIds[2].label}" id: "${t.fieldsWithIds[2].id}"></label>
-      <fieldset class="request-type full-field">
-        <legend>${t.bookingEyebrow}</legend>
-        <label><input type="radio" name="request-type" value="information" checked><span>${t.requestTypes[0]}</span></label>
-        <label><input type="radio" name="request-type" value="message"><span>${t.requestTypes[1]}</span></label>
+    <form class="booking-form" id="reserva-form" novalidate>
+      <label><span>${t.fields.checkin}</span><input id="br-checkin" name="checkin" type="date" required></label>
+      <label><span>${t.fields.checkout}</span><input id="br-checkout" name="checkout" type="date" required></label>
+      <div class="stay-summary full-field" id="br-stay-summary" aria-live="polite" hidden>
+        <div><span>${t.fields.nights}</span><strong id="br-nights">0</strong></div>
+        <div><span>${t.fields.weekendNights}</span><strong id="br-weekend-nights">0</strong></div>
+        <div><span>${t.fields.weekdayNights}</span><strong id="br-weekday-nights">0</strong></div>
+      </div>
+      <label><span>${t.fields.adults}</span><input id="br-adults" name="adults" type="number" min="1" max="20" step="1" value="1" inputmode="numeric" required></label>
+      <label><span>${t.fields.kids}</span><input id="br-kids" name="kids" type="number" min="0" max="20" step="1" value="0" inputmode="numeric" required></label>
+      <label><span>${t.fields.name}</span><input id="br-name" name="name" type="text" placeholder="${t.fields.name}" autocomplete="name" minlength="5" maxlength="100" required></label>
+      <label><span>${t.fields.email}</span><input id="br-email" name="email" type="email" placeholder="${t.fields.email}" autocomplete="email" maxlength="254" required></label>
+      <label class="full-field"><span>${t.fields.cell}</span><input id="br-cell" name="cell" type="tel" placeholder="${t.fields.cell}" autocomplete="tel" inputmode="tel" maxlength="25" required></label>
+      <fieldset class="info-options full-field">
+        <legend>${t.requestedInfo}</legend>
+        <label><input type="checkbox" name="requested-info" value="copal" checked><span>${t.infoOptions[0]}</span></label>
+        <label><input type="checkbox" name="requested-info" value="camping"><span>${t.infoOptions[1]}</span></label>
+        <label><input type="checkbox" name="requested-info" value="other" id="br-other"><span>${t.infoOptions[2]}</span></label>
       </fieldset>
-      <label class="message-field full-field" hidden><span>${t.fieldsWithIds[3].label}</span><textarea rows="5" placeholder="${t.fieldsWithIds[3].label}" id: "${t.fieldsWithIds[3].id}"></textarea></label>
-      <div id="modal" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); z-index: 1000;">Opening email...</div>
+      <label class="other-details full-field" hidden><span>${t.fields.otherDetails}</span><textarea id="br-other-details" name="otherDetails" rows="4" maxlength="1000" placeholder="${t.fields.otherDetails}"></textarea></label>
       <div class="booking-actions full-field">
-        <button type="button" data-booking-action="request" aria-disabled="true" id="br-request">${t.actions[0]}</button>
-        <button type="button" data-booking-action="send" aria-disabled="true" hidden id="br-whatsapp">${t.actions[1]}</button>
+        <button type="button" id="br-request-info">${t.action}</button>
       </div>
       <p class="form-note full-field">${t.note}</p>
     </form>
@@ -135,6 +167,9 @@ function render() {
   renderNav();
   region.className = `content-region ${view}-view`;
   region.innerHTML = ({ home, place, gallery, booking }[view])(t);
+  if (view === "booking") {
+    document.dispatchEvent(new CustomEvent("reserva:rendered"));
+  }
 }
 
 menuButton.addEventListener("click", () => {
@@ -169,13 +204,12 @@ region.addEventListener("click", event => {
 });
 
 region.addEventListener("change", event => {
-  const option = event.target.closest('input[name="request-type"]');
-  if (!option) return;
-
-  const showMessage = option.value === "message";
-  region.querySelector(".message-field").hidden = !showMessage;
-  region.querySelector('[data-booking-action="request"]').hidden = showMessage;
-  region.querySelector('[data-booking-action="send"]').hidden = !showMessage;
+  const other = event.target.closest("#br-other");
+  if (other) {
+    const details = region.querySelector(".other-details");
+    details.hidden = !other.checked;
+    if (!other.checked) details.querySelector("textarea").value = "";
+  }
 });
 
 render();
