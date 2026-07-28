@@ -157,7 +157,17 @@ function renderServices() {
   const list = $("#service-list");
   const visible = filteredServices();
   list.replaceChildren();
-  $("#service-empty").classList.toggle("hidden", services.length !== 0);
+
+  const emptyState = $("#service-empty");
+  const hasMatches = visible.length > 0;
+
+  emptyState.classList.toggle("hidden", hasMatches);
+  emptyState.querySelector("h2").textContent = services.length
+    ? "No hay servicios que coincidan"
+    : "No hay servicios registrados";
+  emptyState.querySelector("p").textContent = services.length
+    ? "Prueba con otros términos o filtros."
+    : "Agrega el primer servicio para comenzar el catálogo.";
 
   visible.forEach((service) => {
     const version = currentVersion(service);
