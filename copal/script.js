@@ -84,7 +84,8 @@ const photos = [
 ];
 
 let lang = "es";
-let view = "home";
+let activeView = "home";
+let sectionObserver;
 let activePhoto = 0;
 const region = document.querySelector(".content-region");
 const nav = document.querySelector("nav");
@@ -94,8 +95,59 @@ function renderNav() {
   const t = copy[lang];
   menuButton.setAttribute("aria-label", t.menu);
   nav.innerHTML = Object.entries(t.nav).map(([key, label]) =>
-    `<a href="#${key}" data-view="${key}" class="${view === key ? "active" : ""}" ${view === key ? 'aria-current="page"' : ""}>${label}</a>`
+    `<a href="#${key}" data-view="${key}" class="${activeView === key ? "active" : ""}" ${activeView === key ? 'aria-current="page"' : ""}>${label}</a>`
   ).join("");
+}
+
+function setActiveView(nextView) {
+  if (!copy[lang].nav[nextView] || nextView === activeView) return;
+  activeView = nextView;
+  nav.querySelectorAll("[data-view]").forEach(link => {
+    const active = link.dataset.view === activeView;
+    link.classList.toggle("active", active);
+    if (active) link.setAttribute("aria-current", "page");
+    else link.removeAttribute("aria-current");
+  });
+}
+
+function sectionFromHash() {
+  const value = window.location.hash.slice(1);
+  return copy[lang].nav[value] ? value : "home";
+}
+
+function scrollToSection(section, behavior = "smooth") {
+  const target = region.querySelector(`#${section}`);
+  if (!target) return;
+
+  const reducedMotion = window.matchMedia(
+    "(prefers-reduced-motion: reduce)"
+  ).matches;
+
+  target.scrollIntoView({
+    behavior: reducedMotion ? "auto" : behavior,
+    block: "start",
+  });
+}
+
+function observeSections() {
+  sectionObserver?.disconnect();
+  const sections = region.querySelectorAll(":scope > [id]");
+  sectionObserver = new IntersectionObserver(entries => {
+    const visible = entries
+      .filter(entry => entry.isIntersecting)
+      .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+    if (!visible) return;
+    setActiveView(visible.target.id);
+    const nextHash = `#${visible.target.id}`;
+    if (window.location.hash !== nextHash) {
+      history.replaceState(null, "", nextHash);
+    }
+  }, {
+    root: region,
+    rootMargin: "-20% 0px -55% 0px",
+    threshold: [0, 0.1, 0.25, 0.5]
+  });
+  sections.forEach(section => sectionObserver.observe(section));
 }
 
 function home(t) {
@@ -164,11 +216,29 @@ function booking(t) {
 
 function render() {
   const t = copy[lang];
+  const requestedSection = sectionFromHash();
+  activeView = requestedSection;
   renderNav();
-  region.className = `content-region ${view}-view`;
-  region.innerHTML = ({ home, place, gallery, booking }[view])(t);
-  if (view === "booking") {
-    document.dispatchEvent(new CustomEvent("reserva:rendered"));
+  region.className = "content-region continuous-view";
+  region.innerHTML = home(t) + place(t) + gallery(t) + booking(t);
+  document.dispatchEvent(new CustomEvent("reserva:rendered"));
+  observeSections();
+  requestAnimationFrame(() => scrollToSection(requestedSection, "auto"));
+}
+
+function updateGallery() {
+  const p = photos[activePhoto];
+  region.querySelectorAll("[data-photo]").forEach((button, index) => {
+    button.classList.toggle("active", index === activePhoto);
+  });
+  const counter = region.querySelector(".feature-caption p");
+  const title = region.querySelector(".feature-caption h3");
+  const image = region.querySelector(".gallery-feature figure img");
+  if (counter) counter.textContent = `${String(activePhoto + 1).padStart(2, "0")} / 06`;
+  if (title) title.textContent = p[lang === "es" ? 1 : 2];
+  if (image) {
+    image.src = `./assets/${p[0]}`;
+    image.alt = p[lang === "es" ? 1 : 2];
   }
 }
 
@@ -181,18 +251,22 @@ nav.addEventListener("click", event => {
   const link = event.target.closest("[data-view]");
   if (!link) return;
   event.preventDefault();
-  view = link.dataset.view;
+  const nextView = link.dataset.view;
+  setActiveView(nextView);
   nav.classList.remove("open");
   menuButton.setAttribute("aria-expanded", "false");
-  render();
+  history.pushState(null, "", `#${nextView}`);
+  scrollToSection(nextView);
 });
 
 document.querySelector(".language").addEventListener("click", event => {
   const button = event.target.closest("[data-lang]");
   if (!button) return;
+  const preservedSection = activeView;
   lang = button.dataset.lang;
   document.documentElement.lang = lang;
   document.querySelectorAll("[data-lang]").forEach(el => el.classList.toggle("active", el.dataset.lang === lang));
+  history.replaceState(null, "", `#${preservedSection}`);
   render();
 });
 
@@ -200,7 +274,7 @@ region.addEventListener("click", event => {
   const button = event.target.closest("[data-photo]");
   if (!button) return;
   activePhoto = Number(button.dataset.photo);
-  render();
+  updateGallery();
 });
 
 region.addEventListener("change", event => {
@@ -212,4 +286,16 @@ region.addEventListener("change", event => {
   }
 });
 
+window.addEventListener("hashchange", () => {
+  const nextView = sectionFromHash();
+  setActiveView(nextView);
+  scrollToSection(nextView);
+});
+
 render();
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", () => {
+    document.dispatchEvent(new CustomEvent("reserva:rendered"));
+  }, { once: true });
+}
