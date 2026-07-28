@@ -34,7 +34,7 @@ const copy = {
     requestedInfo: "¿Qué info solicitas?",
     infoOptions: ["Hospedarse en Cebolletas Copal", "Acampar", "Otro"],
     action: "Solicitar Información",
-    note: "Al continuar, se abrirán WhatsApp y tu aplicación de correo con la información preparada. Tú confirmarás cada envío."
+    note: "Al continuar, se abrirán WhatsApp (+52 449 102 8878) y tu aplicación de correo con la información preparada. Tú confirmarás cada envío."
   },
   en: {
     eyebrow: "Glamping in Calvillo · Aguascalientes, Mexico",
