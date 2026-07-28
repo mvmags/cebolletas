@@ -21,7 +21,7 @@ create table public.service_versions (
   description_es text not null check (char_length(btrim(description_es)) between 1 and 1200),
   description_en text not null check (char_length(btrim(description_en)) between 1 and 1200),
   pricing_unit text not null
-    check (pricing_unit in ('per_night', 'per_person', 'per_person_night', 'fixed')),
+    check (pricing_unit = 'per_night'),
   price_on_request boolean not null default false,
   currency_code text not null default 'MXN' check (currency_code = 'MXN'),
   base_price_cents integer not null default 0 check (base_price_cents >= 0),
