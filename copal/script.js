@@ -34,7 +34,7 @@ const copy = {
     requestedInfo: "¿Qué info solicitas?",
     infoOptions: ["Hospedarse en Cebolletas Copal", "Acampar", "Otro"],
     action: "Solicitar Información",
-    note: "Al continuar, se abrirán WhatsApp (+52 449 102 8878) y tu aplicación de correo con la información preparada. Tú confirmarás cada envío."
+    note: "Al continuar, se abrirán WhatsApp (+52 449 102 8878) y tu aplicación de correo con la información preparada. Tú confirmarás y enviarás la info."
   },
   en: {
     eyebrow: "Glamping in Calvillo · Aguascalientes, Mexico",
@@ -157,7 +157,7 @@ function booking(t) {
       <div class="booking-actions full-field">
         <button type="button" id="br-request-info">${t.action}</button>
       </div>
-      <p class="form-note full-field">${t.note}</p>
+      <div class="booking-intro"><p>${t.note}</p></div>
     </form>
   </section>`;
 }
