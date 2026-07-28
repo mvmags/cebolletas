@@ -191,8 +191,15 @@ $("#recipient-list").addEventListener("click", async (event) => {
   let error;
   if (button.dataset.action === "default") {
     ({ error } = await supabase.rpc("set_default_whatsapp_recipient", { p_recipient_id: recipient.id }));
-  } else if (button.dataset.action === "delete" && window.confirm(`¿Eliminar a ${recipient.display_name}?`)) {
-    ({ error } = await supabase.rpc("delete_whatsapp_recipient", { p_id: recipient.id }));
+  } else if (button.dataset.action === "delete") {
+    if (!window.confirm(`¿Eliminar a ${recipient.display_name}?`)) {
+      button.disabled = false;
+      return;
+    }
+
+    ({ error } = await supabase.rpc("delete_whatsapp_recipient", {
+      p_id: recipient.id,
+    }));
   }
   if (error) setRecipientMessage(friendlyError(error), "error");
   else {
