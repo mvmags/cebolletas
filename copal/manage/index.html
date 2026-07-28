@@ -65,8 +65,8 @@
             </nav>
           </div>
           <div class="iteration-note">
-            <span>Versión 7 · Iteración 0</span>
-            <p>Prototipo visual sin funciones operativas.</p>
+            <span>Versión 7 · Iteración 1</span>
+            <p>Gestión de contactos de WhatsApp habilitada.</p>
           </div>
         </aside>
 
@@ -82,7 +82,7 @@
             </div>
 
             <div class="stats">
-              <article><span>Contactos de WhatsApp</span><strong>—</strong><small>Sin datos en esta iteración</small></article>
+              <article><span>Contactos de WhatsApp</span><strong id="whatsapp-count">—</strong><small id="whatsapp-default-summary">Cargando contactos</small></article>
               <article><span>Servicios activos</span><strong>—</strong><small>Sin datos en esta iteración</small></article>
               <article><span>Reservaciones</span><strong>—</strong><small>Sin datos en esta iteración</small></article>
               <article><span>Seguimientos pendientes</span><strong>—</strong><small>Sin datos en esta iteración</small></article>
@@ -112,12 +112,21 @@
           <section class="view" data-page="whatsapp">
             <div class="page-heading">
               <div><p class="eyebrow">Contactos</p><h1>WhatsApp</h1><p class="muted">Administra los números que reciben información y define el contacto principal.</p></div>
-              <button class="primary-action" type="button" disabled>+ Agregar número</button>
+              <button id="add-recipient-button" class="primary-action" type="button">+ Agregar número</button>
             </div>
-            <div class="toolbar"><input type="search" placeholder="Buscar por nombre o número" disabled><select disabled><option>Todos los contactos</option></select></div>
+            <div class="toolbar">
+              <input id="recipient-search" type="search" placeholder="Buscar por nombre o número">
+              <select id="recipient-status-filter">
+                <option value="all">Todos los contactos</option>
+                <option value="active">Activos</option>
+                <option value="inactive">Inactivos</option>
+              </select>
+            </div>
+            <p id="recipient-message" class="message" role="status" aria-live="polite"></p>
             <article class="panel table-panel">
               <div class="table-head"><span>Contacto</span><span>Número</span><span>Estado</span><span></span></div>
-              <div class="empty-state"><span>◉</span><h2>No hay números registrados</h2><p>Aquí podrás mantener tus contactos y elegir uno como predeterminado.</p><small>Disponible en la Iteración 1</small></div>
+              <div id="recipient-list" class="recipient-list"></div>
+              <div id="recipient-empty" class="empty-state hidden"><span>◉</span><h2>No hay números registrados</h2><p>Agrega el primer contacto. Se establecerá automáticamente como predeterminado.</p></div>
             </article>
           </section>
 
@@ -170,5 +179,27 @@
       </div>
       <div id="sidebar-scrim" class="sidebar-scrim"></div>
     </main>
+
+    <div id="recipient-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="recipient-modal-title">
+      <button class="modal-backdrop" type="button" aria-label="Cerrar"></button>
+      <form id="recipient-form" class="modal-card">
+        <div class="modal-head">
+          <div><p class="eyebrow">WhatsApp</p><h2 id="recipient-modal-title">Agregar contacto</h2></div>
+          <button id="close-recipient-modal" class="icon-button" type="button" aria-label="Cerrar">×</button>
+        </div>
+        <input id="recipient-id" name="id" type="hidden">
+        <label for="recipient-name">Nombre para mostrar</label>
+        <input id="recipient-name" name="display_name" maxlength="80" required>
+        <label for="recipient-phone">Número en formato internacional</label>
+        <input id="recipient-phone" name="phone_e164" type="tel" inputmode="tel" placeholder="+524491234567" pattern="\+[1-9][0-9]{7,14}" required>
+        <small class="field-help">Incluye “+”, código de país y número, sin espacios. Ejemplo: +524491234567.</small>
+        <label class="checkbox-row"><input id="recipient-active" name="is_active" type="checkbox" checked> Contacto activo</label>
+        <p id="recipient-form-error" class="message error" role="alert"></p>
+        <div class="modal-actions">
+          <button id="cancel-recipient" class="secondary-button" type="button">Cancelar</button>
+          <button class="primary-button" type="submit">Guardar contacto</button>
+        </div>
+      </form>
+    </div>
   </body>
 </html>
