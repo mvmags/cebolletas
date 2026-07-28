@@ -22,7 +22,7 @@ const copy = {
     fieldsWithIds: [{label: "Nombre", id: "br-name"}, {label: "Email", id: "br-email"}, {label: "Celular", id: "br-cell"}, {label: "Mensaje", id: "br-msg"}],
     requestTypes: ["Envíame información", "Enviar mensaje"],
     actions: ["Solicitar", "Enviar"],
-    note: "Se habilitarán próximamente."
+    note: "DESARROLLO EN PROGRESO... Se habilitarán próximamente. ENVIA WHATSAPP AL +52 449 102 8878 "
   },
   en: {
     eyebrow: "Glamping in Calvillo · Aguascalientes, Mexico",
