@@ -293,3 +293,9 @@ window.addEventListener("hashchange", () => {
 });
 
 render();
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", () => {
+    document.dispatchEvent(new CustomEvent("reserva:rendered"));
+  }, { once: true });
+}
