@@ -19,9 +19,11 @@ const serviceModal = $("#service-modal");
 const serviceForm = $("#service-form");
 const serviceMessage = $("#service-message");
 const serviceHistoryModal = $("#service-history-modal");
+const serviceHistoryMessage = $("#service-history-message");
 let recipients = [];
 let defaultRecipientId = null;
 let services = [];
+let historyServiceId = null;
 
 const CATEGORY_LABELS = {
   copal: "Cebolletas Copal",
@@ -75,6 +77,7 @@ function friendlyError(error) {
   if (error?.message?.includes("Service not found")) return "El servicio ya no existe.";
   if (error?.message?.includes("Service is referenced")) return "No se puede eliminar porque una reservación conserva esta versión.";
   if (error?.message?.includes("Version conflict")) return "El servicio cambió en otra sesión. Recarga el catálogo antes de editar.";
+  if (error?.message?.includes("Service version does not belong")) return "La versión seleccionada no pertenece a este servicio.";
   return error?.message || "No fue posible completar la operación.";
 }
 
@@ -337,7 +340,10 @@ function closeServiceModal() {
 function openServiceHistory(service) {
   const versions = service.service_versions || [];
   const current = currentVersion(service);
+  historyServiceId = service.id;
   $("#service-history-title").textContent = `Versiones de ${current?.name_es || "servicio"}`;
+  serviceHistoryMessage.textContent = "";
+  serviceHistoryMessage.className = "message";
   $("#service-history-list").innerHTML = versions.map((version) => `
     <article class="history-item ${version.id === service.current_version_id ? "current" : ""}">
       <div class="history-item-head">
@@ -347,12 +353,18 @@ function openServiceHistory(service) {
       <p><strong>${escapeHtml(version.name_es)}</strong> / ${escapeHtml(version.name_en)}</p>
       <p>${version.price_on_request ? "Precio a consultar" : `${formatMoney(version.base_price_cents)} ${PRICING_UNIT_LABELS[version.pricing_unit] || ""}; adulto adicional ${formatMoney(version.adult_extra_cents)}; niño adicional ${formatMoney(version.child_extra_cents)}.`}</p>
       <p>Incluye ${version.included_guests} huésped(es); capacidad máxima ${version.max_occupancy}. Menores de 3 años sin costo y cuentan en capacidad.</p>
+      <div class="history-item-actions">
+        ${version.id === service.current_version_id
+          ? '<span class="current-label">Versión actual</span>'
+          : `<button data-history-action="make-current" data-version-id="${version.id}" type="button">Hacer versión actual</button>`}
+      </div>
     </article>
   `).join("");
   serviceHistoryModal.classList.remove("hidden");
 }
 
 function closeServiceHistory() {
+  historyServiceId = null;
   serviceHistoryModal.classList.add("hidden");
 }
 
@@ -483,6 +495,44 @@ $("#service-list").addEventListener("click", async (event) => {
     setServiceMessage(action === "toggle" ? "Estado del servicio actualizado." : "Servicio eliminado.", "success");
   }
   button.disabled = false;
+});
+
+$("#service-history-list").addEventListener("click", async (event) => {
+  const button = event.target.closest('button[data-history-action="make-current"]');
+  if (!button || !historyServiceId) return;
+
+  const service = services.find((item) => item.id === historyServiceId);
+  const version = service?.service_versions?.find((item) => item.id === button.dataset.versionId);
+  if (!service || !version) return;
+
+  const confirmed = window.confirm(
+    `¿Hacer la versión ${version.version_number} la versión actual de ${version.name_es}?`
+  );
+  if (!confirmed) return;
+
+  button.disabled = true;
+  serviceHistoryMessage.textContent = "Actualizando versión…";
+  serviceHistoryMessage.className = "message";
+
+  const { error } = await supabase.rpc("set_current_service_version", {
+    p_service_id: service.id,
+    p_version_id: version.id,
+    p_expected_current_version_id: service.current_version_id,
+  });
+
+  if (error) {
+    button.disabled = false;
+    serviceHistoryMessage.textContent = friendlyError(error);
+    serviceHistoryMessage.className = "message error";
+    return;
+  }
+
+  await loadServices();
+  const refreshedService = services.find((item) => item.id === service.id);
+  if (refreshedService) openServiceHistory(refreshedService);
+  serviceHistoryMessage.textContent = `La versión ${version.version_number} ahora es la versión actual.`;
+  serviceHistoryMessage.className = "message success";
+  setServiceMessage(`La versión ${version.version_number} de ${version.name_es} ahora es la versión actual.`, "success");
 });
 
 $("#logout-button").addEventListener("click", async () => {

@@ -173,6 +173,11 @@ fieldset input { width: auto; min-height: auto; }
 .history-item-head { display: flex; justify-content: space-between; gap: 14px; margin-bottom: 10px; }
 .history-item-head span { color: var(--muted); font-size: .72rem; }
 .history-item p { margin: 5px 0; color: var(--muted); font-size: .8rem; line-height: 1.45; }
+.history-item-actions { display: flex; align-items: center; justify-content: flex-end; gap: 10px; margin-top: 12px; }
+.history-item-actions .current-label { color: var(--forest); font-size: .72rem; font-weight: 800; }
+.history-item-actions button { border: 1px solid var(--forest); border-radius: 8px; padding: 8px 11px; color: var(--forest); background: #fff; font-weight: 750; }
+.history-item-actions button:hover { color: #fff; background: var(--forest); }
+.history-item-actions button:disabled { cursor: wait; opacity: .65; }
 .modal-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; }
 .modal-head h2 { font-size: 2rem; }
 .icon-button { border: 0; padding: 2px 8px; color: var(--muted); background: transparent; font-size: 1.8rem; }
