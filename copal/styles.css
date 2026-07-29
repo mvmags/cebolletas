@@ -100,6 +100,28 @@ footer > p { display: block; margin: 0; font-size: 10px; font-weight: 700; lette
 .info-options label { display: flex; grid-template-columns: none; align-items: center; gap: 9px; color: #3e4337; font-size: 13px; cursor: pointer; }
 .info-options input[type="checkbox"] { flex: 0 0 auto; width: 17px; height: 17px; margin: 0; padding: 0; border: 1px solid rgba(48,56,38,.5); accent-color: var(--wine); cursor: pointer; }
 .info-options label > span { color: #3e4337; font-size: 13px; font-weight: 400; letter-spacing: 0; text-transform: none; }
+.service-options { display: grid; gap: 14px; margin: 0; padding: 0; border: 0; }
+.service-options legend { margin: 0 0 4px; padding: 0; color: var(--green); font-size: 10px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+.service-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.service-card { position: relative; display: grid !important; gap: 10px !important; min-height: 172px; padding: 18px; border: 1px solid rgba(48,56,38,.23); background: #fff; cursor: pointer; transition: border-color .2s ease, box-shadow .2s ease, background .2s ease; }
+.service-card:hover { border-color: rgba(126,36,36,.6); }
+.service-card:has(input:checked) { border-color: var(--wine); background: rgba(126,36,36,.035); box-shadow: 0 0 0 2px rgba(126,36,36,.09); }
+.service-card input { position: absolute; top: 16px; right: 16px; width: 18px; height: 18px; margin: 0; padding: 0; accent-color: var(--wine); }
+.service-card strong { padding-right: 28px; color: var(--green); font-family: Georgia, "Times New Roman", serif; font-size: 22px; font-weight: 400; line-height: 1.1; }
+.service-card p { margin: 0; color: #67695f; font-size: 12px; line-height: 1.5; }
+.service-card small { align-self: end; color: var(--wine); font-size: 11px; font-weight: 700; line-height: 1.45; }
+.service-card ul { display: flex; flex-wrap: wrap; gap: 5px 12px; margin: 0; padding: 0; color: #62655b; font-size: 10px; list-style: none; }
+.service-card li::before { content: "\00B7"; margin-right: 5px; color: var(--wine); }
+.service-loading, .service-empty { margin: 0; padding: 18px; border: 1px dashed rgba(48,56,38,.25); color: #70736a; font-size: 13px; }
+.quote-summary { padding: 20px; border: 1px solid rgba(48,56,38,.2); background: rgba(48,56,38,.035); }
+.quote-summary-placeholder { margin: 0; color: #70736a; font-size: 12px; line-height: 1.55; }
+.quote-summary h3 { margin: 0 0 14px; color: var(--green); font-family: Georgia, "Times New Roman", serif; font-size: 24px; font-weight: 400; }
+.quote-summary-row { display: flex; justify-content: space-between; gap: 18px; padding: 7px 0; color: #55594f; font-size: 12px; line-height: 1.4; }
+.quote-summary-row.total { margin-top: 8px; padding-top: 14px; border-top: 1px solid rgba(48,56,38,.2); color: var(--green); font-size: 15px; font-weight: 700; }
+.quote-summary-row.total strong { color: var(--wine); font-size: 20px; }
+.quote-summary-note { margin: 13px 0 0; color: #75786e; font-size: 10px; line-height: 1.5; }
+.quote-summary.manual { border-color: rgba(126,36,36,.3); background: rgba(126,36,36,.035); }
+.quote-capacity-error { margin: 0; color: var(--wine); font-size: 12px; font-weight: 700; }
 .other-details[hidden] { display: none; }
 .booking-actions { display: flex; flex-wrap: wrap; gap: 12px; }
 .booking-actions button { min-height: 46px; padding: 0 24px; border: 1px solid var(--wine); background: var(--wine); color: #fff; cursor: pointer; font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; transition: background .2s ease, color .2s ease; }
@@ -166,6 +188,7 @@ footer > p { display: block; margin: 0; font-size: 10px; font-weight: 700; lette
   .booking-form label, .full-field { grid-column: 1; }
   .booking-actions { display: grid; grid-template-columns: 1fr; }
   .booking-actions button { width: 100%; }
+  .service-grid { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 420px) {
@@ -175,7 +198,7 @@ footer > p { display: block; margin: 0; font-size: 10px; font-weight: 700; lette
 }
 
 
-/* Version 7 · Iteration 1.1 — continuous section navigation */
+/* Version 7 - Iteration 1.1 - continuous section navigation */
 .content-region {
   overflow-y: auto;
   overscroll-behavior-y: contain;
