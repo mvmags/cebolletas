@@ -400,4 +400,8 @@ comment on table public.information_requests is
 comment on function public.expire_information_requests() is
   'Daily lifecycle update. Date comparisons use America/Mexico_City; the cron job runs at 06:10 UTC.';
 
+revoke all privileges
+on function public.expire_information_requests()
+from public, anon, authenticated, service_role;
+
 commit;
