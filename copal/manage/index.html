@@ -65,8 +65,8 @@
             </nav>
           </div>
           <div class="iteration-note">
-            <span>Versión 7 · Iteración 1</span>
-            <p>Gestión de contactos de WhatsApp habilitada.</p>
+            <span>Versión 7 · Iteración 2</span>
+            <p>Catálogo bilingüe y precios versionados habilitados.</p>
           </div>
         </aside>
 
@@ -83,7 +83,7 @@
 
             <div class="stats">
               <article><span>Contactos de WhatsApp</span><strong id="whatsapp-count">—</strong><small id="whatsapp-default-summary">Cargando contactos</small></article>
-              <article><span>Servicios activos</span><strong>—</strong><small>Sin datos en esta iteración</small></article>
+              <article><span>Servicios activos</span><strong id="service-count">—</strong><small id="service-count-summary">Cargando catálogo</small></article>
               <article><span>Reservaciones</span><strong>—</strong><small>Sin datos en esta iteración</small></article>
               <article><span>Seguimientos pendientes</span><strong>—</strong><small>Sin datos en esta iteración</small></article>
             </div>
@@ -133,13 +133,29 @@
           <section class="view" data-page="services">
             <div class="page-heading">
               <div><p class="eyebrow">Catálogo</p><h1>Servicios</h1><p class="muted">Mantén actualizados los servicios, descripciones y precios ofrecidos.</p></div>
-              <button class="primary-action" type="button" disabled>+ Agregar servicio</button>
+              <button id="add-service-button" class="primary-action" type="button">+ Agregar servicio</button>
             </div>
-            <div class="toolbar"><input type="search" placeholder="Buscar servicio" disabled><select disabled><option>Todos los estados</option></select></div>
+            <div class="toolbar services-toolbar">
+              <input id="service-search" type="search" placeholder="Buscar servicio o descripción">
+              <select id="service-category-filter">
+                <option value="all">Todas las categorías</option>
+                <option value="copal">Cebolletas Copal</option>
+                <option value="camping">Camping</option>
+                <option value="events">Eventos</option>
+              </select>
+              <select id="service-status-filter">
+                <option value="all">Todos los estados</option>
+                <option value="active">Activos</option>
+                <option value="inactive">Inactivos</option>
+              </select>
+            </div>
+            <p id="service-message" class="message" role="status" aria-live="polite"></p>
             <article class="panel table-panel">
-              <div class="table-head services"><span>Servicio</span><span>Descripción</span><span>Precio</span><span>Estado</span></div>
-              <div class="empty-state"><span>◇</span><h2>El catálogo está vacío</h2><p>Los servicios y sus precios aparecerán en esta sección.</p><small>Disponible en la Iteración 2</small></div>
+              <div class="table-head services"><span>Servicio</span><span>Descripción</span><span>Precio base</span><span>Estado</span><span></span></div>
+              <div id="service-list" class="service-list"></div>
+              <div id="service-empty" class="empty-state hidden"><span>◇</span><h2>No hay servicios registrados</h2><p>Agrega el primer servicio para comenzar el catálogo.</p></div>
             </article>
+            <p class="catalog-note">Los descuentos porcentuales, descuentos fijos y totales acordados se aplicarán a cada reservación sin alterar estas versiones del catálogo.</p>
           </section>
 
           <section class="view" data-page="bookings">
@@ -200,6 +216,78 @@
           <button class="primary-button" type="submit">Guardar contacto</button>
         </div>
       </form>
+    </div>
+
+    <div id="service-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="service-modal-title">
+      <button class="modal-backdrop service-modal-backdrop" type="button" aria-label="Cerrar"></button>
+      <form id="service-form" class="modal-card service-modal-card">
+        <div class="modal-head">
+          <div><p class="eyebrow">Catálogo versionado</p><h2 id="service-modal-title">Agregar servicio</h2></div>
+          <button id="close-service-modal" class="icon-button" type="button" aria-label="Cerrar">×</button>
+        </div>
+        <input id="service-id" type="hidden">
+
+        <div class="form-grid three-columns">
+          <label>Categoría
+            <select id="service-category" required>
+              <option value="copal">Cebolletas Copal</option>
+              <option value="camping">Camping</option>
+              <option value="events">Eventos</option>
+            </select>
+          </label>
+          <label>Unidad de precio
+            <select id="service-pricing-unit" required>
+              <option value="per_night">Por noche</option>
+            </select>
+          </label>
+          <label>Orden
+            <input id="service-display-order" type="number" min="0" step="1" value="0" required>
+          </label>
+        </div>
+
+        <div class="language-grid">
+          <fieldset>
+            <legend>Español</legend>
+            <label>Nombre<input id="service-name-es" maxlength="120" required></label>
+            <label>Descripción<textarea id="service-description-es" maxlength="1200" rows="4" required></textarea></label>
+            <label>Amenidades, una por línea<textarea id="service-amenities-es" rows="7" required></textarea></label>
+          </fieldset>
+          <fieldset>
+            <legend>English</legend>
+            <label>Name<input id="service-name-en" maxlength="120" required></label>
+            <label>Description<textarea id="service-description-en" maxlength="1200" rows="4" required></textarea></label>
+            <label>Amenities, one per line<textarea id="service-amenities-en" rows="7" required></textarea></label>
+          </fieldset>
+        </div>
+
+        <label class="checkbox-row"><input id="service-price-on-request" type="checkbox"> Precio a consultar</label>
+        <div id="service-pricing-fields" class="form-grid pricing-grid">
+          <label>Precio base (MXN)<input id="service-base-price" type="number" min="0" step="0.01" required></label>
+          <label>Huéspedes incluidos<input id="service-included-guests" type="number" min="0" step="1" required></label>
+          <label>Capacidad máxima<input id="service-max-occupancy" type="number" min="1" step="1" required></label>
+          <label>Adulto adicional (MXN)<input id="service-adult-extra" type="number" min="0" step="0.01" required></label>
+          <label>Niño adicional, 3–12 años (MXN)<input id="service-child-extra" type="number" min="0" step="0.01" required></label>
+          <label>Menor de 3 años<input value="Sin costo; cuenta en capacidad" disabled></label>
+        </div>
+        <label class="checkbox-row"><input id="service-active" type="checkbox" checked> Servicio activo</label>
+        <small class="field-help">Al editar un servicio se crea una nueva versión. Las versiones anteriores permanecen intactas.</small>
+        <p id="service-form-error" class="message error" role="alert"></p>
+        <div class="modal-actions">
+          <button id="cancel-service" class="secondary-button" type="button">Cancelar</button>
+          <button class="primary-button" type="submit">Guardar servicio</button>
+        </div>
+      </form>
+    </div>
+
+    <div id="service-history-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="service-history-title">
+      <button class="modal-backdrop history-modal-backdrop" type="button" aria-label="Cerrar"></button>
+      <section class="modal-card history-modal-card">
+        <div class="modal-head">
+          <div><p class="eyebrow">Historial inmutable</p><h2 id="service-history-title">Versiones del servicio</h2></div>
+          <button id="close-service-history" class="icon-button" type="button" aria-label="Cerrar">×</button>
+        </div>
+        <div id="service-history-list" class="history-list"></div>
+      </section>
     </div>
   </body>
 </html>
