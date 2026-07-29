@@ -31,6 +31,7 @@ let services = [];
 let historyServiceId = null;
 let informationRequests = [];
 let detailRequestId = null;
+let calendarMonth = null;
 
 const CATEGORY_LABELS = {
   copal: "Cebolletas Copal",
@@ -222,6 +223,118 @@ function filteredInformationRequests() {
   });
 }
 
+function dateFromKey(value) {
+  const [year, month, day] = value.split("-").map(Number);
+  return new Date(year, month - 1, day, 12);
+}
+
+function dateKey(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function monthStart(value) {
+  const date = typeof value === "string" ? dateFromKey(value) : value;
+  return new Date(date.getFullYear(), date.getMonth(), 1, 12);
+}
+
+function moveCalendarMonth(offset) {
+  calendarMonth = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + offset, 1, 12);
+  renderRequestCalendar();
+}
+
+function requestTouchesDate(request, value) {
+  return request.checkin_date <= value && request.checkout_date >= value;
+}
+
+function renderRequestCalendar() {
+  if (!calendarMonth) calendarMonth = monthStart(mexicoCityDate());
+
+  const visible = filteredInformationRequests();
+  const grid = $("#request-calendar-grid");
+  const today = mexicoCityDate();
+  const firstDay = monthStart(calendarMonth);
+  const mondayOffset = (firstDay.getDay() + 6) % 7;
+  const gridStart = new Date(firstDay);
+  gridStart.setDate(firstDay.getDate() - mondayOffset);
+  const monthEnd = new Date(firstDay.getFullYear(), firstDay.getMonth() + 1, 0, 12);
+  let visibleInMonth = 0;
+
+  $("#calendar-month").textContent = new Intl.DateTimeFormat("es-MX", {
+    month: "long",
+    year: "numeric",
+  }).format(firstDay);
+  grid.replaceChildren();
+
+  for (let offset = 0; offset < 42; offset += 1) {
+    const day = new Date(gridStart);
+    day.setDate(gridStart.getDate() + offset);
+    const value = dateKey(day);
+    const requestsForDay = visible
+      .filter((request) => requestTouchesDate(request, value))
+      .sort((a, b) => a.checkin_date.localeCompare(b.checkin_date)
+        || a.request_number - b.request_number);
+
+    if (day >= firstDay && day <= monthEnd) visibleInMonth += requestsForDay.length;
+
+    const cell = document.createElement("div");
+    cell.className = [
+      "calendar-day",
+      day.getMonth() === firstDay.getMonth() ? "" : "outside",
+      value === today ? "today" : "",
+    ].filter(Boolean).join(" ");
+    cell.setAttribute("role", "gridcell");
+    cell.setAttribute("aria-label", new Intl.DateTimeFormat("es-MX", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    }).format(day));
+
+    const events = requestsForDay.slice(0, 3).map((request) => {
+      const position = value === request.checkin_date
+        ? "Entrada"
+        : value === request.checkout_date
+          ? "Salida"
+          : "Estancia";
+      return `
+        <button
+          class="calendar-request ${request.status.replace("_", "-")}"
+          data-calendar-request="${request.id}"
+          type="button"
+          title="${escapeHtml(`${formatRequestCode(request.request_number)} · ${request.customer_name} · ${formatDate(request.checkin_date)} – ${formatDate(request.checkout_date)}`)}"
+        >
+          <strong>${escapeHtml(request.customer_name)}</strong>
+          <small>${position} · ${formatRequestCode(request.request_number)}</small>
+        </button>`;
+    }).join("");
+    const remaining = requestsForDay.length - 3;
+
+    cell.innerHTML = `
+      <span class="calendar-day-number">${day.getDate()}</span>
+      <div class="calendar-events">
+        ${events}
+        ${remaining > 0 ? `<p class="calendar-more">+${remaining} solicitud${remaining === 1 ? "" : "es"}</p>` : ""}
+      </div>`;
+    grid.append(cell);
+  }
+
+  $("#request-calendar-empty").classList.toggle("hidden", visibleInMonth > 0);
+}
+
+function setRequestView(view) {
+  const calendarActive = view === "calendar";
+  $("#request-calendar-panel").classList.toggle("hidden", !calendarActive);
+  $("#request-list-panel").classList.toggle("hidden", calendarActive);
+  $("#request-calendar-view").classList.toggle("active", calendarActive);
+  $("#request-list-view").classList.toggle("active", !calendarActive);
+  $("#request-calendar-view").setAttribute("aria-pressed", String(calendarActive));
+  $("#request-list-view").setAttribute("aria-pressed", String(!calendarActive));
+  if (calendarActive) renderRequestCalendar();
+}
+
 function renderInformationRequests() {
   const list = $("#request-list");
   const visible = filteredInformationRequests();
@@ -269,6 +382,7 @@ function renderInformationRequests() {
   $("#request-booked-summary").textContent = bookedCount === 1
     ? "1 solicitud confirmada"
     : `${bookedCount} solicitudes confirmadas`;
+  renderRequestCalendar();
 }
 
 async function loadInformationRequests() {
@@ -889,6 +1003,13 @@ $("#request-list").addEventListener("click", (event) => {
   if (request) openRequestDetail(request);
 });
 
+$("#request-calendar-grid").addEventListener("click", (event) => {
+  const button = event.target.closest("button[data-calendar-request]");
+  if (!button) return;
+  const request = informationRequests.find((item) => item.id === button.dataset.calendarRequest);
+  if (request) openRequestDetail(request);
+});
+
 $("#request-status-actions").addEventListener("click", (event) => {
   const button = event.target.closest("button[data-next-status]");
   if (button && !button.disabled) changeRequestStatus(button);
@@ -930,6 +1051,14 @@ $("#service-status-filter").addEventListener("change", renderServices);
 $("#request-search").addEventListener("input", renderInformationRequests);
 $("#request-status-filter").addEventListener("change", renderInformationRequests);
 $("#request-service-filter").addEventListener("change", renderInformationRequests);
+$("#request-calendar-view").addEventListener("click", () => setRequestView("calendar"));
+$("#request-list-view").addEventListener("click", () => setRequestView("list"));
+$("#calendar-previous").addEventListener("click", () => moveCalendarMonth(-1));
+$("#calendar-next").addEventListener("click", () => moveCalendarMonth(1));
+$("#calendar-today").addEventListener("click", () => {
+  calendarMonth = monthStart(mexicoCityDate());
+  renderRequestCalendar();
+});
 menuButton.addEventListener("click", () => {
   const open = sidebar.classList.toggle("open");
   scrim.classList.toggle("open", open);
