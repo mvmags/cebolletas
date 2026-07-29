@@ -224,6 +224,13 @@ fieldset input { width: auto; min-height: auto; }
 .request-detail-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-top: 22px; }
 .request-detail-item { border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; background: #faf8f4; }
 .request-detail-item.full { grid-column: 1 / -1; }
+.request-quote-detail { gap: 12px; }
+.request-quote-rows { display: grid; gap: 8px; max-width: 620px; }
+.request-quote-rows > div { display: flex; justify-content: space-between; gap: 18px; color: #53584f; font-size: 13px; }
+.request-detail-item .request-quote-rows span { margin: 0; color: inherit; font-size: inherit; font-weight: 400; letter-spacing: 0; text-transform: none; }
+.request-quote-rows > div.total { margin-top: 5px; padding-top: 12px; border-top: 1px solid var(--line); color: var(--ink); font-size: 15px; }
+.request-quote-rows > div.total strong { color: var(--wine); font-size: 18px; }
+.request-quote-detail > small { color: var(--muted); }
 .request-detail-item span { display: block; margin-bottom: 6px; color: var(--muted); font-size: .7rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
 .request-detail-item strong, .request-detail-item p { margin: 0; font-size: .86rem; line-height: 1.5; overflow-wrap: anywhere; }
 .request-status-panel, .request-history { margin-top: 24px; border-top: 1px solid var(--line); padding-top: 22px; }

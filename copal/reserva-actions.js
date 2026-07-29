@@ -28,6 +28,7 @@
     cell: 25,
     otherDetails: 1000
   });
+  let activeServices = [];
 
   const messages = {
     es: {
@@ -35,22 +36,27 @@
       pastCheckin: "La fecha de llegada no puede estar en el pasado.",
       requiredCheckout: "La fecha de salida es requerida.",
       invalidCheckout: "La fecha de salida debe ser posterior a la fecha de llegada.",
-      invalidAdults: "Adultos debe ser un número entero entre 1 y 20.",
-      invalidKids: "Niños debe ser un número entero entre 0 y 20.",
+      invalidAdults: "Adultos debe ser un n\u00famero entero entre 1 y 20.",
+      invalidKids: "Ni\u00f1os debe ser un n\u00famero entero entre 0 y 20.",
+      invalidInfants: "Menores de 3 a\u00f1os debe ser un n\u00famero entero entre 0 y 20.",
+      requiredService: "Selecciona un servicio.",
+      capacityExceeded: "El n\u00famero de hu\u00e9spedes excede la capacidad del servicio.",
       requiredName: "El nombre es requerido.",
       shortName: "El nombre debe contener al menos 5 letras.",
-      invalidName: "Usa únicamente letras, espacios, apóstrofes, puntos o guiones.",
-      longName: "El nombre es demasiado largo (máximo 100 caracteres).",
+      invalidName: "Usa \u00fanicamente letras, espacios, ap\u00f3strofes, puntos o guiones.",
+      longName: "El nombre es demasiado largo (m\u00e1ximo 100 caracteres).",
       requiredEmail: "El email es requerido.",
-      invalidEmail: "El formato del email no es válido.",
+      invalidEmail: "El formato del email no es v\u00e1lido.",
       requiredCell: "El celular es requerido.",
-      invalidCell: "Ingresa un celular válido de 10 a 15 dígitos.",
-      requiredInfo: "Selecciona al menos una opción.",
-      longOther: "El texto es demasiado largo (máximo 1000 caracteres).",
-      savingRequest: "Guardando tu solicitud…",
-      openingChannels: "Solicitud guardada. Abriendo WhatsApp y email…",
+      invalidCell: "Ingresa un celular v\u00e1lido de 10 a 15 d\u00edgitos.",
+      requiredInfo: "Selecciona al menos una opci\u00f3n.",
+      longOther: "El texto es demasiado largo (m\u00e1ximo 1000 caracteres).",
+      savingRequest: "Guardando tu solicitud\u2026",
+      openingChannels: "Solicitud guardada. Abriendo WhatsApp y email\u2026",
       saveFailed: "No fue posible guardar la solicitud. Intenta nuevamente.",
-      infoSubject: "Solicitud de información",
+      automaticAction: "Solicitar reservaci\u00f3n",
+      manualAction: "Solicitar cotizaci\u00f3n",
+      infoSubject: "Solicitud de informaci\u00f3n",
       labels: {
         staySummary: "Resumen de estancia",
         checkin: "Fecha llegada",
@@ -59,12 +65,14 @@
         weekendNights: "Noches de fin de semana",
         weekdayNights: "Noches entre semana",
         adults: "Adultos",
-        kids: "Niños",
+        kids: "Ni\u00f1os",
+        infants: "Menores de 3 a\u00f1os",
         name: "Nombre",
         email: "Email",
         cell: "Celular",
-        requestedInfo: "Información solicitada",
-        otherDetails: "Otra información"
+        requestedInfo: "Servicio",
+        estimatedTotal: "Total estimado",
+        otherDetails: "Otra informaci\u00f3n"
       },
       infoOptions: {
         copal: "Hospedarse en Cebolletas Copal",
@@ -79,6 +87,9 @@
       invalidCheckout: "Checkout must be later than check-in.",
       invalidAdults: "Adults must be a whole number between 1 and 20.",
       invalidKids: "Kids must be a whole number between 0 and 20.",
+      invalidInfants: "Children under 3 must be a whole number between 0 and 20.",
+      requiredService: "Select one service.",
+      capacityExceeded: "The number of guests exceeds this service's capacity.",
       requiredName: "Name is required.",
       shortName: "Name must contain at least 5 letters.",
       invalidName: "Use only letters, spaces, apostrophes, periods, or hyphens.",
@@ -89,9 +100,11 @@
       invalidCell: "Enter a valid cellphone number containing 10 to 15 digits.",
       requiredInfo: "Select at least one option.",
       longOther: "Text is too long (maximum 1000 characters).",
-      savingRequest: "Saving your request…",
-      openingChannels: "Request saved. Opening WhatsApp and email…",
+      savingRequest: "Saving your request\u2026",
+      openingChannels: "Request saved. Opening WhatsApp and email\u2026",
       saveFailed: "We could not save your request. Please try again.",
+      automaticAction: "Request booking",
+      manualAction: "Request quotation",
       infoSubject: "Information request",
       labels: {
         staySummary: "Stay summary",
@@ -102,10 +115,12 @@
         weekdayNights: "Weekday nights",
         adults: "Adults",
         kids: "Kids",
+        infants: "Children under 3",
         name: "Name",
         email: "Email",
         cell: "Cellphone",
-        requestedInfo: "Requested information",
+        requestedInfo: "Service",
+        estimatedTotal: "Estimated total",
         otherDetails: "Other information"
       },
       infoOptions: {
@@ -122,6 +137,144 @@
 
   function getForm() {
     return document.getElementById("reserva-form");
+  }
+
+  function formatMoney(cents, locale = getLanguage()) {
+    return new Intl.NumberFormat(locale === "es" ? "es-MX" : "en-US", {
+      style: "currency",
+      currency: "MXN",
+      maximumFractionDigits: 0
+    }).format(cents / 100);
+  }
+
+  function selectedService(form) {
+    const id = form?.querySelector('input[name="service-id"]:checked')?.value;
+    return activeServices.find((service) => service.service_id === id) || null;
+  }
+
+  function localized(service, field) {
+    return service?.[`${field}_${getLanguage()}`] || "";
+  }
+
+  function escapeHtml(value) {
+    const element = document.createElement("div");
+    element.textContent = String(value ?? "");
+    return element.innerHTML;
+  }
+
+  function calculateQuote(service, stay, adults, children, infants) {
+    if (!service || !stay) return null;
+    const totalGuests = adults + children + infants;
+    if (![adults, children, infants].every(Number.isInteger) || totalGuests > service.max_occupancy) {
+      return { capacityExceeded: true, totalGuests };
+    }
+    if (service.price_on_request) {
+      return { manual: true, totalGuests, nights: stay.nights };
+    }
+    const extraAdults = Math.max(adults - service.included_guests, 0);
+    const remainingIncluded = Math.max(service.included_guests - adults, 0);
+    const extraChildren = Math.max(children - remainingIncluded, 0);
+    const nightlyTotal = service.base_price_cents
+      + (extraAdults * service.adult_extra_cents)
+      + (extraChildren * service.child_extra_cents);
+    return {
+      manual: false,
+      totalGuests,
+      nights: stay.nights,
+      extraAdults,
+      extraChildren,
+      nightlyTotal,
+      total: nightlyTotal * stay.nights
+    };
+  }
+
+  function renderServices(form) {
+    const host = form?.querySelector("#br-service-options");
+    if (!host) return;
+    const legend = host.querySelector("legend")?.outerHTML || "";
+    if (!activeServices.length) {
+      host.innerHTML = `${legend}<p class="service-empty">${getLanguage() === "es"
+        ? "No hay servicios activos disponibles por el momento."
+        : "There are no active services available right now."}</p>`;
+      return;
+    }
+    host.innerHTML = `${legend}<div class="service-grid">${activeServices.map((service, index) => {
+      const amenities = service[`amenities_${getLanguage()}`] || [];
+      const price = service.price_on_request
+        ? (getLanguage() === "es" ? "Precio a consultar" : "Custom quotation")
+        : `${getLanguage() === "es" ? "Desde" : "From"} ${formatMoney(service.base_price_cents)} / ${getLanguage() === "es" ? "noche" : "night"}`;
+      return `<label class="service-card">
+        <input type="radio" name="service-id" value="${service.service_id}" ${index === 0 ? "checked" : ""}>
+        <strong>${escapeHtml(localized(service, "name"))}</strong>
+        <p>${escapeHtml(localized(service, "description"))}</p>
+        ${amenities.length ? `<ul>${amenities.slice(0, 4).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>` : ""}
+        <small>${price} \u00b7 ${getLanguage() === "es" ? "M\u00e1ximo" : "Up to"} ${service.max_occupancy}</small>
+      </label>`;
+    }).join("")}</div>`;
+  }
+
+  function updateQuoteSummary(form) {
+    const host = form?.querySelector("#br-quote-summary");
+    if (!host) return null;
+    const service = selectedService(form);
+    const stay = calculateStay(
+      form.querySelector("#br-checkin")?.value || "",
+      form.querySelector("#br-checkout")?.value || ""
+    );
+    const adults = Number(form.querySelector("#br-adults")?.value);
+    const children = Number(form.querySelector("#br-kids")?.value);
+    const infants = Number(form.querySelector("#br-infants")?.value);
+    const quote = calculateQuote(service, stay, adults, children, infants);
+    const isEs = getLanguage() === "es";
+    const action = form.querySelector("#br-request-info");
+    if (action && !action.disabled) {
+      action.textContent = quote?.manual
+        ? messages[getLanguage()].manualAction
+        : messages[getLanguage()].automaticAction;
+    }
+
+    host.classList.toggle("manual", Boolean(quote?.manual));
+    if (!service || !stay || !quote) {
+      host.innerHTML = `<p class="quote-summary-placeholder">${isEs
+        ? "Selecciona un servicio, fechas y hu\u00e9spedes para ver el total estimado."
+        : "Select a service, dates and guests to see the estimated total."}</p>`;
+      return quote;
+    }
+    if (quote.capacityExceeded) {
+      host.innerHTML = `<p class="quote-capacity-error">${messages[getLanguage()].capacityExceeded} (${quote.totalGuests}/${service.max_occupancy})</p>`;
+      return quote;
+    }
+    if (quote.manual) {
+      host.innerHTML = `<h3>${escapeHtml(localized(service, "name"))}</h3>
+        <div class="quote-summary-row"><span>${stay.nights} ${isEs ? "noche(s)" : "night(s)"}</span><span>${quote.totalGuests}/${service.max_occupancy} ${isEs ? "hu\u00e9spedes" : "guests"}</span></div>
+        <div class="quote-summary-row total"><span>${isEs ? "Cotizaci\u00f3n personalizada" : "Custom quotation"}</span><strong>${isEs ? "A consultar" : "Contact us"}</strong></div>
+        <p class="quote-summary-note">${isEs ? "Revisaremos los detalles y confirmaremos el precio contigo." : "We will review the details and confirm the price with you."}</p>`;
+      return quote;
+    }
+
+    host.innerHTML = `<h3>${escapeHtml(localized(service, "name"))}</h3>
+      <div class="quote-summary-row"><span>${stay.nights} \u00d7 ${isEs ? "base por noche" : "nightly base"}</span><strong>${formatMoney(service.base_price_cents * stay.nights)}</strong></div>
+      ${quote.extraAdults ? `<div class="quote-summary-row"><span>${quote.extraAdults} \u00d7 ${isEs ? "adulto extra" : "extra adult"} \u00d7 ${stay.nights}</span><strong>${formatMoney(quote.extraAdults * service.adult_extra_cents * stay.nights)}</strong></div>` : ""}
+      ${quote.extraChildren ? `<div class="quote-summary-row"><span>${quote.extraChildren} \u00d7 ${isEs ? "ni\u00f1o extra" : "extra child"} \u00d7 ${stay.nights}</span><strong>${formatMoney(quote.extraChildren * service.child_extra_cents * stay.nights)}</strong></div>` : ""}
+      ${infants ? `<div class="quote-summary-row"><span>${infants} \u00d7 ${isEs ? "menor de 3 a\u00f1os" : "child under 3"}</span><strong>${formatMoney(0)}</strong></div>` : ""}
+      <div class="quote-summary-row total"><span>${isEs ? "Total estimado" : "Estimated total"}</span><strong>${formatMoney(quote.total)}</strong></div>
+      <p class="quote-summary-note">${isEs ? "Sujeto a confirmaci\u00f3n de disponibilidad." : "Subject to availability confirmation."}</p>`;
+    return quote;
+  }
+
+  async function loadActiveServices(form) {
+    const response = await fetch(`${SUPABASE.url}/rest/v1/rpc/get_active_service_catalog`, {
+      method: "POST",
+      headers: {
+        apikey: SUPABASE.publishableKey,
+        "Content-Type": "application/json"
+      },
+      body: "{}"
+    });
+    if (!response.ok) throw new Error(`Catalog request failed with status ${response.status}`);
+    activeServices = await response.json();
+    renderServices(form);
+    updateQuoteSummary(form);
   }
 
   function getLocalDate() {
@@ -245,16 +398,14 @@
       checkout: form.querySelector("#br-checkout"),
       adults: form.querySelector("#br-adults"),
       kids: form.querySelector("#br-kids"),
+      infants: form.querySelector("#br-infants"),
       name: form.querySelector("#br-name"),
       email: form.querySelector("#br-email"),
       cell: form.querySelector("#br-cell"),
-      info: form.querySelector(".info-options"),
+      service: form.querySelector("#br-service-options"),
       otherDetails: form.querySelector("#br-other-details")
     };
-    const selectedInfo = Array.from(
-      form.querySelectorAll('input[name="requested-info"]:checked'),
-      (input) => input.value
-    );
+    const service = selectedService(form);
 
     const data = {
       checkin: fields.checkin.value,
@@ -262,10 +413,11 @@
       stay: calculateStay(fields.checkin.value, fields.checkout.value),
       adults: Number(fields.adults.value),
       kids: Number(fields.kids.value),
+      infants: Number(fields.infants.value),
       name: sanitizeSingleLine(fields.name.value),
       email: sanitizeSingleLine(fields.email.value),
       cell: sanitizeSingleLine(fields.cell.value),
-      requestedInfo: selectedInfo,
+      service,
       otherDetails: sanitizeMultiline(fields.otherDetails.value)
     };
 
@@ -297,6 +449,25 @@
       reject(fields.kids, text.invalidKids);
     }
 
+    if (!Number.isInteger(data.infants) || data.infants < 0 || data.infants > limits.kids) {
+      reject(fields.infants, text.invalidInfants);
+    }
+
+    if (!data.service) {
+      reject(
+        fields.service,
+        text.requiredService,
+        fields.service.querySelector('input[name="service-id"]') || fields.service
+      );
+    } else if (
+      Number.isInteger(data.adults) &&
+      Number.isInteger(data.kids) &&
+      Number.isInteger(data.infants) &&
+      data.adults + data.kids + data.infants > data.service.max_occupancy
+    ) {
+      reject(fields.service, text.capacityExceeded, fields.adults);
+    }
+
     const letterCount = (data.name.match(/\p{L}/gu) || []).length;
     if (!data.name) reject(fields.name, text.requiredName);
     else if (letterCount < 5) reject(fields.name, text.shortName);
@@ -324,14 +495,6 @@
       reject(fields.cell, text.invalidCell);
     }
 
-    if (data.requestedInfo.length === 0) {
-      reject(
-        fields.info,
-        text.requiredInfo,
-        fields.info.querySelector('input[name="requested-info"]')
-      );
-    }
-
     if (data.otherDetails.length > limits.otherDetails) {
       reject(fields.otherDetails, text.longOther);
     }
@@ -351,10 +514,7 @@
   function buildMessage(data) {
     const text = messages[getLanguage()];
     const labels = text.labels;
-    const requestedInfo = data.requestedInfo
-      .map((option) => text.infoOptions[option])
-      .filter(Boolean)
-      .join(", ");
+    const quote = calculateQuote(data.service, data.stay, data.adults, data.kids, data.infants);
     const lines = [
       `${labels.staySummary}:`,
       `${labels.checkin}: ${data.checkin}`,
@@ -365,11 +525,18 @@
       "",
       `${labels.adults}: ${data.adults}`,
       `${labels.kids}: ${data.kids}`,
+      `${labels.infants}: ${data.infants}`,
       `${labels.name}: ${data.name}`,
       `${labels.email}: ${data.email}`,
       `${labels.cell}: ${data.cell}`,
-      `${labels.requestedInfo}: ${requestedInfo}`
+      `${labels.requestedInfo}: ${localized(data.service, "name")}`
     ];
+
+    if (quote && !quote.manual && !quote.capacityExceeded) {
+      lines.push(`${labels.estimatedTotal}: ${formatMoney(quote.total)}`);
+    } else if (quote?.manual) {
+      lines.push(`${labels.estimatedTotal}: ${getLanguage() === "es" ? "Cotizaci\u00f3n personalizada" : "Custom quotation"}`);
+    }
 
     if (data.otherDetails) {
       lines.push(`${labels.otherDetails}: ${data.otherDetails}`);
@@ -412,6 +579,8 @@
     });
     configureDateLimits(form);
     updateStaySummary(form);
+    renderServices(form);
+    updateQuoteSummary(form);
   }
 
   function buildWhatsAppUrl(message) {
@@ -464,7 +633,8 @@
           p_checkout_date: data.checkout,
           p_adults: data.adults,
           p_children: data.kids,
-          p_requested_services: data.requestedInfo,
+          p_infants: data.infants,
+          p_service_id: data.service.service_id,
           p_customer_message: data.otherDetails || null
         })
       }
@@ -481,6 +651,16 @@
     const form = getForm();
     configureDateLimits(form);
     updateStaySummary(form);
+    loadActiveServices(form).catch((error) => {
+      console.error(error);
+      const host = form?.querySelector("#br-service-options");
+      if (host) {
+        const legend = host.querySelector("legend")?.outerHTML || "";
+        host.innerHTML = `${legend}<p class="service-empty">${getLanguage() === "es"
+          ? "No fue posible cargar los servicios. Intenta nuevamente."
+          : "Services could not be loaded. Please try again."}</p>`;
+      }
+    });
   });
 
   document.addEventListener("submit", (event) => {
@@ -490,8 +670,8 @@
   document.addEventListener("focusin", (event) => {
     if (!event.target.closest("#reserva-form")) return;
     clearFieldError(event.target);
-    if (event.target.matches('input[name="requested-info"]')) {
-      clearFieldError(event.target.closest(".info-options"));
+    if (event.target.matches('input[name="service-id"]')) {
+      clearFieldError(event.target.closest(".service-options"));
     }
   });
 
@@ -509,10 +689,21 @@
       checkout.min = event.target.value || getLocalDate();
     }
     updateStaySummary(form);
+    updateQuoteSummary(form);
   }
 
   document.addEventListener("input", handleDateUpdate);
   document.addEventListener("change", handleDateUpdate);
+  document.addEventListener("input", (event) => {
+    if (event.target.matches("#br-adults, #br-kids, #br-infants")) {
+      updateQuoteSummary(getForm());
+    }
+  });
+  document.addEventListener("change", (event) => {
+    if (event.target.matches('input[name="service-id"]')) {
+      updateQuoteSummary(getForm());
+    }
+  });
 
   let pendingSubmission = null;
 

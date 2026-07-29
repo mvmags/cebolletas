@@ -62,15 +62,15 @@ const REQUEST_SERVICE_LABELS = {
 
 const REQUEST_REASON_LABELS = {
   "Price not accepted": "Precio no aceptado",
-  "No response after receiving information": "Sin respuesta después de recibir información",
+  "No response after receiving information": "Sin respuesta despu\u00e9s de recibir informaci\u00f3n",
   "Dates unavailable": "Fechas no disponibles",
-  "Customer chose another option": "El cliente eligió otra opción",
+  "Customer chose another option": "El cliente eligi\u00f3 otra opci\u00f3n",
   Other: "Otro",
-  "Requested dates passed without booking": "Las fechas solicitadas pasaron sin reservación",
-  "Booking confirmed": "Reservación confirmada",
-  "Booking cancelled": "Reservación cancelada",
+  "Requested dates passed without booking": "Las fechas solicitadas pasaron sin reservaci\u00f3n",
+  "Booking confirmed": "Reservaci\u00f3n confirmada",
+  "Booking cancelled": "Reservaci\u00f3n cancelada",
   "Stay completed": "Estancia terminada",
-  "Visitor contacted again": "El visitante volvió a contactar",
+  "Visitor contacted again": "El visitante volvi\u00f3 a contactar",
   "Request submitted": "Solicitud enviada",
 };
 
@@ -112,19 +112,20 @@ function setRequestMessage(text = "", type = "") {
 }
 
 function friendlyError(error) {
-  if (error?.code === "23505") return "Este número ya está registrado.";
+  if (error?.code === "23505") return "Este n\u00famero ya est\u00e1 registrado.";
+  if (error?.code === "23503") return "No se puede eliminar porque una solicitud conserva este servicio o una de sus versiones.";
   if (error?.message?.includes("default before")) return "Selecciona otro contacto predeterminado antes de continuar.";
   if (error?.message?.includes("must be active")) return "El contacto predeterminado debe estar activo.";
   if (error?.message?.includes("Service not found")) return "El servicio ya no existe.";
-  if (error?.message?.includes("Service is referenced")) return "No se puede eliminar porque una reservación conserva esta versión.";
-  if (error?.message?.includes("Version conflict")) return "El servicio cambió en otra sesión. Recarga el catálogo antes de editar.";
-  if (error?.message?.includes("Service version does not belong")) return "La versión seleccionada no pertenece a este servicio.";
-  if (error?.message?.includes("Status conflict")) return "La solicitud cambió en otra sesión. Recarga las solicitudes antes de continuar.";
-  if (error?.message?.includes("Invalid status transition")) return "Ese cambio de estado no está permitido.";
-  if (error?.message?.includes("Checkout date must have passed")) return "La solicitud solo puede cerrarse después de la fecha de salida.";
-  if (error?.message?.includes("not-converted reason")) return "Selecciona el motivo por el que no se convirtió.";
+  if (error?.message?.includes("Service is referenced")) return "No se puede eliminar porque una reservaci\u00f3n conserva esta versi\u00f3n.";
+  if (error?.message?.includes("Version conflict")) return "El servicio cambi\u00f3 en otra sesi\u00f3n. Recarga el cat\u00e1logo antes de editar.";
+  if (error?.message?.includes("Service version does not belong")) return "La versi\u00f3n seleccionada no pertenece a este servicio.";
+  if (error?.message?.includes("Status conflict")) return "La solicitud cambi\u00f3 en otra sesi\u00f3n. Recarga las solicitudes antes de continuar.";
+  if (error?.message?.includes("Invalid status transition")) return "Ese cambio de estado no est\u00e1 permitido.";
+  if (error?.message?.includes("Checkout date must have passed")) return "La solicitud solo puede cerrarse despu\u00e9s de la fecha de salida.";
+  if (error?.message?.includes("not-converted reason")) return "Selecciona el motivo por el que no se convirti\u00f3.";
   if (error?.message?.includes("Information request not found")) return "La solicitud ya no existe.";
-  return error?.message || "No fue posible completar la operación.";
+  return error?.message || "No fue posible completar la operaci\u00f3n.";
 }
 
 function filteredRecipients() {
@@ -175,13 +176,13 @@ function formatRequestCode(number) {
 }
 
 function formatDate(value) {
-  if (!value) return "—";
+  if (!value) return "\u2014";
   return new Intl.DateTimeFormat("es-MX", { dateStyle: "medium" })
     .format(new Date(`${value}T12:00:00`));
 }
 
 function formatDateTime(value) {
-  if (!value) return "—";
+  if (!value) return "\u2014";
   return new Intl.DateTimeFormat("es-MX", {
     dateStyle: "medium",
     timeStyle: "short",
@@ -201,6 +202,8 @@ function mexicoCityDate() {
 }
 
 function requestServicesLabel(request) {
+  const snapshotName = request.quote_snapshot?.service?.name_es;
+  if (snapshotName) return snapshotName;
   return (request.requested_services || [])
     .map((service) => REQUEST_SERVICE_LABELS[service] || service)
     .join(", ");
@@ -311,10 +314,10 @@ function renderRequestCalendar() {
           class="calendar-request ${request.status.replace("_", "-")}"
           data-calendar-request="${request.id}"
           type="button"
-          title="${escapeHtml(`${formatRequestCode(request.request_number)} · ${request.customer_name} · ${formatDate(request.checkin_date)} – ${formatDate(request.checkout_date)}`)}"
+          title="${escapeHtml(`${formatRequestCode(request.request_number)} \u00b7 ${request.customer_name} \u00b7 ${formatDate(request.checkin_date)} \u2013 ${formatDate(request.checkout_date)}`)}"
         >
           <strong>${escapeHtml(request.customer_name)}</strong>
-          <small>${position} · ${formatRequestCode(request.request_number)}</small>
+          <small>${position} \u00b7 ${formatRequestCode(request.request_number)}</small>
         </button>`;
     }).join("");
     const remaining = requestsForDay.length - 3;
@@ -353,8 +356,8 @@ function renderInformationRequests() {
     ? "No hay solicitudes que coincidan en este mes"
     : "No hay solicitudes registradas";
   empty.querySelector("p").textContent = informationRequests.length
-    ? "Cambia el mes o prueba con otros términos y filtros."
-    : "Las solicitudes enviadas desde Reserva aparecerán aquí.";
+    ? "Cambia el mes o prueba con otros t\u00e9rminos y filtros."
+    : "Las solicitudes enviadas desde Reserva aparecer\u00e1n aqu\u00ed.";
 
   visible.forEach((request) => {
     const row = document.createElement("div");
@@ -363,7 +366,7 @@ function renderInformationRequests() {
       <div class="request-identity">
         <span class="request-code">${formatRequestCode(request.request_number)}</span>
         <strong>${escapeHtml(request.customer_name)}</strong>
-        <small>${escapeHtml(request.customer_email)} · ${escapeHtml(request.customer_cellphone)}</small>
+        <small>${escapeHtml(request.customer_email)} \u00b7 ${escapeHtml(request.customer_cellphone)}</small>
       </div>
       <div class="request-dates">
         <span>${formatDate(request.checkin_date)}</span>
@@ -371,7 +374,7 @@ function renderInformationRequests() {
       </div>
       <div class="request-services">
         <span>${escapeHtml(requestServicesLabel(request))}</span>
-        <small>${request.adults} adulto${request.adults === 1 ? "" : "s"} · ${request.children} niño${request.children === 1 ? "" : "s"}</small>
+        <small>${request.adults} adulto${request.adults === 1 ? "" : "s"} \u00b7 ${request.children} ni\u00f1o${request.children === 1 ? "" : "s"}${request.infants ? ` \u00b7 ${request.infants} menor${request.infants === 1 ? "" : "es"} de 3` : ""}</small>
       </div>
       <span class="request-submitted">${formatDateTime(request.submitted_at)}</span>
       <span class="status-badge ${request.status.replace("_", "-")}">${REQUEST_STATUS_LABELS[request.status]}</span>
@@ -398,9 +401,11 @@ async function loadInformationRequests() {
     .select(`
       id, request_number, submitted_at, updated_at, locale,
       customer_name, customer_email, customer_cellphone,
-      checkin_date, checkout_date, adults, children,
+      checkin_date, checkout_date, adults, children, infants,
       requested_services, customer_message, status,
-      status_reason, status_notes, status_changed_at
+      status_reason, status_notes, status_changed_at,
+      selected_service_id, selected_service_version_id,
+      pricing_status, estimated_total_cents, currency_code, quote_snapshot
     `)
     .order("submitted_at", { ascending: false });
   if (error) throw error;
@@ -453,8 +458,8 @@ function renderServices() {
     ? "No hay servicios que coincidan"
     : "No hay servicios registrados";
   emptyState.querySelector("p").textContent = services.length
-    ? "Prueba con otros términos o filtros."
-    : "Agrega el primer servicio para comenzar el catálogo.";
+    ? "Prueba con otros t\u00e9rminos o filtros."
+    : "Agrega el primer servicio para comenzar el cat\u00e1logo.";
 
   visible.forEach((service) => {
     const version = currentVersion(service);
@@ -467,7 +472,7 @@ function renderServices() {
     row.innerHTML = `
       <div class="service-title">
         <strong>${escapeHtml(version.name_es)}</strong>
-        <small>${escapeHtml(version.name_en)} · ${escapeHtml(CATEGORY_LABELS[service.category_code] || service.category_code)} · v${version.version_number}</small>
+        <small>${escapeHtml(version.name_en)} \u00b7 ${escapeHtml(CATEGORY_LABELS[service.category_code] || service.category_code)} \u00b7 v${version.version_number}</small>
       </div>
       <div class="service-description">
         <span>${escapeHtml(version.description_es)}</span>
@@ -476,13 +481,13 @@ function renderServices() {
       <div class="service-price">
         <strong>${escapeHtml(price)}</strong>
         <small>${version.price_on_request
-          ? `Cotización manual · máximo ${version.max_occupancy}`
-          : `Incluye ${version.included_guests} · máximo ${version.max_occupancy}<br>Extra adulto ${formatMoney(version.adult_extra_cents)} · niño ${formatMoney(version.child_extra_cents)}`}</small>
+          ? `Cotizaci\u00f3n manual \u00b7 m\u00e1ximo ${version.max_occupancy}`
+          : `Incluye ${version.included_guests} \u00b7 m\u00e1ximo ${version.max_occupancy}<br>Extra adulto ${formatMoney(version.adult_extra_cents)} \u00b7 ni\u00f1o ${formatMoney(version.child_extra_cents)}`}</small>
       </div>
       <span class="status-badge ${service.is_active ? "active" : "inactive"}">${service.is_active ? "Activo" : "Inactivo"}</span>
       <div class="row-actions">
         <button data-service-action="history" data-id="${service.id}" type="button">Historial</button>
-        <button data-service-action="edit" data-id="${service.id}" type="button">Nueva versión</button>
+        <button data-service-action="edit" data-id="${service.id}" type="button">Nueva versi\u00f3n</button>
         <button data-service-action="toggle" data-id="${service.id}" type="button">${service.is_active ? "Desactivar" : "Activar"}</button>
         <button class="danger" data-service-action="delete" data-id="${service.id}" type="button">Eliminar</button>
       </div>`;
@@ -491,7 +496,7 @@ function renderServices() {
 
   const activeCount = services.filter((service) => service.is_active).length;
   $("#service-count").textContent = String(activeCount);
-  $("#service-count-summary").textContent = `${services.length} servicio${services.length === 1 ? "" : "s"} en el catálogo`;
+  $("#service-count-summary").textContent = `${services.length} servicio${services.length === 1 ? "" : "s"} en el cat\u00e1logo`;
 }
 
 async function loadServices() {
@@ -533,15 +538,15 @@ async function loadRecipients() {
 async function loadProfile(userId) {
   const { data, error } = await supabase.from("admin_profiles").select("display_name, role, active").eq("user_id", userId).single();
   if (error || !data?.active) throw new Error("Esta cuenta no tiene acceso administrativo activo.");
-  $("#account-name").textContent = `${data.display_name} · ${data.role}`;
+  $("#account-name").textContent = `${data.display_name} \u00b7 ${data.role}`;
 }
 
 async function refreshManagementData({ announce = true } = {}) {
   const openRequestId = requestDetailModal.classList.contains("hidden") ? null : detailRequestId;
   refreshButton.disabled = true;
   refreshButton.setAttribute("aria-busy", "true");
-  refreshButton.textContent = "Actualizando…";
-  refreshStatus.textContent = announce ? "Cargando datos…" : "";
+  refreshButton.textContent = "Actualizando\u2026";
+  refreshStatus.textContent = announce ? "Cargando datos\u2026" : "";
   refreshStatus.className = "refresh-status";
 
   try {
@@ -642,14 +647,14 @@ function updatePricingPreview() {
   const childExtra = centsFromInput("#service-child-extra");
 
   if (manual) {
-    $("#pricing-preview-formula").textContent = "Cotización manual";
-    $("#pricing-preview-description").textContent = "El servicio conservará su capacidad, pero no producirá un precio automático.";
+    $("#pricing-preview-formula").textContent = "Cotizaci\u00f3n manual";
+    $("#pricing-preview-description").textContent = "El servicio conservar\u00e1 su capacidad, pero no producir\u00e1 un precio autom\u00e1tico.";
     $("#pricing-preview-total").textContent = "A consultar";
     return;
   }
 
-  $("#pricing-preview-formula").textContent = "Base + adultos extra + niños extra";
-  $("#pricing-preview-description").textContent = `${formatMoney(base)} por noche incluye ${included || "—"} huésped(es). Después se suman ${formatMoney(adultExtra)} por adulto y ${formatMoney(childExtra)} por niño de 3–12 años.`;
+  $("#pricing-preview-formula").textContent = "Base + adultos extra + ni\u00f1os extra";
+  $("#pricing-preview-description").textContent = `${formatMoney(base)} por noche incluye ${included || "\u2014"} hu\u00e9sped(es). Despu\u00e9s se suman ${formatMoney(adultExtra)} por adulto y ${formatMoney(childExtra)} por ni\u00f1o de 3\u201312 a\u00f1os.`;
 
   if (!capacity || !included || included > capacity) {
     $("#pricing-preview-total").textContent = "Revisa incluidos y capacidad";
@@ -680,7 +685,7 @@ function openServiceModal(service = null) {
   $("#service-adult-extra").value = version ? pesosFromCents(version.adult_extra_cents) : 500;
   $("#service-child-extra").value = version ? pesosFromCents(version.child_extra_cents) : 350;
   $("#service-active").checked = service?.is_active ?? true;
-  $("#service-modal-title").textContent = service ? `Nueva versión de ${version.name_es}` : "Agregar servicio";
+  $("#service-modal-title").textContent = service ? `Nueva versi\u00f3n de ${version.name_es}` : "Agregar servicio";
   $("#service-form-error").textContent = "";
   updatePricingFieldState();
   serviceModal.classList.remove("hidden");
@@ -701,16 +706,16 @@ function openServiceHistory(service) {
   $("#service-history-list").innerHTML = versions.map((version) => `
     <article class="history-item ${version.id === service.current_version_id ? "current" : ""}">
       <div class="history-item-head">
-        <strong>Versión ${version.version_number}${version.id === service.current_version_id ? " · actual" : ""}</strong>
+        <strong>Versi\u00f3n ${version.version_number}${version.id === service.current_version_id ? " \u00b7 actual" : ""}</strong>
         <span>${new Intl.DateTimeFormat("es-MX", { dateStyle: "medium", timeStyle: "short" }).format(new Date(version.created_at))}</span>
       </div>
       <p><strong>${escapeHtml(version.name_es)}</strong> / ${escapeHtml(version.name_en)}</p>
-      <p>${version.price_on_request ? "Precio a consultar" : `${formatMoney(version.base_price_cents)} ${PRICING_UNIT_LABELS[version.pricing_unit] || ""}; adulto adicional ${formatMoney(version.adult_extra_cents)}; niño adicional ${formatMoney(version.child_extra_cents)}.`}</p>
-      <p>Incluye ${version.included_guests} huésped(es); capacidad máxima ${version.max_occupancy}. Menores de 3 años sin costo y cuentan en capacidad.</p>
+      <p>${version.price_on_request ? "Precio a consultar" : `${formatMoney(version.base_price_cents)} ${PRICING_UNIT_LABELS[version.pricing_unit] || ""}; adulto adicional ${formatMoney(version.adult_extra_cents)}; ni\u00f1o adicional ${formatMoney(version.child_extra_cents)}.`}</p>
+      <p>Incluye ${version.included_guests} hu\u00e9sped(es); capacidad m\u00e1xima ${version.max_occupancy}. Menores de 3 a\u00f1os sin costo y cuentan en capacidad.</p>
       <div class="history-item-actions">
         ${version.id === service.current_version_id
-          ? '<span class="current-label">Versión actual</span>'
-          : `<button data-history-action="make-current" data-version-id="${version.id}" type="button">Hacer versión actual</button>`}
+          ? '<span class="current-label">Versi\u00f3n actual</span>'
+          : `<button data-history-action="make-current" data-version-id="${version.id}" type="button">Hacer versi\u00f3n actual</button>`}
       </div>
     </article>
   `).join("");
@@ -732,7 +737,7 @@ function requestStatusActions(request) {
   if (request.status === "booked") {
     return `
       <button class="danger" data-next-status="cancelled" type="button">Marcar como cancelada</button>
-      <button data-next-status="closed" type="button" ${checkoutPassed ? "" : 'disabled title="Disponible después de la fecha de salida"'}>Marcar como cerrada</button>`;
+      <button data-next-status="closed" type="button" ${checkoutPassed ? "" : 'disabled title="Disponible despu\u00e9s de la fecha de salida"'}>Marcar como cerrada</button>`;
   }
   if (request.status === "not_converted") {
     return '<button data-next-status="new" type="button">Reabrir como nueva</button>';
@@ -740,9 +745,43 @@ function requestStatusActions(request) {
   return "";
 }
 
+function renderRequestQuote(request) {
+  const snapshot = request.quote_snapshot;
+  if (!snapshot || !request.pricing_status) {
+    return '<article class="request-detail-item full"><span>Cotizaci\u00f3n</span><p>Solicitud anterior sin estimaci\u00f3n guardada.</p></article>';
+  }
+  if (request.pricing_status === "manual") {
+    return `<article class="request-detail-item full"><span>Cotizaci\u00f3n</span>
+      <p><strong>Cotizaci\u00f3n personalizada pendiente</strong><br>
+      ${snapshot.stay?.nights || "\u2014"} noche(s) \u00b7 capacidad ${snapshot.occupancy?.total || "\u2014"}/${snapshot.occupancy?.max_occupancy || "\u2014"}</p></article>`;
+  }
+
+  const pricing = snapshot.pricing || {};
+  const nights = snapshot.stay?.nights || 0;
+  const rows = [
+    `<div><span>${nights} \u00d7 base por noche</span><strong>${formatMoney((pricing.base_price_cents || 0) * nights)}</strong></div>`,
+  ];
+  if (pricing.extra_adults) {
+    rows.push(`<div><span>${pricing.extra_adults} adulto(s) extra \u00d7 ${nights}</span><strong>${formatMoney(pricing.extra_adults * pricing.adult_extra_cents * nights)}</strong></div>`);
+  }
+  if (pricing.extra_children) {
+    rows.push(`<div><span>${pricing.extra_children} ni\u00f1o(s) extra \u00d7 ${nights}</span><strong>${formatMoney(pricing.extra_children * pricing.child_extra_cents * nights)}</strong></div>`);
+  }
+  if (snapshot.occupancy?.infants) {
+    rows.push(`<div><span>${snapshot.occupancy.infants} menor(es) de 3 a\u00f1os</span><strong>${formatMoney(0)}</strong></div>`);
+  }
+  return `<article class="request-detail-item full request-quote-detail">
+    <span>Estimaci\u00f3n presentada</span>
+    <div class="request-quote-rows">${rows.join("")}
+      <div class="total"><span>Total estimado</span><strong>${formatMoney(request.estimated_total_cents)}</strong></div>
+    </div>
+    <small>Versi\u00f3n ${snapshot.service?.version_number || "\u2014"} \u00b7 c\u00e1lculo guardado al enviar la solicitud</small>
+  </article>`;
+}
+
 function renderRequestDetail(request) {
   detailRequestId = request.id;
-  $("#request-detail-title").textContent = `${formatRequestCode(request.request_number)} · ${request.customer_name}`;
+  $("#request-detail-title").textContent = `${formatRequestCode(request.request_number)} \u00b7 ${request.customer_name}`;
   requestDetailMessage.textContent = "";
   requestDetailMessage.className = "message";
   $("#request-detail-content").innerHTML = `
@@ -750,9 +789,10 @@ function renderRequestDetail(request) {
     <article class="request-detail-item"><span>Recibida</span><strong>${formatDateTime(request.submitted_at)}</strong></article>
     <article class="request-detail-item"><span>Visitante</span><strong>${escapeHtml(request.customer_name)}</strong></article>
     <article class="request-detail-item"><span>Contacto</span><p>${escapeHtml(request.customer_email)}<br>${escapeHtml(request.customer_cellphone)}</p></article>
-    <article class="request-detail-item"><span>Estancia solicitada</span><p>${formatDate(request.checkin_date)} – ${formatDate(request.checkout_date)}</p></article>
-    <article class="request-detail-item"><span>Huéspedes</span><p>${request.adults} adulto${request.adults === 1 ? "" : "s"} · ${request.children} niño${request.children === 1 ? "" : "s"}</p></article>
-    <article class="request-detail-item full"><span>Servicios solicitados</span><p>${escapeHtml(requestServicesLabel(request))}</p></article>
+    <article class="request-detail-item"><span>Estancia solicitada</span><p>${formatDate(request.checkin_date)} \u2013 ${formatDate(request.checkout_date)}</p></article>
+    <article class="request-detail-item"><span>Hu\u00e9spedes</span><p>${request.adults} adulto${request.adults === 1 ? "" : "s"} \u00b7 ${request.children} ni\u00f1o${request.children === 1 ? "" : "s"}${request.infants ? ` \u00b7 ${request.infants} menor${request.infants === 1 ? "" : "es"} de 3` : ""}</p></article>
+    <article class="request-detail-item full"><span>Servicio solicitado</span><p>${escapeHtml(requestServicesLabel(request))}</p></article>
+    ${renderRequestQuote(request)}
     <article class="request-detail-item full"><span>Mensaje del visitante</span><p>${request.customer_message ? escapeHtml(request.customer_message).replaceAll("\n", "<br>") : "Sin mensaje adicional"}</p></article>
     ${request.status_reason ? `<article class="request-detail-item full"><span>Motivo del estado actual</span><p>${escapeHtml(REQUEST_REASON_LABELS[request.status_reason] || request.status_reason)}</p></article>` : ""}`;
 
@@ -764,8 +804,8 @@ function renderRequestDetail(request) {
   const hasActions = actionHost.children.length > 0;
   $("#request-status-notes").disabled = !hasActions;
   $("#request-status-help").textContent = hasActions
-    ? "Solo se muestran las transiciones válidas para el estado actual."
-    : "Este estado es terminal y no admite más cambios.";
+    ? "Solo se muestran las transiciones v\u00e1lidas para el estado actual."
+    : "Este estado es terminal y no admite m\u00e1s cambios.";
 }
 
 async function loadRequestHistory(requestId) {
@@ -783,7 +823,7 @@ async function loadRequestHistory(requestId) {
     <article class="history-item">
       <span class="status-badge ${item.new_status.replace("_", "-")}">${REQUEST_STATUS_LABELS[item.new_status]}</span>
       <div>
-        <strong>${item.previous_status ? `${REQUEST_STATUS_LABELS[item.previous_status]} → ` : ""}${REQUEST_STATUS_LABELS[item.new_status]}</strong>
+        <strong>${item.previous_status ? `${REQUEST_STATUS_LABELS[item.previous_status]} \u2192 ` : ""}${REQUEST_STATUS_LABELS[item.new_status]}</strong>
         ${item.reason ? `<p>${escapeHtml(REQUEST_REASON_LABELS[item.reason] || item.reason)}</p>` : ""}
         ${item.notes ? `<p>${escapeHtml(item.notes).replaceAll("\n", "<br>")}</p>` : ""}
       </div>
@@ -795,7 +835,7 @@ async function loadRequestHistory(requestId) {
 async function openRequestDetail(request) {
   renderRequestDetail(request);
   requestDetailModal.classList.remove("hidden");
-  $("#request-history-list").innerHTML = '<p class="muted">Cargando historial…</p>';
+  $("#request-history-list").innerHTML = '<p class="muted">Cargando historial\u2026</p>';
   try {
     await loadRequestHistory(request.id);
   } catch (error) {
@@ -825,7 +865,7 @@ async function changeRequestStatus(button) {
   if (nextStatus === "not_converted") {
     reasonLabel.classList.remove("hidden");
     if (!reasonInput.value) {
-      requestDetailMessage.textContent = "Selecciona el motivo por el que la solicitud no se convirtió.";
+      requestDetailMessage.textContent = "Selecciona el motivo por el que la solicitud no se convirti\u00f3.";
       requestDetailMessage.className = "message error";
       reasonInput.focus();
       return;
@@ -834,7 +874,7 @@ async function changeRequestStatus(button) {
   }
 
   button.disabled = true;
-  requestDetailMessage.textContent = "Actualizando estado…";
+  requestDetailMessage.textContent = "Actualizando estado\u2026";
   requestDetailMessage.className = "message";
   const { error } = await supabase.rpc("change_information_request_status", {
     p_request_id: request.id,
@@ -872,7 +912,7 @@ loginForm.addEventListener("submit", async (event) => {
   loginError.textContent = "";
   const submit = loginForm.querySelector("button");
   submit.disabled = true;
-  submit.textContent = "Ingresando…";
+  submit.textContent = "Ingresando\u2026";
   const form = new FormData(loginForm);
   const { data, error } = await supabase.auth.signInWithPassword({
     email: String(form.get("email")).trim(),
@@ -880,7 +920,7 @@ loginForm.addEventListener("submit", async (event) => {
   });
   submit.disabled = false;
   submit.textContent = "Ingresar";
-  if (error) return void (loginError.textContent = "Correo o contraseña incorrectos.");
+  if (error) return void (loginError.textContent = "Correo o contrase\u00f1a incorrectos.");
   await startSession(data.session);
 });
 
@@ -916,7 +956,7 @@ serviceForm.addEventListener("submit", async (event) => {
   const maxOccupancy = Number($("#service-max-occupancy").value);
   if (!priceOnRequest && includedGuests > maxOccupancy) {
     submit.disabled = false;
-    $("#service-form-error").textContent = "Los huéspedes incluidos no pueden exceder la capacidad física máxima.";
+    $("#service-form-error").textContent = "Los hu\u00e9spedes incluidos no pueden exceder la capacidad f\u00edsica m\u00e1xima.";
     $("#service-included-guests").focus();
     return;
   }
@@ -953,7 +993,7 @@ serviceForm.addEventListener("submit", async (event) => {
 
   closeServiceModal();
   await loadServices();
-  setServiceMessage(id ? "Nueva versión creada." : "Servicio agregado.", "success");
+  setServiceMessage(id ? "Nueva versi\u00f3n creada." : "Servicio agregado.", "success");
 });
 
 $("#recipient-list").addEventListener("click", async (event) => {
@@ -968,7 +1008,7 @@ $("#recipient-list").addEventListener("click", async (event) => {
   if (button.dataset.action === "default") {
     ({ error } = await supabase.rpc("set_default_whatsapp_recipient", { p_recipient_id: recipient.id }));
   } else if (button.dataset.action === "delete") {
-    if (!window.confirm(`¿Eliminar a ${recipient.display_name}?`)) {
+    if (!window.confirm(`\u00bfEliminar a ${recipient.display_name}?`)) {
       button.disabled = false;
       return;
     }
@@ -990,7 +1030,7 @@ $("#service-list").addEventListener("click", async (event) => {
   const action = button.dataset.serviceAction;
   if (action === "edit") return openServiceModal(service);
   if (action === "history") return openServiceHistory(service);
-  if (action === "delete" && !window.confirm(`¿Eliminar ${currentVersion(service)?.name_es}? Esta acción elimina todo su historial.`)) return;
+  if (action === "delete" && !window.confirm(`\u00bfEliminar ${currentVersion(service)?.name_es}? Esta acci\u00f3n elimina todo su historial.`)) return;
 
   button.disabled = true;
   const { error } = action === "toggle"
@@ -1013,12 +1053,12 @@ $("#service-history-list").addEventListener("click", async (event) => {
   if (!service || !version) return;
 
   const confirmed = window.confirm(
-    `¿Hacer la versión ${version.version_number} la versión actual de ${version.name_es}?`
+    `\u00bfHacer la versi\u00f3n ${version.version_number} la versi\u00f3n actual de ${version.name_es}?`
   );
   if (!confirmed) return;
 
   button.disabled = true;
-  serviceHistoryMessage.textContent = "Actualizando versión…";
+  serviceHistoryMessage.textContent = "Actualizando versi\u00f3n\u2026";
   serviceHistoryMessage.className = "message";
 
   const { error } = await supabase.rpc("set_current_service_version", {
@@ -1037,9 +1077,9 @@ $("#service-history-list").addEventListener("click", async (event) => {
   await loadServices();
   const refreshedService = services.find((item) => item.id === service.id);
   if (refreshedService) openServiceHistory(refreshedService);
-  serviceHistoryMessage.textContent = `La versión ${version.version_number} ahora es la versión actual.`;
+  serviceHistoryMessage.textContent = `La versi\u00f3n ${version.version_number} ahora es la versi\u00f3n actual.`;
   serviceHistoryMessage.className = "message success";
-  setServiceMessage(`La versión ${version.version_number} de ${version.name_es} ahora es la versión actual.`, "success");
+  setServiceMessage(`La versi\u00f3n ${version.version_number} de ${version.name_es} ahora es la versi\u00f3n actual.`, "success");
 });
 
 $("#request-list").addEventListener("click", (event) => {

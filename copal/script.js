@@ -1,22 +1,22 @@
 const copy = {
   es: {
-    eyebrow: "Glamping en Calvillo · Aguascalientes, México",
-    title: "Descansa entre<br>árboles,<br>senderos y cielo<br>abierto.",
-    nav: { home: "Inicio", place: "El lugar", gallery: "Galería", booking: "Reserva" },
+    eyebrow: "Glamping en Calvillo \u00b7 Aguascalientes, M\u00e9xico",
+    title: "Descansa entre<br>\u00e1rboles,<br>senderos y cielo<br>abierto.",
+    nav: { home: "Inicio", place: "El lugar", gallery: "Galer\u00eda", booking: "Reserva" },
     parent: "Es parte del desarrollo particular Cebolletas.",
-    menu: "Abrir menú",
+    menu: "Abrir men\u00fa",
     placeEyebrow: "El lugar",
     placeTitle: "Lo esencial para disfrutar la naturaleza.",
     placeIntro: "Un espacio privado pensado para descansar, cocinar, convivir y explorar el entorno de Cebolletas con comodidad.",
     amenityGroups: [
-      ["Entorno y aventura", "Puentes colgantes", "Senderos", "Vistas espectaculares", "Área reservada", "Fogatero"],
-      ["Descanso y convivencia", "Sofá cama", "Recámara con clóset", "Juegos de mesa", "Asador", "Mesas tipo picnic"],
-      ["Comodidades", "Regadera caliente", "Cocina equipada", "Tetera, té y café", "Estacionamiento"]
+      ["Entorno y aventura", "Puentes colgantes", "Senderos", "Vistas espectaculares", "\u00c1rea reservada", "Fogatero"],
+      ["Descanso y convivencia", "Sof\u00e1 cama", "Rec\u00e1mara con cl\u00f3set", "Juegos de mesa", "Asador", "Mesas tipo picnic"],
+      ["Comodidades", "Regadera caliente", "Cocina equipada", "Tetera, t\u00e9 y caf\u00e9", "Estacionamiento"]
     ],
-    galleryEyebrow: "Galería", galleryTitle: "Conoce cada rincón.",
-    galleryIntro: "Imágenes temporales para definir la estructura de la galería. Próximamente serán reemplazadas por la sesión fotográfica final.",
-    photoTour: "Recorrido fotográfico", temporary: "Fotografía temporal",
-    bookingEyebrow: "Reserva", bookingTitle: "Cuéntanos sobre tu visita.",
+    galleryEyebrow: "Galer\u00eda", galleryTitle: "Conoce cada rinc\u00f3n.",
+    galleryIntro: "Im\u00e1genes temporales para definir la estructura de la galer\u00eda. Pr\u00f3ximamente ser\u00e1n reemplazadas por la sesi\u00f3n fotogr\u00e1fica final.",
+    photoTour: "Recorrido fotogr\u00e1fico", temporary: "Fotograf\u00eda temporal",
+    bookingEyebrow: "Reserva", bookingTitle: "Cu\u00e9ntanos sobre tu visita.",
     bookingText: "Comparte tus datos y el plan que tienes en mente. Te contactaremos para revisar disponibilidad y ayudarte a preparar tu estancia.",
     fields: {
       checkin: "Fecha llegada",
@@ -25,19 +25,20 @@ const copy = {
       weekendNights: "Noches de fin de semana",
       weekdayNights: "Noches entre semana",
       adults: "Adultos",
-      kids: "Niños",
+      kids: "Ni\u00f1os",
+      infants: "Menores de 3 a\u00f1os",
       name: "Nombre",
       email: "Email",
       cell: "Celular",
-      otherDetails: "Preguntas o información adicional"
+      otherDetails: "Preguntas o informaci\u00f3n adicional"
     },
-    requestedInfo: "¿Qué info solicitas?",
-    infoOptions: ["Hospedarse en Cebolletas Copal", "Acampar", "Eventos"],
-    action: "Solicitar Información",
-    note: "Al continuar, guardaremos tu solicitud y se abrirán WhatsApp (+52 449 102 8878) y tu aplicación de correo con la información preparada. Tú confirmarás cada envío."
+    requestedInfo: "Selecciona un servicio",
+    servicesLoading: "Cargando servicios disponibles\u2026",
+    action: "Solicitar Informaci\u00f3n",
+    note: "Al continuar, guardaremos tu solicitud y se abrir\u00e1n WhatsApp (+52 449 102 8878) y tu aplicaci\u00f3n de correo con la informaci\u00f3n preparada. T\u00fa confirmar\u00e1s cada env\u00edo."
   },
   en: {
-    eyebrow: "Glamping in Calvillo · Aguascalientes, Mexico",
+    eyebrow: "Glamping in Calvillo \u00b7 Aguascalientes, Mexico",
     title: "Rest among<br>trees,<br>trails and open<br>skies.",
     nav: { home: "Home", place: "The place", gallery: "Gallery", booking: "Book" },
     parent: "Part of the private Cebolletas development.",
@@ -62,13 +63,14 @@ const copy = {
       weekdayNights: "Weekday nights",
       adults: "Adults",
       kids: "Kids",
+      infants: "Children under 3",
       name: "Name",
       email: "Email",
       cell: "Cellphone",
       otherDetails: "Questions or additional information"
     },
-    requestedInfo: "What information do you need?",
-    infoOptions: ["Staying at Cebolletas Copal", "Camping", "Events"],
+    requestedInfo: "Select one service",
+    servicesLoading: "Loading available services\u2026",
     action: "Request info",
     note: "Continuing will save your request and open WhatsApp and your email application with the prepared information. You will confirm each send."
   }
@@ -76,8 +78,8 @@ const copy = {
 
 const photos = [
   ["interior-1.jpeg", "Interior", "Interior"],
-  ["interior-2.jpeg", "Área de descanso", "Resting area"],
-  ["interior-3.jpeg", "Recámara", "Bedroom"],
+  ["interior-2.jpeg", "\u00c1rea de descanso", "Resting area"],
+  ["interior-3.jpeg", "Rec\u00e1mara", "Bedroom"],
   ["terraza-1.jpeg", "Terraza", "Terrace"],
   ["terraza-2.jpeg", "Vista exterior", "Outdoor view"],
   ["paisaje.jpeg", "El paisaje", "The landscape"]
@@ -187,6 +189,10 @@ function booking(t) {
   return `<section class="booking-section" id="booking" aria-labelledby="booking-title">
     <div class="booking-intro"><p class="section-label">${t.bookingEyebrow}</p><h2 id="booking-title">${t.bookingTitle}</h2><p>${t.bookingText}</p></div>
     <form class="booking-form" id="reserva-form" novalidate>
+      <fieldset class="service-options full-field" id="br-service-options">
+        <legend>${t.requestedInfo}</legend>
+        <p class="service-loading">${t.servicesLoading}</p>
+      </fieldset>
       <label><span>${t.fields.checkin}</span><input id="br-checkin" name="checkin" type="date" required></label>
       <label><span>${t.fields.checkout}</span><input id="br-checkout" name="checkout" type="date" required></label>
       <div class="stay-summary full-field" id="br-stay-summary" aria-live="polite" hidden>
@@ -196,15 +202,13 @@ function booking(t) {
       </div>
       <label><span>${t.fields.adults}</span><input id="br-adults" name="adults" type="number" min="1" max="20" step="1" value="1" inputmode="numeric" required></label>
       <label><span>${t.fields.kids}</span><input id="br-kids" name="kids" type="number" min="0" max="20" step="1" value="0" inputmode="numeric" required></label>
+      <label class="full-field"><span>${t.fields.infants}</span><input id="br-infants" name="infants" type="number" min="0" max="20" step="1" value="0" inputmode="numeric" required></label>
       <label><span>${t.fields.name}</span><input id="br-name" name="name" type="text" placeholder="${t.fields.name}" autocomplete="name" minlength="5" maxlength="100" required></label>
       <label><span>${t.fields.email}</span><input id="br-email" name="email" type="email" placeholder="${t.fields.email}" autocomplete="email" maxlength="254" required></label>
       <label class="full-field"><span>${t.fields.cell}</span><input id="br-cell" name="cell" type="tel" placeholder="${t.fields.cell}" autocomplete="tel" inputmode="tel" maxlength="25" required></label>
-      <fieldset class="info-options full-field">
-        <legend>${t.requestedInfo}</legend>
-        <label><input type="checkbox" name="requested-info" value="copal" checked><span>${t.infoOptions[0]}</span></label>
-        <label><input type="checkbox" name="requested-info" value="camping"><span>${t.infoOptions[1]}</span></label>
-        <label><input type="checkbox" name="requested-info" value="events"><span>${t.infoOptions[2]}</span></label>
-      </fieldset>
+      <aside class="quote-summary full-field" id="br-quote-summary" aria-live="polite">
+        <p class="quote-summary-placeholder">Selecciona un servicio, fechas y hu\u00e9spedes para ver el total estimado.</p>
+      </aside>
       <label class="other-details full-field"><span>${t.fields.otherDetails}</span><textarea id="br-other-details" name="otherDetails" rows="4" maxlength="1000" placeholder="${t.fields.otherDetails}"></textarea></label>
       <div class="booking-actions full-field">
         <button type="button" id="br-request-info">${t.action}</button>
