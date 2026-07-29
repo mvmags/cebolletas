@@ -165,6 +165,10 @@
           <section class="view" data-page="requests">
             <div class="page-heading">
               <div><p class="eyebrow">Seguimiento</p><h1>Solicitudes</h1><p class="muted">Consulta las solicitudes enviadas desde Reserva y actualiza su estado.</p></div>
+              <div class="request-view-switch" role="group" aria-label="Vista de solicitudes">
+                <button id="request-calendar-view" class="active" type="button" aria-pressed="true">Calendario</button>
+                <button id="request-list-view" type="button" aria-pressed="false">Lista</button>
+              </div>
             </div>
             <div class="toolbar requests-toolbar">
               <input id="request-search" type="search" placeholder="Buscar por folio, nombre, correo o celular">
@@ -184,7 +188,37 @@
               </select>
             </div>
             <p id="request-message" class="message" role="status" aria-live="polite"></p>
-            <article class="panel table-panel">
+            <article id="request-calendar-panel" class="panel request-calendar-panel">
+              <div class="calendar-toolbar">
+                <div class="calendar-navigation">
+                  <button id="calendar-previous" type="button" aria-label="Mes anterior">‹</button>
+                  <button id="calendar-today" type="button">Hoy</button>
+                  <button id="calendar-next" type="button" aria-label="Mes siguiente">›</button>
+                </div>
+                <h2 id="calendar-month" aria-live="polite"></h2>
+                <div class="calendar-legend" aria-label="Estados">
+                  <span class="new">Nueva</span>
+                  <span class="booked">Reservada</span>
+                  <span class="other">Otros estados</span>
+                </div>
+              </div>
+              <div class="calendar-scroll">
+                <div class="request-calendar" role="grid" aria-labelledby="calendar-month">
+                  <div class="calendar-weekdays" role="row">
+                    <span role="columnheader">Lun</span>
+                    <span role="columnheader">Mar</span>
+                    <span role="columnheader">Mié</span>
+                    <span role="columnheader">Jue</span>
+                    <span role="columnheader">Vie</span>
+                    <span role="columnheader">Sáb</span>
+                    <span role="columnheader">Dom</span>
+                  </div>
+                  <div id="request-calendar-grid" class="calendar-grid"></div>
+                </div>
+              </div>
+              <div id="request-calendar-empty" class="calendar-empty hidden">No hay solicitudes visibles en este mes.</div>
+            </article>
+            <article id="request-list-panel" class="panel table-panel hidden">
               <div class="table-head requests"><span>Folio / visitante</span><span>Fechas</span><span>Servicios</span><span>Recibida</span><span>Estado</span><span></span></div>
               <div id="request-list" class="request-list"></div>
               <div id="request-empty" class="empty-state hidden"><span>✉</span><h2>No hay solicitudes registradas</h2><p>Las solicitudes enviadas desde Reserva aparecerán aquí.</p></div>

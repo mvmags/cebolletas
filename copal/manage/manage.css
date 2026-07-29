@@ -154,6 +154,46 @@ fieldset input { width: auto; min-height: auto; }
 .service-row .row-actions { max-width: 220px; flex-wrap: wrap; }
 .services-toolbar { grid-template-columns: minmax(240px, 1fr) 200px 180px; }
 .requests-toolbar { grid-template-columns: minmax(260px, 1fr) 190px 190px; }
+.request-view-switch { display: inline-flex; border: 1px solid var(--line); border-radius: 10px; padding: 3px; background: var(--paper); }
+.request-view-switch button { min-height: 36px; border: 0; border-radius: 7px; padding: 7px 13px; color: var(--muted); background: transparent; font-weight: 750; }
+.request-view-switch button.active { color: #fff; background: var(--forest); }
+.request-calendar-panel { overflow: hidden; }
+.calendar-toolbar { min-height: 68px; display: grid; grid-template-columns: 1fr auto 1fr; gap: 18px; align-items: center; border-bottom: 1px solid var(--line); padding: 13px 18px; background: #f7f5ef; }
+.calendar-toolbar h2 { font-size: 1.45rem; text-transform: capitalize; text-align: center; }
+.calendar-navigation { display: flex; align-items: center; gap: 6px; }
+.calendar-navigation button { min-width: 38px; min-height: 36px; border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; color: var(--ink); background: #fff; font-weight: 750; }
+.calendar-navigation button:hover { border-color: var(--forest); }
+.calendar-navigation button:first-child, .calendar-navigation button:last-child { font-size: 1.35rem; line-height: 1; }
+.calendar-legend { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 10px; color: var(--muted); font-size: .68rem; }
+.calendar-legend span { display: inline-flex; align-items: center; gap: 5px; }
+.calendar-legend span::before { width: 8px; height: 8px; border-radius: 50%; content: ""; }
+.calendar-legend .new::before { background: var(--amber); }
+.calendar-legend .booked::before { background: var(--forest); }
+.calendar-legend .other::before { background: #8b8f92; }
+.calendar-scroll { overflow-x: auto; }
+.request-calendar { min-width: 770px; }
+.calendar-weekdays, .calendar-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
+.calendar-weekdays { border-bottom: 1px solid var(--line); color: var(--muted); background: #fbfaf7; font-size: .67rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.calendar-weekdays span { padding: 10px 8px; text-align: center; }
+.calendar-day { min-height: 132px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 8px; background: var(--paper); }
+.calendar-day:nth-child(7n) { border-right: 0; }
+.calendar-day.outside { background: #f8f6f1; }
+.calendar-day.today { background: #f4f8f5; box-shadow: inset 0 0 0 2px rgb(24 63 50 / 28%); }
+.calendar-day-number { width: 27px; height: 27px; display: grid; place-items: center; margin: 0 0 5px auto; border-radius: 50%; color: var(--ink); font-size: .74rem; font-weight: 750; }
+.calendar-day.outside .calendar-day-number { color: #a8aaa7; }
+.calendar-day.today .calendar-day-number { color: #fff; background: var(--forest); }
+.calendar-events { display: grid; gap: 4px; }
+.calendar-request { width: 100%; overflow: hidden; border: 0; border-left: 4px solid #8b8f92; border-radius: 6px; padding: 6px 7px; color: #4e5963; background: #edf0f1; text-align: left; }
+.calendar-request:hover, .calendar-request:focus-visible { outline: 2px solid rgb(24 63 50 / 32%); outline-offset: 1px; }
+.calendar-request.new { border-left-color: var(--amber); color: #70470f; background: var(--amber-soft); }
+.calendar-request.booked { border-left-color: var(--forest); color: var(--forest); background: var(--forest-soft); }
+.calendar-request.cancelled { border-left-color: var(--danger); color: var(--danger); background: #f7e4e1; }
+.calendar-request.not-converted { border-left-color: #8b7d6c; color: #655e55; background: #ece8e0; }
+.calendar-request strong, .calendar-request small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.calendar-request strong { font-size: .7rem; }
+.calendar-request small { margin-top: 2px; font-size: .64rem; opacity: .82; }
+.calendar-more { margin: 2px 0 0; color: var(--muted); font-size: .66rem; text-align: center; }
+.calendar-empty { padding: 13px 18px; color: var(--muted); background: #fbfaf7; font-size: .78rem; text-align: center; }
 .catalog-note { margin: 14px 4px 0; color: var(--muted); font-size: .76rem; line-height: 1.5; }
 .recipient-name { display: flex; align-items: center; gap: 8px; font-weight: 750; }
 .default-badge, .status-badge { width: max-content; border-radius: 999px; padding: 5px 9px; font-size: .67rem; font-weight: 800; }
@@ -242,6 +282,9 @@ fieldset input { width: auto; min-height: auto; }
   .recipient-row > :nth-child(2), .recipient-row > :nth-child(3) { grid-column: 1; }
   .row-actions { grid-column: 2; grid-row: 1 / 4; flex-direction: column; }
   .toolbar, .bookings-toolbar, .services-toolbar, .requests-toolbar { grid-template-columns: 1fr; }
+  .calendar-toolbar { grid-template-columns: auto 1fr; }
+  .calendar-toolbar h2 { text-align: right; }
+  .calendar-legend { grid-column: 1 / -1; justify-content: flex-start; }
   .service-row { grid-template-columns: 1fr auto; }
   .service-row > :nth-child(2), .service-row > :nth-child(3), .service-row > :nth-child(4) { grid-column: 1; }
   .service-row .row-actions { grid-column: 2; grid-row: 1 / 5; flex-direction: column; }
@@ -257,6 +300,12 @@ fieldset input { width: auto; min-height: auto; }
   .refresh-button { padding-inline: 9px; }
   .brand-lockup.compact div span { display: none; }
   .page-heading { align-items: flex-start; flex-direction: column; }
+  .request-view-switch { width: 100%; }
+  .request-view-switch button { flex: 1; }
+  .calendar-toolbar { grid-template-columns: 1fr; gap: 10px; }
+  .calendar-toolbar h2 { grid-row: 1; text-align: left; }
+  .calendar-navigation { grid-row: 2; }
+  .calendar-legend { grid-row: 3; }
   .stats, .quick-grid, .form-grid { grid-template-columns: 1fr; }
   .three-columns, .pricing-grid { grid-template-columns: 1fr; }
   .form-grid .full { grid-column: auto; }
