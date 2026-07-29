@@ -475,7 +475,9 @@ function renderServices() {
       </div>
       <div class="service-price">
         <strong>${escapeHtml(price)}</strong>
-        <small>${version.price_on_request ? "Sin tarifa automática" : `Incluye ${version.included_guests} · máximo ${version.max_occupancy}`}</small>
+        <small>${version.price_on_request
+          ? `Cotización manual · máximo ${version.max_occupancy}`
+          : `Incluye ${version.included_guests} · máximo ${version.max_occupancy}<br>Extra adulto ${formatMoney(version.adult_extra_cents)} · niño ${formatMoney(version.child_extra_cents)}`}</small>
       </div>
       <span class="status-badge ${service.is_active ? "active" : "inactive"}">${service.is_active ? "Activo" : "Inactivo"}</span>
       <div class="row-actions">
@@ -627,6 +629,35 @@ function updatePricingFieldState() {
     input.disabled = disabled;
     input.required = !disabled;
   });
+  $(".pricing-definition").classList.toggle("manual", disabled);
+  updatePricingPreview();
+}
+
+function updatePricingPreview() {
+  const manual = $("#service-price-on-request").checked;
+  const base = centsFromInput("#service-base-price");
+  const included = Number($("#service-included-guests").value || 0);
+  const capacity = Number($("#service-max-occupancy").value || 0);
+  const adultExtra = centsFromInput("#service-adult-extra");
+  const childExtra = centsFromInput("#service-child-extra");
+
+  if (manual) {
+    $("#pricing-preview-formula").textContent = "Cotización manual";
+    $("#pricing-preview-description").textContent = "El servicio conservará su capacidad, pero no producirá un precio automático.";
+    $("#pricing-preview-total").textContent = "A consultar";
+    return;
+  }
+
+  $("#pricing-preview-formula").textContent = "Base + adultos extra + niños extra";
+  $("#pricing-preview-description").textContent = `${formatMoney(base)} por noche incluye ${included || "—"} huésped(es). Después se suman ${formatMoney(adultExtra)} por adulto y ${formatMoney(childExtra)} por niño de 3–12 años.`;
+
+  if (!capacity || !included || included > capacity) {
+    $("#pricing-preview-total").textContent = "Revisa incluidos y capacidad";
+    return;
+  }
+
+  const extraAdults = Math.max(capacity - included, 0);
+  $("#pricing-preview-total").textContent = `${formatMoney(base + (extraAdults * adultExtra))} / noche`;
 }
 
 function openServiceModal(service = null) {
@@ -643,11 +674,11 @@ function openServiceModal(service = null) {
   $("#service-amenities-es").value = (version?.amenities_es || []).join("\n");
   $("#service-amenities-en").value = (version?.amenities_en || []).join("\n");
   $("#service-price-on-request").checked = version?.price_on_request || false;
-  $("#service-base-price").value = pesosFromCents(version?.base_price_cents);
-  $("#service-included-guests").value = version?.included_guests ?? 0;
-  $("#service-max-occupancy").value = version?.max_occupancy ?? 1;
-  $("#service-adult-extra").value = pesosFromCents(version?.adult_extra_cents);
-  $("#service-child-extra").value = pesosFromCents(version?.child_extra_cents);
+  $("#service-base-price").value = version ? pesosFromCents(version.base_price_cents) : 1200;
+  $("#service-included-guests").value = version?.included_guests ?? 3;
+  $("#service-max-occupancy").value = version?.max_occupancy ?? 6;
+  $("#service-adult-extra").value = version ? pesosFromCents(version.adult_extra_cents) : 500;
+  $("#service-child-extra").value = version ? pesosFromCents(version.child_extra_cents) : 350;
   $("#service-active").checked = service?.is_active ?? true;
   $("#service-modal-title").textContent = service ? `Nueva versión de ${version.name_es}` : "Agregar servicio";
   $("#service-form-error").textContent = "";
@@ -881,6 +912,14 @@ serviceForm.addEventListener("submit", async (event) => {
   $("#service-form-error").textContent = "";
   const id = $("#service-id").value;
   const priceOnRequest = $("#service-price-on-request").checked;
+  const includedGuests = Number($("#service-included-guests").value);
+  const maxOccupancy = Number($("#service-max-occupancy").value);
+  if (!priceOnRequest && includedGuests > maxOccupancy) {
+    submit.disabled = false;
+    $("#service-form-error").textContent = "Los huéspedes incluidos no pueden exceder la capacidad física máxima.";
+    $("#service-included-guests").focus();
+    return;
+  }
   const commonArgs = {
     p_category_code: $("#service-category").value,
     p_is_active: $("#service-active").checked,
@@ -892,8 +931,8 @@ serviceForm.addEventListener("submit", async (event) => {
     p_pricing_unit: $("#service-pricing-unit").value,
     p_price_on_request: priceOnRequest,
     p_base_price_cents: priceOnRequest ? 0 : centsFromInput("#service-base-price"),
-    p_included_guests: priceOnRequest ? 0 : Number($("#service-included-guests").value),
-    p_max_occupancy: Number($("#service-max-occupancy").value),
+    p_included_guests: priceOnRequest ? 0 : includedGuests,
+    p_max_occupancy: maxOccupancy,
     p_adult_extra_cents: priceOnRequest ? 0 : centsFromInput("#service-adult-extra"),
     p_child_extra_cents: priceOnRequest ? 0 : centsFromInput("#service-child-extra"),
     p_amenities_es: linesFromTextarea("#service-amenities-es"),
@@ -1050,6 +1089,9 @@ $(".history-modal-backdrop").addEventListener("click", closeServiceHistory);
 $("#close-request-detail").addEventListener("click", closeRequestDetail);
 $(".request-modal-backdrop").addEventListener("click", closeRequestDetail);
 $("#service-price-on-request").addEventListener("change", updatePricingFieldState);
+["#service-base-price", "#service-included-guests", "#service-max-occupancy", "#service-adult-extra", "#service-child-extra"].forEach((selector) => {
+  $(selector).addEventListener("input", updatePricingPreview);
+});
 $("#recipient-search").addEventListener("input", renderRecipients);
 $("#recipient-status-filter").addEventListener("change", renderRecipients);
 $("#service-search").addEventListener("input", renderServices);

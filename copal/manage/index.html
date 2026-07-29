@@ -297,6 +297,14 @@
         </div>
         <input id="service-id" type="hidden">
 
+        <section class="service-form-section">
+          <div class="service-form-section-head">
+            <span>1</span>
+            <div>
+              <h3>Identidad del servicio</h3>
+              <p>Define cómo se presenta y ordena dentro del catálogo.</p>
+            </div>
+          </div>
         <div class="form-grid three-columns">
           <label>Categoría
             <select id="service-category" required>
@@ -329,16 +337,55 @@
             <label>Amenities, one per line<textarea id="service-amenities-en" rows="7" required></textarea></label>
           </fieldset>
         </div>
+        </section>
 
-        <label class="checkbox-row"><input id="service-price-on-request" type="checkbox"> Precio a consultar</label>
-        <div id="service-pricing-fields" class="form-grid pricing-grid">
-          <label>Precio base (MXN)<input id="service-base-price" type="number" min="0" step="0.01" required></label>
-          <label>Huéspedes incluidos<input id="service-included-guests" type="number" min="0" step="1" required></label>
-          <label>Capacidad máxima<input id="service-max-occupancy" type="number" min="1" step="1" required></label>
-          <label>Adulto adicional (MXN)<input id="service-adult-extra" type="number" min="0" step="0.01" required></label>
-          <label>Niño adicional, 3–12 años (MXN)<input id="service-child-extra" type="number" min="0" step="0.01" required></label>
-          <label>Menor de 3 años<input value="Sin costo; cuenta en capacidad" disabled></label>
-        </div>
+        <section class="service-form-section">
+          <div class="service-form-section-head">
+            <span>2</span>
+            <div>
+              <h3>Modelo de precio</h3>
+              <p>La tarifa se calcula por cada noche ocupada. Los adultos consumen primero los espacios incluidos.</p>
+            </div>
+          </div>
+
+          <label class="checkbox-row price-on-request"><input id="service-price-on-request" type="checkbox"> Este servicio requiere cotización manual</label>
+          <div class="pricing-definition">
+            <div id="service-pricing-fields" class="form-grid pricing-grid">
+              <label>Precio base por noche (MXN)
+                <input id="service-base-price" type="number" min="0" step="0.01" required>
+                <small class="field-help">Se cobra por cada noche e incluye el número de huéspedes indicado.</small>
+              </label>
+              <label>Huéspedes incluidos en la base
+                <input id="service-included-guests" type="number" min="1" step="1" required>
+                <small class="field-help">Adultos primero; los espacios restantes se asignan a niños.</small>
+              </label>
+              <label>Capacidad física máxima
+                <input id="service-max-occupancy" type="number" min="1" step="1" required>
+                <small class="field-help">Incluye adultos, niños y menores de 3 años.</small>
+              </label>
+              <label>Adulto adicional por noche (MXN)
+                <input id="service-adult-extra" type="number" min="0" step="0.01" required>
+              </label>
+              <label>Niño adicional por noche, 3–12 años (MXN)
+                <input id="service-child-extra" type="number" min="0" step="0.01" required>
+              </label>
+              <label>Menor de 3 años
+                <input value="$0 por noche; cuenta en capacidad" disabled>
+              </label>
+            </div>
+
+            <aside id="pricing-preview" class="pricing-preview" aria-live="polite">
+              <p class="eyebrow">Vista previa de la regla</p>
+              <strong id="pricing-preview-formula">Precio por noche</strong>
+              <p id="pricing-preview-description">Ingresa las variables para revisar el cálculo.</p>
+              <div class="pricing-preview-example">
+                <span>Ejemplo: capacidad máxima con adultos</span>
+                <b id="pricing-preview-total">—</b>
+              </div>
+            </aside>
+          </div>
+        </section>
+
         <label class="checkbox-row"><input id="service-active" type="checkbox" checked> Servicio activo</label>
         <small class="field-help">Al editar un servicio se crea una nueva versión. Las versiones anteriores permanecen intactas.</small>
         <p id="service-form-error" class="message error" role="alert"></p>
