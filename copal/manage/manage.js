@@ -207,9 +207,18 @@ function requestServicesLabel(request) {
 }
 
 function filteredInformationRequests() {
+  if (!calendarMonth) calendarMonth = monthStart(mexicoCityDate());
   const query = $("#request-search").value.trim().toLocaleLowerCase("es-MX");
   const status = $("#request-status-filter").value;
   const service = $("#request-service-filter").value;
+  const firstDay = monthStart(calendarMonth);
+  const monthStartKey = dateKey(firstDay);
+  const monthEndKey = dateKey(new Date(
+    firstDay.getFullYear(),
+    firstDay.getMonth() + 1,
+    0,
+    12,
+  ));
   return informationRequests.filter((request) => {
     const haystack = [
       formatRequestCode(request.request_number),
@@ -219,7 +228,9 @@ function filteredInformationRequests() {
     ].join(" ").toLocaleLowerCase("es-MX");
     return (!query || haystack.includes(query))
       && (status === "all" || request.status === status)
-      && (service === "all" || request.requested_services.includes(service));
+      && (service === "all" || request.requested_services.includes(service))
+      && request.checkin_date <= monthEndKey
+      && request.checkout_date >= monthStartKey;
   });
 }
 
@@ -242,7 +253,7 @@ function monthStart(value) {
 
 function moveCalendarMonth(offset) {
   calendarMonth = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + offset, 1, 12);
-  renderRequestCalendar();
+  renderInformationRequests();
 }
 
 function requestTouchesDate(request, value) {
@@ -259,8 +270,6 @@ function renderRequestCalendar() {
   const mondayOffset = (firstDay.getDay() + 6) % 7;
   const gridStart = new Date(firstDay);
   gridStart.setDate(firstDay.getDate() - mondayOffset);
-  const monthEnd = new Date(firstDay.getFullYear(), firstDay.getMonth() + 1, 0, 12);
-  let visibleInMonth = 0;
 
   $("#calendar-month").textContent = new Intl.DateTimeFormat("es-MX", {
     month: "long",
@@ -276,8 +285,6 @@ function renderRequestCalendar() {
       .filter((request) => requestTouchesDate(request, value))
       .sort((a, b) => a.checkin_date.localeCompare(b.checkin_date)
         || a.request_number - b.request_number);
-
-    if (day >= firstDay && day <= monthEnd) visibleInMonth += requestsForDay.length;
 
     const cell = document.createElement("div");
     cell.className = [
@@ -321,7 +328,7 @@ function renderRequestCalendar() {
     grid.append(cell);
   }
 
-  $("#request-calendar-empty").classList.toggle("hidden", visibleInMonth > 0);
+  $("#request-calendar-empty").classList.toggle("hidden", visible.length > 0);
 }
 
 function setRequestView(view) {
@@ -343,10 +350,10 @@ function renderInformationRequests() {
 
   empty.classList.toggle("hidden", visible.length > 0);
   empty.querySelector("h2").textContent = informationRequests.length
-    ? "No hay solicitudes que coincidan"
+    ? "No hay solicitudes que coincidan en este mes"
     : "No hay solicitudes registradas";
   empty.querySelector("p").textContent = informationRequests.length
-    ? "Prueba con otros términos o filtros."
+    ? "Cambia el mes o prueba con otros términos y filtros."
     : "Las solicitudes enviadas desde Reserva aparecerán aquí.";
 
   visible.forEach((request) => {
@@ -1057,7 +1064,7 @@ $("#calendar-previous").addEventListener("click", () => moveCalendarMonth(-1));
 $("#calendar-next").addEventListener("click", () => moveCalendarMonth(1));
 $("#calendar-today").addEventListener("click", () => {
   calendarMonth = monthStart(mexicoCityDate());
-  renderRequestCalendar();
+  renderInformationRequests();
 });
 menuButton.addEventListener("click", () => {
   const open = sidebar.classList.toggle("open");

@@ -187,20 +187,23 @@
                 <option value="events">Eventos</option>
               </select>
             </div>
+            <div class="request-period-toolbar">
+              <div class="calendar-navigation">
+                <button id="calendar-previous" type="button" aria-label="Mes anterior">‹</button>
+                <button id="calendar-today" type="button">Hoy</button>
+                <button id="calendar-next" type="button" aria-label="Mes siguiente">›</button>
+              </div>
+              <div>
+                <span>Solicitudes del mes</span>
+                <h2 id="calendar-month" aria-live="polite"></h2>
+              </div>
+            </div>
             <p id="request-message" class="message" role="status" aria-live="polite"></p>
             <article id="request-calendar-panel" class="panel request-calendar-panel">
-              <div class="calendar-toolbar">
-                <div class="calendar-navigation">
-                  <button id="calendar-previous" type="button" aria-label="Mes anterior">‹</button>
-                  <button id="calendar-today" type="button">Hoy</button>
-                  <button id="calendar-next" type="button" aria-label="Mes siguiente">›</button>
-                </div>
-                <h2 id="calendar-month" aria-live="polite"></h2>
-                <div class="calendar-legend" aria-label="Estados">
-                  <span class="new">Nueva</span>
-                  <span class="booked">Reservada</span>
-                  <span class="other">Otros estados</span>
-                </div>
+              <div class="calendar-legend" aria-label="Estados">
+                <span class="new">Nueva</span>
+                <span class="booked">Reservada</span>
+                <span class="other">Otros estados</span>
               </div>
               <div class="calendar-scroll">
                 <div class="request-calendar" role="grid" aria-labelledby="calendar-month">
