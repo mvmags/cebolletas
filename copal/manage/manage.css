@@ -103,6 +103,7 @@ input:focus, select:focus, textarea:focus { border-color: var(--forest); box-sha
 .table-head { display: grid; grid-template-columns: 1.2fr 1fr .7fr 40px; gap: 14px; border-bottom: 1px solid var(--line); padding: 15px 20px; color: var(--muted); background: #f7f5ef; font-size: .68rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
 .table-head.services { grid-template-columns: 1fr 1.45fr .72fr .55fr auto; }
 .table-head.bookings { grid-template-columns: 1.1fr .8fr 1fr .75fr .65fr; }
+.table-head.requests { grid-template-columns: 1.2fr .8fr 1fr .8fr .7fr auto; }
 .composer { display: grid; grid-template-columns: minmax(440px, 1.25fr) minmax(300px, .75fr); gap: 20px; align-items: start; }
 .form-panel, .preview-panel { padding: 28px; }
 .section-title { display: flex; align-items: flex-start; gap: 13px; margin-bottom: 20px; }
@@ -128,10 +129,17 @@ fieldset input { width: auto; min-height: auto; }
 .sidebar-scrim { display: none; }
 .recipient-list { display: grid; }
 .service-list { display: grid; }
+.request-list { display: grid; }
 .recipient-row { display: grid; grid-template-columns: 1.2fr 1fr .7fr auto; gap: 14px; align-items: center; border-bottom: 1px solid var(--line); padding: 17px 20px; }
 .recipient-row:last-child { border-bottom: 0; }
 .service-row { display: grid; grid-template-columns: 1fr 1.45fr .72fr .55fr auto; gap: 14px; align-items: center; border-bottom: 1px solid var(--line); padding: 18px 20px; }
 .service-row:last-child { border-bottom: 0; }
+.request-row { display: grid; grid-template-columns: 1.2fr .8fr 1fr .8fr .7fr auto; gap: 14px; align-items: center; border-bottom: 1px solid var(--line); padding: 18px 20px; }
+.request-row:last-child { border-bottom: 0; }
+.request-identity, .request-dates, .request-services { display: grid; gap: 4px; }
+.request-identity small, .request-dates small, .request-services small, .request-submitted { color: var(--muted); font-size: .74rem; line-height: 1.4; }
+.request-identity strong { font-size: .9rem; }
+.request-code { color: var(--forest); font-size: .7rem; font-weight: 800; letter-spacing: .05em; }
 .service-title { display: grid; gap: 4px; }
 .service-title strong { font-size: .9rem; }
 .service-title small, .service-description small, .service-price small { color: var(--muted); line-height: 1.4; }
@@ -141,12 +149,18 @@ fieldset input { width: auto; min-height: auto; }
 .service-price strong { color: var(--forest); }
 .service-row .row-actions { max-width: 220px; flex-wrap: wrap; }
 .services-toolbar { grid-template-columns: minmax(240px, 1fr) 200px 180px; }
+.requests-toolbar { grid-template-columns: minmax(260px, 1fr) 190px 190px; }
 .catalog-note { margin: 14px 4px 0; color: var(--muted); font-size: .76rem; line-height: 1.5; }
 .recipient-name { display: flex; align-items: center; gap: 8px; font-weight: 750; }
 .default-badge, .status-badge { width: max-content; border-radius: 999px; padding: 5px 9px; font-size: .67rem; font-weight: 800; }
 .default-badge { color: #80500f; background: var(--amber-soft); }
 .status-badge.active { color: var(--forest); background: var(--forest-soft); }
 .status-badge.inactive { color: var(--muted); background: #ecece8; }
+.status-badge.new { color: #80500f; background: var(--amber-soft); }
+.status-badge.booked { color: var(--forest); background: var(--forest-soft); }
+.status-badge.not-converted { color: #655e55; background: #ece8e0; }
+.status-badge.cancelled { color: var(--danger); background: #f7e4e1; }
+.status-badge.closed { color: #4e5963; background: #e5e9ec; }
 .row-actions { display: flex; justify-content: flex-end; gap: 6px; }
 .row-actions button, .secondary-button, .icon-button { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; color: var(--ink); background: #fff; }
 .row-actions button:hover, .secondary-button:hover { border-color: var(--forest); }
@@ -160,6 +174,23 @@ fieldset input { width: auto; min-height: auto; }
 .modal-card { position: relative; width: min(500px, 100%); max-height: calc(100vh - 40px); overflow: auto; border-radius: 15px; padding: 28px; background: var(--paper); box-shadow: 0 24px 70px rgb(0 0 0 / 28%); }
 .service-modal-card { width: min(980px, 100%); }
 .history-modal-card { width: min(760px, 100%); }
+.request-modal-card { width: min(920px, 100%); }
+.request-detail-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-top: 22px; }
+.request-detail-item { border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; background: #faf8f4; }
+.request-detail-item.full { grid-column: 1 / -1; }
+.request-detail-item span { display: block; margin-bottom: 6px; color: var(--muted); font-size: .7rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+.request-detail-item strong, .request-detail-item p { margin: 0; font-size: .86rem; line-height: 1.5; overflow-wrap: anywhere; }
+.request-status-panel, .request-history { margin-top: 24px; border-top: 1px solid var(--line); padding-top: 22px; }
+.request-status-panel h3, .request-history h3 { margin: 0; font: 500 1.25rem Georgia, serif; }
+.request-status-panel > div:first-child { display: flex; align-items: baseline; justify-content: space-between; gap: 18px; }
+.request-status-panel > div:first-child p { margin: 0; font-size: .76rem; }
+.request-status-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 9px; margin-top: 18px; }
+.request-status-actions button { border: 1px solid var(--forest); border-radius: 8px; padding: 9px 12px; color: var(--forest); background: #fff; font-weight: 750; }
+.request-status-actions button:hover:not(:disabled) { color: #fff; background: var(--forest); }
+.request-status-actions .danger { border-color: var(--danger); color: var(--danger); }
+.request-status-actions .danger:hover:not(:disabled) { color: #fff; background: var(--danger); }
+.request-history .history-item { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: start; }
+.history-actor { color: var(--muted); font-size: .72rem; text-align: right; }
 .language-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; margin-top: 22px; }
 .language-grid fieldset { display: block; border: 1px solid var(--line); border-radius: 12px; margin: 0; padding: 18px; }
 .language-grid legend { padding: 0 6px; color: var(--forest); font-size: .75rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
@@ -206,10 +237,13 @@ fieldset input { width: auto; min-height: auto; }
   .recipient-row { grid-template-columns: 1fr auto; }
   .recipient-row > :nth-child(2), .recipient-row > :nth-child(3) { grid-column: 1; }
   .row-actions { grid-column: 2; grid-row: 1 / 4; flex-direction: column; }
-  .toolbar, .bookings-toolbar, .services-toolbar { grid-template-columns: 1fr; }
+  .toolbar, .bookings-toolbar, .services-toolbar, .requests-toolbar { grid-template-columns: 1fr; }
   .service-row { grid-template-columns: 1fr auto; }
   .service-row > :nth-child(2), .service-row > :nth-child(3), .service-row > :nth-child(4) { grid-column: 1; }
   .service-row .row-actions { grid-column: 2; grid-row: 1 / 5; flex-direction: column; }
+  .request-row { grid-template-columns: 1fr auto; }
+  .request-row > :nth-child(2), .request-row > :nth-child(3), .request-row > :nth-child(4), .request-row > :nth-child(5) { grid-column: 1; }
+  .request-row .row-actions { grid-column: 2; grid-row: 1 / 6; }
   .language-grid { grid-template-columns: 1fr; }
   .three-columns, .pricing-grid { grid-template-columns: 1fr 1fr; }
 }
@@ -220,6 +254,11 @@ fieldset input { width: auto; min-height: auto; }
   .stats, .quick-grid, .form-grid { grid-template-columns: 1fr; }
   .three-columns, .pricing-grid { grid-template-columns: 1fr; }
   .form-grid .full { grid-column: auto; }
+  .request-detail-grid { grid-template-columns: 1fr; }
+  .request-detail-item.full { grid-column: auto; }
+  .request-status-panel > div:first-child { align-items: flex-start; flex-direction: column; gap: 5px; }
+  .request-history .history-item { grid-template-columns: 1fr; }
+  .history-actor { text-align: left; }
   .composer { display: block; }
   .preview-panel { margin-top: 16px; }
 }

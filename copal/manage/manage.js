@@ -20,10 +20,15 @@ const serviceForm = $("#service-form");
 const serviceMessage = $("#service-message");
 const serviceHistoryModal = $("#service-history-modal");
 const serviceHistoryMessage = $("#service-history-message");
+const requestDetailModal = $("#request-detail-modal");
+const requestDetailMessage = $("#request-detail-message");
+const requestMessage = $("#request-message");
 let recipients = [];
 let defaultRecipientId = null;
 let services = [];
 let historyServiceId = null;
+let informationRequests = [];
+let detailRequestId = null;
 
 const CATEGORY_LABELS = {
   copal: "Cebolletas Copal",
@@ -36,6 +41,34 @@ const PRICING_UNIT_LABELS = {
   per_person: "por persona",
   per_person_night: "por persona/noche",
   fixed: "precio fijo",
+};
+
+const REQUEST_STATUS_LABELS = {
+  new: "Nueva",
+  booked: "Reservada",
+  closed: "Cerrada",
+  cancelled: "Cancelada",
+  not_converted: "No convertida",
+};
+
+const REQUEST_SERVICE_LABELS = {
+  copal: "Cebolletas Copal",
+  camping: "Camping",
+  events: "Eventos",
+};
+
+const REQUEST_REASON_LABELS = {
+  "Price not accepted": "Precio no aceptado",
+  "No response after receiving information": "Sin respuesta después de recibir información",
+  "Dates unavailable": "Fechas no disponibles",
+  "Customer chose another option": "El cliente eligió otra opción",
+  Other: "Otro",
+  "Requested dates passed without booking": "Las fechas solicitadas pasaron sin reservación",
+  "Booking confirmed": "Reservación confirmada",
+  "Booking cancelled": "Reservación cancelada",
+  "Stay completed": "Estancia terminada",
+  "Visitor contacted again": "El visitante volvió a contactar",
+  "Request submitted": "Solicitud enviada",
 };
 
 function showApp(show) {
@@ -70,6 +103,11 @@ function setServiceMessage(text = "", type = "") {
   serviceMessage.className = `message ${type}`.trim();
 }
 
+function setRequestMessage(text = "", type = "") {
+  requestMessage.textContent = text;
+  requestMessage.className = `message ${type}`.trim();
+}
+
 function friendlyError(error) {
   if (error?.code === "23505") return "Este número ya está registrado.";
   if (error?.message?.includes("default before")) return "Selecciona otro contacto predeterminado antes de continuar.";
@@ -78,6 +116,11 @@ function friendlyError(error) {
   if (error?.message?.includes("Service is referenced")) return "No se puede eliminar porque una reservación conserva esta versión.";
   if (error?.message?.includes("Version conflict")) return "El servicio cambió en otra sesión. Recarga el catálogo antes de editar.";
   if (error?.message?.includes("Service version does not belong")) return "La versión seleccionada no pertenece a este servicio.";
+  if (error?.message?.includes("Status conflict")) return "La solicitud cambió en otra sesión. Recarga las solicitudes antes de continuar.";
+  if (error?.message?.includes("Invalid status transition")) return "Ese cambio de estado no está permitido.";
+  if (error?.message?.includes("Checkout date must have passed")) return "La solicitud solo puede cerrarse después de la fecha de salida.";
+  if (error?.message?.includes("not-converted reason")) return "Selecciona el motivo por el que no se convirtió.";
+  if (error?.message?.includes("Information request not found")) return "La solicitud ya no existe.";
   return error?.message || "No fue posible completar la operación.";
 }
 
@@ -122,6 +165,124 @@ function escapeHtml(value) {
   const node = document.createElement("span");
   node.textContent = value;
   return node.innerHTML;
+}
+
+function formatRequestCode(number) {
+  return `SOL-${String(number).padStart(6, "0")}`;
+}
+
+function formatDate(value) {
+  if (!value) return "—";
+  return new Intl.DateTimeFormat("es-MX", { dateStyle: "medium" })
+    .format(new Date(`${value}T12:00:00`));
+}
+
+function formatDateTime(value) {
+  if (!value) return "—";
+  return new Intl.DateTimeFormat("es-MX", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: "America/Mexico_City",
+  }).format(new Date(value));
+}
+
+function mexicoCityDate() {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Mexico_City",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const value = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${value.year}-${value.month}-${value.day}`;
+}
+
+function requestServicesLabel(request) {
+  return (request.requested_services || [])
+    .map((service) => REQUEST_SERVICE_LABELS[service] || service)
+    .join(", ");
+}
+
+function filteredInformationRequests() {
+  const query = $("#request-search").value.trim().toLocaleLowerCase("es-MX");
+  const status = $("#request-status-filter").value;
+  const service = $("#request-service-filter").value;
+  return informationRequests.filter((request) => {
+    const haystack = [
+      formatRequestCode(request.request_number),
+      request.customer_name,
+      request.customer_email,
+      request.customer_cellphone,
+    ].join(" ").toLocaleLowerCase("es-MX");
+    return (!query || haystack.includes(query))
+      && (status === "all" || request.status === status)
+      && (service === "all" || request.requested_services.includes(service));
+  });
+}
+
+function renderInformationRequests() {
+  const list = $("#request-list");
+  const visible = filteredInformationRequests();
+  const empty = $("#request-empty");
+  list.replaceChildren();
+
+  empty.classList.toggle("hidden", visible.length > 0);
+  empty.querySelector("h2").textContent = informationRequests.length
+    ? "No hay solicitudes que coincidan"
+    : "No hay solicitudes registradas";
+  empty.querySelector("p").textContent = informationRequests.length
+    ? "Prueba con otros términos o filtros."
+    : "Las solicitudes enviadas desde Reserva aparecerán aquí.";
+
+  visible.forEach((request) => {
+    const row = document.createElement("div");
+    row.className = "request-row";
+    row.innerHTML = `
+      <div class="request-identity">
+        <span class="request-code">${formatRequestCode(request.request_number)}</span>
+        <strong>${escapeHtml(request.customer_name)}</strong>
+        <small>${escapeHtml(request.customer_email)} · ${escapeHtml(request.customer_cellphone)}</small>
+      </div>
+      <div class="request-dates">
+        <span>${formatDate(request.checkin_date)}</span>
+        <small>Salida: ${formatDate(request.checkout_date)}</small>
+      </div>
+      <div class="request-services">
+        <span>${escapeHtml(requestServicesLabel(request))}</span>
+        <small>${request.adults} adulto${request.adults === 1 ? "" : "s"} · ${request.children} niño${request.children === 1 ? "" : "s"}</small>
+      </div>
+      <span class="request-submitted">${formatDateTime(request.submitted_at)}</span>
+      <span class="status-badge ${request.status.replace("_", "-")}">${REQUEST_STATUS_LABELS[request.status]}</span>
+      <div class="row-actions"><button data-request-action="detail" data-id="${request.id}" type="button">Ver detalle</button></div>`;
+    list.append(row);
+  });
+
+  const newCount = informationRequests.filter((request) => request.status === "new").length;
+  const bookedCount = informationRequests.filter((request) => request.status === "booked").length;
+  $("#request-new-count").textContent = String(newCount);
+  $("#request-new-summary").textContent = newCount === 1
+    ? "1 solicitud requiere seguimiento"
+    : `${newCount} solicitudes requieren seguimiento`;
+  $("#request-booked-count").textContent = String(bookedCount);
+  $("#request-booked-summary").textContent = bookedCount === 1
+    ? "1 solicitud confirmada"
+    : `${bookedCount} solicitudes confirmadas`;
+}
+
+async function loadInformationRequests() {
+  const { data, error } = await supabase
+    .from("information_requests")
+    .select(`
+      id, request_number, submitted_at, updated_at, locale,
+      customer_name, customer_email, customer_cellphone,
+      checkin_date, checkout_date, adults, children,
+      requested_services, customer_message, status,
+      status_reason, status_notes, status_changed_at
+    `)
+    .order("submitted_at", { ascending: false });
+  if (error) throw error;
+  informationRequests = data || [];
+  renderInformationRequests();
 }
 
 function formatMoney(cents) {
@@ -254,7 +415,11 @@ async function startSession(session) {
   if (!session?.user) return showApp(false);
   try {
     await loadProfile(session.user.id);
-    await Promise.all([loadRecipients(), loadServices()]);
+    await Promise.all([
+      loadRecipients(),
+      loadServices(),
+      loadInformationRequests(),
+    ]);
     showApp(true);
   } catch (error) {
     await supabase.auth.signOut();
@@ -366,6 +531,151 @@ function openServiceHistory(service) {
 function closeServiceHistory() {
   historyServiceId = null;
   serviceHistoryModal.classList.add("hidden");
+}
+
+function requestStatusActions(request) {
+  const checkoutPassed = request.checkout_date < mexicoCityDate();
+  if (request.status === "new") {
+    return `
+      <button data-next-status="booked" type="button">Marcar como reservada</button>
+      <button data-next-status="not_converted" type="button">Marcar como no convertida</button>`;
+  }
+  if (request.status === "booked") {
+    return `
+      <button class="danger" data-next-status="cancelled" type="button">Marcar como cancelada</button>
+      <button data-next-status="closed" type="button" ${checkoutPassed ? "" : 'disabled title="Disponible después de la fecha de salida"'}>Marcar como cerrada</button>`;
+  }
+  if (request.status === "not_converted") {
+    return '<button data-next-status="new" type="button">Reabrir como nueva</button>';
+  }
+  return "";
+}
+
+function renderRequestDetail(request) {
+  detailRequestId = request.id;
+  $("#request-detail-title").textContent = `${formatRequestCode(request.request_number)} · ${request.customer_name}`;
+  requestDetailMessage.textContent = "";
+  requestDetailMessage.className = "message";
+  $("#request-detail-content").innerHTML = `
+    <article class="request-detail-item"><span>Estado</span><strong class="status-badge ${request.status.replace("_", "-")}">${REQUEST_STATUS_LABELS[request.status]}</strong></article>
+    <article class="request-detail-item"><span>Recibida</span><strong>${formatDateTime(request.submitted_at)}</strong></article>
+    <article class="request-detail-item"><span>Visitante</span><strong>${escapeHtml(request.customer_name)}</strong></article>
+    <article class="request-detail-item"><span>Contacto</span><p>${escapeHtml(request.customer_email)}<br>${escapeHtml(request.customer_cellphone)}</p></article>
+    <article class="request-detail-item"><span>Estancia solicitada</span><p>${formatDate(request.checkin_date)} – ${formatDate(request.checkout_date)}</p></article>
+    <article class="request-detail-item"><span>Huéspedes</span><p>${request.adults} adulto${request.adults === 1 ? "" : "s"} · ${request.children} niño${request.children === 1 ? "" : "s"}</p></article>
+    <article class="request-detail-item full"><span>Servicios solicitados</span><p>${escapeHtml(requestServicesLabel(request))}</p></article>
+    <article class="request-detail-item full"><span>Mensaje del visitante</span><p>${request.customer_message ? escapeHtml(request.customer_message).replaceAll("\n", "<br>") : "Sin mensaje adicional"}</p></article>
+    ${request.status_reason ? `<article class="request-detail-item full"><span>Motivo del estado actual</span><p>${escapeHtml(REQUEST_REASON_LABELS[request.status_reason] || request.status_reason)}</p></article>` : ""}`;
+
+  const actionHost = $("#request-status-actions");
+  actionHost.innerHTML = requestStatusActions(request);
+  $("#request-status-notes").value = "";
+  $("#request-status-reason").value = "";
+  $("#request-reason-label").classList.add("hidden");
+  const hasActions = actionHost.children.length > 0;
+  $("#request-status-notes").disabled = !hasActions;
+  $("#request-status-help").textContent = hasActions
+    ? "Solo se muestran las transiciones válidas para el estado actual."
+    : "Este estado es terminal y no admite más cambios.";
+}
+
+async function loadRequestHistory(requestId) {
+  const { data, error } = await supabase
+    .from("information_request_status_history")
+    .select(`
+      id, previous_status, new_status, actor_type, actor_display_name,
+      changed_by, reason, notes, changed_at
+    `)
+    .eq("information_request_id", requestId)
+    .order("changed_at", { ascending: false });
+  if (error) throw error;
+
+  $("#request-history-list").innerHTML = (data || []).map((item) => `
+    <article class="history-item">
+      <span class="status-badge ${item.new_status.replace("_", "-")}">${REQUEST_STATUS_LABELS[item.new_status]}</span>
+      <div>
+        <strong>${item.previous_status ? `${REQUEST_STATUS_LABELS[item.previous_status]} → ` : ""}${REQUEST_STATUS_LABELS[item.new_status]}</strong>
+        ${item.reason ? `<p>${escapeHtml(REQUEST_REASON_LABELS[item.reason] || item.reason)}</p>` : ""}
+        ${item.notes ? `<p>${escapeHtml(item.notes).replaceAll("\n", "<br>")}</p>` : ""}
+      </div>
+      <div class="history-actor">${escapeHtml(item.actor_display_name)}<br>${formatDateTime(item.changed_at)}</div>
+    </article>
+  `).join("");
+}
+
+async function openRequestDetail(request) {
+  renderRequestDetail(request);
+  requestDetailModal.classList.remove("hidden");
+  $("#request-history-list").innerHTML = '<p class="muted">Cargando historial…</p>';
+  try {
+    await loadRequestHistory(request.id);
+  } catch (error) {
+    requestDetailMessage.textContent = friendlyError(error);
+    requestDetailMessage.className = "message error";
+  }
+}
+
+function closeRequestDetail() {
+  detailRequestId = null;
+  requestDetailModal.classList.add("hidden");
+}
+
+async function changeRequestStatus(button) {
+  const request = informationRequests.find((item) => item.id === detailRequestId);
+  if (!request) return;
+  const nextStatus = button.dataset.nextStatus;
+  const reasonInput = $("#request-status-reason");
+  const reasonLabel = $("#request-reason-label");
+  let reason = {
+    booked: "Booking confirmed",
+    cancelled: "Booking cancelled",
+    closed: "Stay completed",
+    new: "Visitor contacted again",
+  }[nextStatus] || null;
+
+  if (nextStatus === "not_converted") {
+    reasonLabel.classList.remove("hidden");
+    if (!reasonInput.value) {
+      requestDetailMessage.textContent = "Selecciona el motivo por el que la solicitud no se convirtió.";
+      requestDetailMessage.className = "message error";
+      reasonInput.focus();
+      return;
+    }
+    reason = reasonInput.value;
+  }
+
+  button.disabled = true;
+  requestDetailMessage.textContent = "Actualizando estado…";
+  requestDetailMessage.className = "message";
+  const { error } = await supabase.rpc("change_information_request_status", {
+    p_request_id: request.id,
+    p_expected_status: request.status,
+    p_new_status: nextStatus,
+    p_reason: reason,
+    p_notes: $("#request-status-notes").value.trim() || null,
+  });
+
+  if (error) {
+    button.disabled = false;
+    requestDetailMessage.textContent = friendlyError(error);
+    requestDetailMessage.className = "message error";
+    return;
+  }
+
+  try {
+    await loadInformationRequests();
+    const refreshed = informationRequests.find((item) => item.id === request.id);
+    if (refreshed) {
+      renderRequestDetail(refreshed);
+      await loadRequestHistory(refreshed.id);
+      requestDetailMessage.textContent = `Estado actualizado a ${REQUEST_STATUS_LABELS[nextStatus].toLowerCase()}.`;
+      requestDetailMessage.className = "message success";
+    }
+    setRequestMessage(`La solicitud ${formatRequestCode(request.request_number)} fue actualizada.`, "success");
+  } catch (refreshError) {
+    requestDetailMessage.textContent = friendlyError(refreshError);
+    requestDetailMessage.className = "message error";
+  }
 }
 
 loginForm.addEventListener("submit", async (event) => {
@@ -535,6 +845,18 @@ $("#service-history-list").addEventListener("click", async (event) => {
   setServiceMessage(`La versión ${version.version_number} de ${version.name_es} ahora es la versión actual.`, "success");
 });
 
+$("#request-list").addEventListener("click", (event) => {
+  const button = event.target.closest('button[data-request-action="detail"]');
+  if (!button) return;
+  const request = informationRequests.find((item) => item.id === button.dataset.id);
+  if (request) openRequestDetail(request);
+});
+
+$("#request-status-actions").addEventListener("click", (event) => {
+  const button = event.target.closest("button[data-next-status]");
+  if (button && !button.disabled) changeRequestStatus(button);
+});
+
 $("#logout-button").addEventListener("click", async () => {
   await supabase.auth.signOut();
   loginForm.reset();
@@ -553,12 +875,17 @@ $("#cancel-service").addEventListener("click", closeServiceModal);
 $(".service-modal-backdrop").addEventListener("click", closeServiceModal);
 $("#close-service-history").addEventListener("click", closeServiceHistory);
 $(".history-modal-backdrop").addEventListener("click", closeServiceHistory);
+$("#close-request-detail").addEventListener("click", closeRequestDetail);
+$(".request-modal-backdrop").addEventListener("click", closeRequestDetail);
 $("#service-price-on-request").addEventListener("change", updatePricingFieldState);
 $("#recipient-search").addEventListener("input", renderRecipients);
 $("#recipient-status-filter").addEventListener("change", renderRecipients);
 $("#service-search").addEventListener("input", renderServices);
 $("#service-category-filter").addEventListener("change", renderServices);
 $("#service-status-filter").addEventListener("change", renderServices);
+$("#request-search").addEventListener("input", renderInformationRequests);
+$("#request-status-filter").addEventListener("change", renderInformationRequests);
+$("#request-service-filter").addEventListener("change", renderInformationRequests);
 menuButton.addEventListener("click", () => {
   const open = sidebar.classList.toggle("open");
   scrim.classList.toggle("open", open);
@@ -571,6 +898,7 @@ window.addEventListener("keydown", (event) => {
     closeRecipientModal();
     closeServiceModal();
     closeServiceHistory();
+    closeRequestDetail();
   }
 });
 

@@ -32,9 +32,9 @@ const copy = {
       otherDetails: "Preguntas o información adicional"
     },
     requestedInfo: "¿Qué info solicitas?",
-    infoOptions: ["Hospedarse en Cebolletas Copal", "Acampar", "Otro"],
+    infoOptions: ["Hospedarse en Cebolletas Copal", "Acampar", "Eventos"],
     action: "Solicitar Información",
-    note: "Al continuar, se abrirán WhatsApp (+52 449 102 8878) y tu aplicación de correo con la información preparada. Tú confirmarás y enviarás la info."
+    note: "Al continuar, guardaremos tu solicitud y se abrirán WhatsApp (+52 449 102 8878) y tu aplicación de correo con la información preparada. Tú confirmarás cada envío."
   },
   en: {
     eyebrow: "Glamping in Calvillo · Aguascalientes, Mexico",
@@ -68,9 +68,9 @@ const copy = {
       otherDetails: "Questions or additional information"
     },
     requestedInfo: "What information do you need?",
-    infoOptions: ["Staying at Cebolletas Copal", "Camping", "Other"],
+    infoOptions: ["Staying at Cebolletas Copal", "Camping", "Events"],
     action: "Request info",
-    note: "Continuing will open WhatsApp and your email application with the prepared information. You will confirm each send."
+    note: "Continuing will save your request and open WhatsApp and your email application with the prepared information. You will confirm each send."
   }
 };
 
@@ -203,9 +203,9 @@ function booking(t) {
         <legend>${t.requestedInfo}</legend>
         <label><input type="checkbox" name="requested-info" value="copal" checked><span>${t.infoOptions[0]}</span></label>
         <label><input type="checkbox" name="requested-info" value="camping"><span>${t.infoOptions[1]}</span></label>
-        <label><input type="checkbox" name="requested-info" value="other" id="br-other"><span>${t.infoOptions[2]}</span></label>
+        <label><input type="checkbox" name="requested-info" value="events"><span>${t.infoOptions[2]}</span></label>
       </fieldset>
-      <label class="other-details full-field" hidden><span>${t.fields.otherDetails}</span><textarea id="br-other-details" name="otherDetails" rows="4" maxlength="1000" placeholder="${t.fields.otherDetails}"></textarea></label>
+      <label class="other-details full-field"><span>${t.fields.otherDetails}</span><textarea id="br-other-details" name="otherDetails" rows="4" maxlength="1000" placeholder="${t.fields.otherDetails}"></textarea></label>
       <div class="booking-actions full-field">
         <button type="button" id="br-request-info">${t.action}</button>
       </div>
@@ -275,15 +275,6 @@ region.addEventListener("click", event => {
   if (!button) return;
   activePhoto = Number(button.dataset.photo);
   updateGallery();
-});
-
-region.addEventListener("change", event => {
-  const other = event.target.closest("#br-other");
-  if (other) {
-    const details = region.querySelector(".other-details");
-    details.hidden = !other.checked;
-    if (!other.checked) details.querySelector("textarea").value = "";
-  }
 });
 
 window.addEventListener("hashchange", () => {

@@ -9,6 +9,11 @@
     emailCc: "elcrio88@gmail.com"
   });
 
+  const SUPABASE = Object.freeze({
+    url: "https://myqaotknkriuhdssbzlz.supabase.co",
+    publishableKey: "sb_publishable_XuDt5xNF3EzE0K2TSE9QCg_hnDMWsVN"
+  });
+
 //  const RESERVA_CONTACT = Object.freeze({
 //    whatsapp: "524491576284",
 //    email: "cebolletascalvillo@gmail.com",
@@ -41,9 +46,10 @@
       requiredCell: "El celular es requerido.",
       invalidCell: "Ingresa un celular válido de 10 a 15 dígitos.",
       requiredInfo: "Selecciona al menos una opción.",
-      requiredOther: "Describe qué otra información necesitas.",
       longOther: "El texto es demasiado largo (máximo 1000 caracteres).",
-      openingChannels: "Abriendo WhatsApp y email…",
+      savingRequest: "Guardando tu solicitud…",
+      openingChannels: "Solicitud guardada. Abriendo WhatsApp y email…",
+      saveFailed: "No fue posible guardar la solicitud. Intenta nuevamente.",
       infoSubject: "Solicitud de información",
       labels: {
         staySummary: "Resumen de estancia",
@@ -63,7 +69,7 @@
       infoOptions: {
         copal: "Hospedarse en Cebolletas Copal",
         camping: "Acampar",
-        other: "Otro"
+        events: "Eventos"
       }
     },
     en: {
@@ -82,9 +88,10 @@
       requiredCell: "Cellphone is required.",
       invalidCell: "Enter a valid cellphone number containing 10 to 15 digits.",
       requiredInfo: "Select at least one option.",
-      requiredOther: "Describe what other information you need.",
       longOther: "Text is too long (maximum 1000 characters).",
-      openingChannels: "Opening WhatsApp and email…",
+      savingRequest: "Saving your request…",
+      openingChannels: "Request saved. Opening WhatsApp and email…",
+      saveFailed: "We could not save your request. Please try again.",
       infoSubject: "Information request",
       labels: {
         staySummary: "Stay summary",
@@ -104,7 +111,7 @@
       infoOptions: {
         copal: "Staying at Cebolletas Copal",
         camping: "Camping",
-        other: "Other"
+        events: "Events"
       }
     }
   };
@@ -242,7 +249,6 @@
       email: form.querySelector("#br-email"),
       cell: form.querySelector("#br-cell"),
       info: form.querySelector(".info-options"),
-      other: form.querySelector("#br-other"),
       otherDetails: form.querySelector("#br-other-details")
     };
     const selectedInfo = Array.from(
@@ -326,11 +332,8 @@
       );
     }
 
-    if (fields.other.checked) {
-      if (!data.otherDetails) reject(fields.otherDetails, text.requiredOther);
-      else if (data.otherDetails.length > limits.otherDetails) {
-        reject(fields.otherDetails, text.longOther);
-      }
+    if (data.otherDetails.length > limits.otherDetails) {
+      reject(fields.otherDetails, text.longOther);
     }
 
     if (firstInvalid) {
@@ -368,7 +371,7 @@
       `${labels.requestedInfo}: ${requestedInfo}`
     ];
 
-    if (data.requestedInfo.includes("other")) {
+    if (data.otherDetails) {
       lines.push(`${labels.otherDetails}: ${data.otherDetails}`);
     }
     return lines.join("\n");
@@ -379,7 +382,7 @@
     return `${getLocalDate()} | ${text.infoSubject} - ${data.name}`;
   }
 
-  function showStatus(message) {
+  function showStatus(message, duration = 1800) {
     document.querySelector(".reserva-status-overlay")?.remove();
     const overlay = document.createElement("div");
     const modal = document.createElement("div");
@@ -389,7 +392,7 @@
     modal.textContent = message;
     overlay.appendChild(modal);
     document.body.appendChild(overlay);
-    window.setTimeout(() => overlay.remove(), 1800);
+    window.setTimeout(() => overlay.remove(), duration);
   }
 
   function configureDateLimits(form) {
@@ -403,7 +406,6 @@
 
   function clearForm(form) {
     form.reset();
-    form.querySelector(".other-details").hidden = true;
     form.querySelectorAll(".reserva-field-error").forEach((element) => element.remove());
     form.querySelectorAll('[aria-invalid="true"]').forEach((element) => {
       element.removeAttribute("aria-invalid");
@@ -426,6 +428,53 @@
       body: message
     });
     return `mailto:${RESERVA_CONTACT.email}?${query.toString()}`;
+  }
+
+  function createSubmissionKey() {
+    if (typeof crypto.randomUUID === "function") return crypto.randomUUID();
+    const bytes = crypto.getRandomValues(new Uint8Array(16));
+    bytes[6] = (bytes[6] & 0x0f) | 0x40;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+    const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0"));
+    return [
+      hex.slice(0, 4).join(""),
+      hex.slice(4, 6).join(""),
+      hex.slice(6, 8).join(""),
+      hex.slice(8, 10).join(""),
+      hex.slice(10).join("")
+    ].join("-");
+  }
+
+  async function saveInformationRequest(data, submissionKey) {
+    const response = await fetch(
+      `${SUPABASE.url}/rest/v1/rpc/create_information_request`,
+      {
+        method: "POST",
+        headers: {
+          apikey: SUPABASE.publishableKey,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          p_submission_key: submissionKey,
+          p_locale: getLanguage(),
+          p_customer_name: data.name,
+          p_customer_email: data.email,
+          p_customer_cellphone: data.cell,
+          p_checkin_date: data.checkin,
+          p_checkout_date: data.checkout,
+          p_adults: data.adults,
+          p_children: data.kids,
+          p_requested_services: data.requestedInfo,
+          p_customer_message: data.otherDetails || null
+        })
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`Information request failed with status ${response.status}`);
+    }
+
+    return response.json();
   }
 
   document.addEventListener("reserva:rendered", () => {
@@ -465,7 +514,9 @@
   document.addEventListener("input", handleDateUpdate);
   document.addEventListener("change", handleDateUpdate);
 
-  document.addEventListener("click", (event) => {
+  let pendingSubmission = null;
+
+  document.addEventListener("click", async (event) => {
     const button = event.target.closest("#reserva-form #br-request-info");
     if (!button) return;
     const form = getForm();
@@ -477,10 +528,43 @@
     const outboundMessage = buildMessage(result.data);
     const whatsappUrl = buildWhatsAppUrl(outboundMessage);
     const emailUrl = buildEmailUrl(result.data, outboundMessage);
+    const text = messages[getLanguage()];
+    const originalLabel = button.textContent;
+    const whatsappWindow = window.open("", "_blank");
+    const submissionFingerprint = JSON.stringify(result.data);
+    if (pendingSubmission?.fingerprint !== submissionFingerprint) {
+      pendingSubmission = {
+        key: createSubmissionKey(),
+        fingerprint: submissionFingerprint
+      };
+    }
 
-    showStatus(messages[getLanguage()].openingChannels);
-    window.open(whatsappUrl, "_blank", "noopener,noreferrer");
+    button.disabled = true;
+    button.textContent = text.savingRequest;
+    showStatus(text.savingRequest);
+
+    try {
+      await saveInformationRequest(result.data, pendingSubmission.key);
+    } catch (error) {
+      console.error(error);
+      whatsappWindow?.close();
+      button.disabled = false;
+      button.textContent = originalLabel;
+      showStatus(text.saveFailed, 4500);
+      return;
+    }
+
+    showStatus(text.openingChannels);
+    if (whatsappWindow) {
+      whatsappWindow.opener = null;
+      whatsappWindow.location.href = whatsappUrl;
+    } else {
+      window.open(whatsappUrl, "_blank", "noopener,noreferrer");
+    }
     window.location.href = emailUrl;
     clearForm(form);
+    pendingSubmission = null;
+    button.disabled = false;
+    button.textContent = originalLabel;
   });
 })();

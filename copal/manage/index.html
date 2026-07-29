@@ -60,13 +60,14 @@
               <button class="nav-item active" data-view="overview" type="button"><span>⌂</span>Resumen</button>
               <button class="nav-item" data-view="whatsapp" type="button"><span>◉</span>WhatsApp</button>
               <button class="nav-item" data-view="services" type="button"><span>◇</span>Servicios</button>
+              <button class="nav-item" data-view="requests" type="button"><span>✉</span>Solicitudes</button>
               <button class="nav-item" data-view="bookings" type="button"><span>▤</span>Reservaciones</button>
               <button class="nav-item" data-view="send" type="button"><span>➤</span>Enviar información</button>
             </nav>
           </div>
           <div class="iteration-note">
-            <span>Versión 7 · Iteración 2</span>
-            <p>Catálogo bilingüe y precios versionados habilitados.</p>
+            <span>Versión 7 · Iteración 3</span>
+            <p>Solicitudes de información y seguimiento habilitados.</p>
           </div>
         </aside>
 
@@ -82,10 +83,10 @@
             </div>
 
             <div class="stats">
-              <article><span>Contactos de WhatsApp</span><strong id="whatsapp-count">—</strong><small id="whatsapp-default-summary">Cargando contactos</small></article>
+              <article><span>Solicitudes nuevas</span><strong id="request-new-count">—</strong><small id="request-new-summary">Cargando solicitudes</small></article>
+              <article><span>Solicitudes reservadas</span><strong id="request-booked-count">—</strong><small id="request-booked-summary">Cargando solicitudes</small></article>
               <article><span>Servicios activos</span><strong id="service-count">—</strong><small id="service-count-summary">Cargando catálogo</small></article>
-              <article><span>Reservaciones</span><strong>—</strong><small>Sin datos en esta iteración</small></article>
-              <article><span>Seguimientos pendientes</span><strong>—</strong><small>Sin datos en esta iteración</small></article>
+              <article><span>Contactos de WhatsApp</span><strong id="whatsapp-count">—</strong><small id="whatsapp-default-summary">Cargando contactos</small></article>
             </div>
 
             <div class="overview-grid">
@@ -94,6 +95,7 @@
                 <div class="quick-grid">
                   <button data-go="whatsapp" type="button"><span>◉</span><strong>WhatsApp</strong><small>Contactos y número principal</small></button>
                   <button data-go="services" type="button"><span>◇</span><strong>Servicios</strong><small>Catálogo y precios</small></button>
+                  <button data-go="requests" type="button"><span>✉</span><strong>Solicitudes</strong><small>Consultas y seguimiento</small></button>
                   <button data-go="bookings" type="button"><span>▤</span><strong>Reservaciones</strong><small>Estadías y precios acordados</small></button>
                   <button data-go="send" type="button"><span>➤</span><strong>Enviar información</strong><small>WhatsApp y correo</small></button>
                 </div>
@@ -158,6 +160,35 @@
             <p class="catalog-note">Los descuentos porcentuales, descuentos fijos y totales acordados se aplicarán a cada reservación sin alterar estas versiones del catálogo.</p>
           </section>
 
+          <section class="view" data-page="requests">
+            <div class="page-heading">
+              <div><p class="eyebrow">Seguimiento</p><h1>Solicitudes</h1><p class="muted">Consulta las solicitudes enviadas desde Reserva y actualiza su estado.</p></div>
+            </div>
+            <div class="toolbar requests-toolbar">
+              <input id="request-search" type="search" placeholder="Buscar por folio, nombre, correo o celular">
+              <select id="request-status-filter">
+                <option value="all">Todos los estados</option>
+                <option value="new">Nuevas</option>
+                <option value="booked">Reservadas</option>
+                <option value="not_converted">No convertidas</option>
+                <option value="cancelled">Canceladas</option>
+                <option value="closed">Cerradas</option>
+              </select>
+              <select id="request-service-filter">
+                <option value="all">Todos los servicios</option>
+                <option value="copal">Cebolletas Copal</option>
+                <option value="camping">Camping</option>
+                <option value="events">Eventos</option>
+              </select>
+            </div>
+            <p id="request-message" class="message" role="status" aria-live="polite"></p>
+            <article class="panel table-panel">
+              <div class="table-head requests"><span>Folio / visitante</span><span>Fechas</span><span>Servicios</span><span>Recibida</span><span>Estado</span><span></span></div>
+              <div id="request-list" class="request-list"></div>
+              <div id="request-empty" class="empty-state hidden"><span>✉</span><h2>No hay solicitudes registradas</h2><p>Las solicitudes enviadas desde Reserva aparecerán aquí.</p></div>
+            </article>
+          </section>
+
           <section class="view" data-page="bookings">
             <div class="page-heading">
               <div><p class="eyebrow">Operación</p><h1>Reservaciones</h1><p class="muted">Consulta huéspedes, fechas, servicios y los precios acordados.</p></div>
@@ -166,7 +197,7 @@
             <div class="toolbar bookings-toolbar"><input type="search" placeholder="Buscar folio o huésped" disabled><select disabled><option>Todos los estados</option></select><button type="button" disabled>Seleccionar fechas</button></div>
             <article class="panel table-panel">
               <div class="table-head bookings"><span>Folio / huésped</span><span>Fechas</span><span>Servicios</span><span>Total acordado</span><span>Estado</span></div>
-              <div class="empty-state"><span>▤</span><h2>No hay reservaciones</h2><p>Aquí se conservará toda la información y el precio establecido para cada reservación.</p><small>Disponible en la Iteración 3</small></div>
+              <div class="empty-state"><span>▤</span><h2>No hay reservaciones</h2><p>Aquí se conservará toda la información y el precio establecido para cada reservación.</p><small>Disponible en una iteración posterior</small></div>
             </article>
           </section>
 
@@ -288,6 +319,42 @@
         </div>
         <p id="service-history-message" class="message" role="status" aria-live="polite"></p>
         <div id="service-history-list" class="history-list"></div>
+      </section>
+    </div>
+
+    <div id="request-detail-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="request-detail-title">
+      <button class="modal-backdrop request-modal-backdrop" type="button" aria-label="Cerrar"></button>
+      <section class="modal-card request-modal-card">
+        <div class="modal-head">
+          <div><p class="eyebrow">Solicitud de información</p><h2 id="request-detail-title">Detalle de solicitud</h2></div>
+          <button id="close-request-detail" class="icon-button" type="button" aria-label="Cerrar">×</button>
+        </div>
+        <p id="request-detail-message" class="message" role="status" aria-live="polite"></p>
+        <div id="request-detail-content" class="request-detail-grid"></div>
+        <section class="request-status-panel">
+          <div>
+            <h3>Actualizar estado</h3>
+            <p id="request-status-help" class="muted"></p>
+          </div>
+          <label id="request-reason-label" class="hidden">Motivo
+            <select id="request-status-reason">
+              <option value="">Selecciona un motivo</option>
+              <option value="Price not accepted">Precio no aceptado</option>
+              <option value="No response after receiving information">Sin respuesta después de recibir información</option>
+              <option value="Dates unavailable">Fechas no disponibles</option>
+              <option value="Customer chose another option">El cliente eligió otra opción</option>
+              <option value="Other">Otro</option>
+            </select>
+          </label>
+          <label>Notas opcionales
+            <textarea id="request-status-notes" maxlength="1000" rows="3"></textarea>
+          </label>
+          <div id="request-status-actions" class="request-status-actions"></div>
+        </section>
+        <section class="request-history">
+          <h3>Historial de estado</h3>
+          <div id="request-history-list" class="history-list"></div>
+        </section>
       </section>
     </div>
   </body>
