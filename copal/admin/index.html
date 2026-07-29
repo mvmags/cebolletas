@@ -5,90 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex, nofollow">
     <meta name="theme-color" content="#183f32">
-    <title>Administración | Cebolletas Copal</title>
-    <link rel="stylesheet" href="./admin.css">
-    <script type="module" src="./admin.js"></script>
+    <meta http-equiv="refresh" content="0; url=../manage/">
+    <title>Gestión | Cebolletas Copal</title>
+    <script>
+      const destination = new URL("../manage/", window.location.href);
+      destination.search = window.location.search;
+      destination.hash = window.location.hash;
+      window.location.replace(destination.href);
+    </script>
   </head>
   <body>
-    <main id="login-view" class="login-shell">
-      <section class="login-brand">
-        <div class="brand-lockup">
-          <span class="logo-mark" aria-hidden="true">⌁</span>
-          <div><span>Cebolletas</span><strong>Copal</strong></div>
-        </div>
-        <div>
-          <p class="eyebrow light">Administración</p>
-          <h1>Las solicitudes, claras de un vistazo.</h1>
-          <p class="brand-copy">Consulta solicitudes, confirma estadías y evita reservaciones traslapadas.</p>
-        </div>
-        <small>Calvillo, Aguascalientes</small>
-      </section>
-
-      <section class="login-panel">
-        <form id="login-form" class="login-card">
-          <p class="eyebrow">Acceso administrativo</p>
-          <h2>Bienvenido</h2>
-          <p class="muted">Ingresa con la cuenta autorizada en Supabase.</p>
-          <label for="email">Correo electrónico</label>
-          <input id="email" name="email" type="email" autocomplete="username" required>
-          <label for="password">Contraseña</label>
-          <input id="password" name="password" type="password" autocomplete="current-password" required>
-          <button class="primary-button" type="submit">Ingresar</button>
-          <p id="login-error" class="message error" role="alert"></p>
-        </form>
-      </section>
-    </main>
-
-    <main id="dashboard-view" class="dashboard hidden">
-      <header class="topbar">
-        <a class="brand-lockup compact" href="../">
-          <span class="logo-mark" aria-hidden="true">⌁</span>
-          <div><span>Cebolletas</span><strong>Copal</strong></div>
-        </a>
-        <div class="account">
-          <span id="account-name">Administrador</span>
-          <button id="logout-button" class="text-button" type="button">Cerrar sesión</button>
-        </div>
-      </header>
-
-      <section class="page-heading">
-        <div>
-          <p class="eyebrow">Panel administrativo</p>
-          <h1>Solicitudes de reservación</h1>
-          <p class="muted">Información almacenada y protegida por Supabase.</p>
-        </div>
-        <button id="refresh-button" class="secondary-button" type="button">Actualizar</button>
-      </section>
-
-      <section class="stats" aria-label="Resumen">
-        <article><span>Total</span><strong id="stat-total">0</strong></article>
-        <article><span>Interesados</span><strong id="stat-interested">0</strong></article>
-        <article><span>Reservados</span><strong id="stat-booked">0</strong></article>
-      </section>
-
-      <section class="workspace">
-        <aside class="requests-panel">
-          <div class="controls">
-            <input id="search-input" type="search" placeholder="Buscar nombre, correo o folio">
-            <select id="status-filter" aria-label="Filtrar por estado">
-              <option value="all">Todos los estados</option>
-              <option value="interested">Interesados</option>
-              <option value="booked">Reservados</option>
-              <option value="cancelled">Cancelados</option>
-              <option value="archived">Archivados</option>
-            </select>
-          </div>
-          <p id="load-message" class="message" role="status"></p>
-          <div id="request-list" class="request-list"></div>
-        </aside>
-
-        <article id="request-detail" class="detail-card">
-          <div class="empty-state">
-            <h2>No hay solicitudes</h2>
-            <p>Cuando el formulario público almacene una solicitud, aparecerá aquí.</p>
-          </div>
-        </article>
-      </section>
-    </main>
+    <p>Redirigiendo al <a href="../manage/">centro de gestión</a>…</p>
   </body>
 </html>
