@@ -68,8 +68,8 @@
             </nav>
           </div>
           <div class="iteration-note">
-            <span>Versión 7 · Iteración 3</span>
-            <p>Solicitudes de información y seguimiento habilitados.</p>
+            <span>Versión 10 · Iteración 6</span>
+            <p>Atención, comunicación y escenarios de servicio.</p>
           </div>
         </aside>
 
@@ -416,6 +416,7 @@
           <button id="close-request-detail" class="icon-button" type="button" aria-label="Cerrar">×</button>
         </div>
         <p id="request-detail-message" class="message" role="status" aria-live="polite"></p>
+        <div id="request-contact-actions" class="request-contact-actions"></div>
         <div id="request-detail-content" class="request-detail-grid"></div>
         <section class="request-status-panel">
           <div>
@@ -441,6 +442,36 @@
           <h3>Historial de estado</h3>
           <div id="request-history-list" class="history-list"></div>
         </section>
+      </section>
+    </div>
+
+    <div id="calculator-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="calculator-title">
+      <button class="modal-backdrop calculator-modal-backdrop" type="button" aria-label="Cerrar"></button>
+      <section class="modal-card calculator-modal-card">
+        <div class="modal-head">
+          <div><p class="eyebrow">Escenario de servicio</p><h2 id="calculator-title">Calculadora</h2></div>
+          <button id="close-calculator" class="icon-button" type="button" aria-label="Cerrar">×</button>
+        </div>
+        <p id="calculator-version" class="muted"></p>
+        <div class="calculator-grid">
+          <label>Noches
+            <input id="calculator-nights" type="number" min="1" max="365" value="1">
+          </label>
+          <label>Adultos
+            <input id="calculator-adults" type="number" min="0" max="100" value="2">
+          </label>
+          <label>Niños de 3 a 12 años
+            <input id="calculator-children" type="number" min="0" max="100" value="0">
+          </label>
+          <label>Menores de 3 años
+            <input id="calculator-infants" type="number" min="0" max="100" value="0">
+          </label>
+        </div>
+        <p id="calculator-error" class="message error" role="alert"></p>
+        <div id="calculator-result" class="calculator-result"></div>
+        <div class="calculator-actions">
+          <button id="copy-calculator-result" class="secondary-button" type="button">Copiar escenario</button>
+        </div>
       </section>
     </div>
   </body>
