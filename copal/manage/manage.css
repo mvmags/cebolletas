@@ -55,6 +55,10 @@ input:focus, select:focus, textarea:focus { border-color: var(--forest); box-sha
 .account { display: flex; align-items: center; gap: 18px; font-size: .86rem; }
 .text-button, .menu-button { border: 0; color: #dbe7df; background: transparent; }
 .text-button { text-decoration: underline; }
+.refresh-button { border: 1px solid rgb(255 255 255 / 42%); border-radius: 8px; padding: 8px 12px; color: #fff; background: transparent; font-weight: 750; }
+.refresh-button:hover { border-color: #fff; background: rgb(255 255 255 / 9%); }
+.refresh-status { max-width: 190px; color: #dbe7df; font-size: .75rem; }
+.refresh-status.error { color: #ffd2ce; }
 .menu-button { display: none; padding: 8px; font-size: 1.4rem; }
 .app-layout { min-height: calc(100vh - 76px); display: grid; grid-template-columns: var(--sidebar) 1fr; }
 .sidebar { position: sticky; top: 76px; height: calc(100vh - 76px); display: flex; flex-direction: column; justify-content: space-between; padding: 28px 18px 22px; color: #dce6e0; background: var(--forest-deep); }
@@ -248,7 +252,9 @@ fieldset input { width: auto; min-height: auto; }
   .three-columns, .pricing-grid { grid-template-columns: 1fr 1fr; }
 }
 @media (max-width: 560px) {
-  .account > span { display: none; }
+  #account-name, .refresh-status { display: none; }
+  .account { gap: 8px; }
+  .refresh-button { padding-inline: 9px; }
   .brand-lockup.compact div span { display: none; }
   .page-heading { align-items: flex-start; flex-direction: column; }
   .stats, .quick-grid, .form-grid { grid-template-columns: 1fr; }

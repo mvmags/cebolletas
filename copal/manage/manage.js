@@ -23,6 +23,8 @@ const serviceHistoryMessage = $("#service-history-message");
 const requestDetailModal = $("#request-detail-modal");
 const requestDetailMessage = $("#request-detail-message");
 const requestMessage = $("#request-message");
+const refreshButton = $("#refresh-button");
+const refreshStatus = $("#refresh-status");
 let recipients = [];
 let defaultRecipientId = null;
 let services = [];
@@ -411,15 +413,50 @@ async function loadProfile(userId) {
   $("#account-name").textContent = `${data.display_name} · ${data.role}`;
 }
 
-async function startSession(session) {
-  if (!session?.user) return showApp(false);
+async function refreshManagementData({ announce = true } = {}) {
+  const openRequestId = requestDetailModal.classList.contains("hidden") ? null : detailRequestId;
+  refreshButton.disabled = true;
+  refreshButton.setAttribute("aria-busy", "true");
+  refreshButton.textContent = "Actualizando…";
+  refreshStatus.textContent = announce ? "Cargando datos…" : "";
+  refreshStatus.className = "refresh-status";
+
   try {
-    await loadProfile(session.user.id);
     await Promise.all([
       loadRecipients(),
       loadServices(),
       loadInformationRequests(),
     ]);
+
+    if (openRequestId) {
+      const refreshedRequest = informationRequests.find((item) => item.id === openRequestId);
+      if (refreshedRequest) {
+        renderRequestDetail(refreshedRequest);
+        await loadRequestHistory(refreshedRequest.id);
+      } else {
+        closeRequestDetail();
+      }
+    }
+
+    refreshStatus.textContent = announce ? "Datos actualizados." : "";
+  } catch (error) {
+    refreshStatus.textContent = announce
+      ? `No se pudo actualizar: ${friendlyError(error)}`
+      : "";
+    refreshStatus.className = "refresh-status error";
+    throw error;
+  } finally {
+    refreshButton.disabled = false;
+    refreshButton.removeAttribute("aria-busy");
+    refreshButton.textContent = "Actualizar";
+  }
+}
+
+async function startSession(session) {
+  if (!session?.user) return showApp(false);
+  try {
+    await loadProfile(session.user.id);
+    await refreshManagementData({ announce: false });
     showApp(true);
   } catch (error) {
     await supabase.auth.signOut();
@@ -862,6 +899,13 @@ $("#logout-button").addEventListener("click", async () => {
   loginForm.reset();
   openView("overview");
   showApp(false);
+});
+refreshButton.addEventListener("click", async () => {
+  try {
+    await refreshManagementData();
+  } catch {
+    // The refresh status contains the actionable error for the administrator.
+  }
 });
 document.querySelectorAll("[data-view]").forEach((button) => button.addEventListener("click", () => openView(button.dataset.view)));
 document.querySelectorAll("[data-go]").forEach((button) => button.addEventListener("click", () => openView(button.dataset.go)));
