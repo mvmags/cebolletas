@@ -221,6 +221,13 @@ fieldset input { width: auto; min-height: auto; }
 .service-modal-card { width: min(1080px, 100%); }
 .history-modal-card { width: min(760px, 100%); }
 .request-modal-card { width: min(920px, 100%); }
+.calculator-modal-card { width: min(720px, 100%); }
+.request-contact-actions { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 18px; }
+.contact-action { display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--line); border-radius: 9px; padding: 10px 14px; color: var(--ink); background: #fff; font-size: .8rem; font-weight: 800; text-decoration: none; }
+.contact-action:hover { border-color: var(--forest); }
+.contact-action.whatsapp { border-color: #1b8f54; color: #146f42; background: #eef9f2; }
+.contact-action.email { border-color: var(--forest); color: var(--forest); }
+.contact-action.calculate { color: var(--wine); }
 .request-detail-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-top: 22px; }
 .request-detail-item { border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; background: #faf8f4; }
 .request-detail-item.full { grid-column: 1 / -1; }
@@ -244,6 +251,14 @@ fieldset input { width: auto; min-height: auto; }
 .request-status-actions .danger:hover:not(:disabled) { color: #fff; background: var(--danger); }
 .request-history .history-item { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: start; }
 .history-actor { color: var(--muted); font-size: .72rem; text-align: right; }
+.calculator-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 22px; }
+.calculator-grid label { margin: 0; }
+.calculator-result { min-height: 120px; border: 1px solid var(--line); border-radius: 12px; margin-top: 14px; padding: 18px; background: #faf8f4; }
+.calculator-result-head { display: flex; justify-content: space-between; gap: 16px; border-bottom: 1px solid var(--line); margin-bottom: 14px; padding-bottom: 12px; }
+.calculator-result-head span { color: var(--muted); font-size: .75rem; font-weight: 800; text-transform: uppercase; }
+.calculator-result p { margin: 0; color: var(--muted); line-height: 1.55; }
+.calculator-result small { display: block; margin-top: 14px; color: var(--muted); }
+.calculator-actions { display: flex; justify-content: flex-end; margin-top: 14px; }
 .language-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; margin-top: 22px; }
 .language-grid fieldset { display: block; border: 1px solid var(--line); border-radius: 12px; margin: 0; padding: 18px; }
 .language-grid legend { padding: 0 6px; color: var(--forest); font-size: .75rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
@@ -333,6 +348,7 @@ fieldset input { width: auto; min-height: auto; }
   .form-grid .full { grid-column: auto; }
   .request-detail-grid { grid-template-columns: 1fr; }
   .request-detail-item.full { grid-column: auto; }
+  .calculator-grid { grid-template-columns: repeat(2, 1fr); }
   .request-status-panel > div:first-child { align-items: flex-start; flex-direction: column; gap: 5px; }
   .request-history .history-item { grid-template-columns: 1fr; }
   .history-actor { text-align: left; }

@@ -22,6 +22,7 @@ const serviceHistoryModal = $("#service-history-modal");
 const serviceHistoryMessage = $("#service-history-message");
 const requestDetailModal = $("#request-detail-modal");
 const requestDetailMessage = $("#request-detail-message");
+const calculatorModal = $("#calculator-modal");
 const requestMessage = $("#request-message");
 const refreshButton = $("#refresh-button");
 const refreshStatus = $("#refresh-status");
@@ -31,6 +32,8 @@ let services = [];
 let historyServiceId = null;
 let informationRequests = [];
 let detailRequestId = null;
+let calculatorService = null;
+let calculatorCopyText = "";
 let calendarMonth = null;
 
 const CATEGORY_LABELS = {
@@ -421,6 +424,48 @@ function formatMoney(cents) {
   }).format(Number(cents || 0) / 100);
 }
 
+function serviceShareText(service, version = currentVersion(service)) {
+  if (!version) return "";
+  const lines = [
+    version.name_es,
+    version.description_es,
+    "",
+    version.price_on_request
+      ? "Precio: cotizaci\u00f3n personalizada"
+      : `Precio base: ${formatMoney(version.base_price_cents)} ${PRICING_UNIT_LABELS[version.pricing_unit] || ""}`,
+    `Capacidad m\u00e1xima: ${version.max_occupancy} hu\u00e9spedes`,
+  ];
+  if (!version.price_on_request) {
+    lines.push(
+      `Hu\u00e9spedes incluidos: ${version.included_guests}`,
+      `Adulto adicional: ${formatMoney(version.adult_extra_cents)} por noche`,
+      `Ni\u00f1o adicional: ${formatMoney(version.child_extra_cents)} por noche`,
+      "Menores de 3 a\u00f1os: sin costo; cuentan para la capacidad"
+    );
+  }
+  if (version.amenities_es?.length) {
+    lines.push("", "Incluye:", ...version.amenities_es.map((item) => `- ${item}`));
+  }
+  return lines.join("\n");
+}
+
+async function copyText(text, successMessage) {
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch {
+    const textarea = document.createElement("textarea");
+    textarea.value = text;
+    textarea.setAttribute("readonly", "");
+    textarea.style.position = "fixed";
+    textarea.style.opacity = "0";
+    document.body.append(textarea);
+    textarea.select();
+    document.execCommand("copy");
+    textarea.remove();
+  }
+  setServiceMessage(successMessage, "success");
+}
+
 function currentVersion(service) {
   return service.service_versions?.find((version) => version.id === service.current_version_id)
     || service.service_versions?.[0]
@@ -486,6 +531,8 @@ function renderServices() {
       </div>
       <span class="status-badge ${service.is_active ? "active" : "inactive"}">${service.is_active ? "Activo" : "Inactivo"}</span>
       <div class="row-actions">
+        <button data-service-action="copy" data-id="${service.id}" type="button">Copiar</button>
+        <button data-service-action="calculate" data-id="${service.id}" type="button">Calcular</button>
         <button data-service-action="history" data-id="${service.id}" type="button">Historial</button>
         <button data-service-action="edit" data-id="${service.id}" type="button">Nueva versi\u00f3n</button>
         <button data-service-action="toggle" data-id="${service.id}" type="button">${service.is_active ? "Desactivar" : "Activar"}</button>
@@ -779,11 +826,206 @@ function renderRequestQuote(request) {
   </article>`;
 }
 
+function requestCommunicationText(request) {
+  const snapshot = request.quote_snapshot || {};
+  const serviceName =
+    snapshot.service?.name_es || requestServicesLabel(request);
+
+  const adults =
+    snapshot.occupancy?.adults ?? request.adults;
+
+  const children =
+    snapshot.occupancy?.children ?? request.children;
+
+  const infants =
+    snapshot.occupancy?.infants ?? request.infants ?? 0;
+
+  const checkin =
+    snapshot.stay?.checkin || request.checkin_date;
+
+  const checkout =
+    snapshot.stay?.checkout || request.checkout_date;
+
+  const total =
+    request.pricing_status === "automatic"
+      ? formatMoney(
+          snapshot.pricing?.estimated_total_cents ??
+            request.estimated_total_cents
+        )
+      : "Cotizaci\u00f3n personalizada";
+
+  return [
+    `Hola ${request.customer_name},`,
+    "",
+    `Te contactamos de Cebolletas Copal respecto a tu solicitud ${formatRequestCode(request.request_number)}.`,
+    `Servicio: ${serviceName}`,
+    `Fechas: ${formatDate(checkin)} - ${formatDate(checkout)}`,
+    `Hu\u00e9spedes: ${adults} adulto(s), ${children} ni\u00f1o(s), ${infants} menor(es) de 3 a\u00f1os`,
+    `Estimaci\u00f3n: ${total}`,
+    "",
+    "Quedamos atentos para ayudarte.",
+  ].join("\n");
+}
+
+function requestCalculatorService(request) {
+  const snapshot = request.quote_snapshot;
+  if (!snapshot?.pricing || !snapshot?.occupancy) return null;
+  return {
+    name: snapshot.service?.name_es || requestServicesLabel(request),
+    versionNumber: snapshot.service?.version_number || null,
+    priceOnRequest: request.pricing_status === "manual",
+    basePriceCents: snapshot.pricing.base_price_cents || 0,
+    includedGuests: snapshot.pricing.included_guests || 0,
+    maxOccupancy: snapshot.occupancy.max_occupancy || 0,
+    adultExtraCents: snapshot.pricing.adult_extra_cents || 0,
+    childExtraCents: snapshot.pricing.child_extra_cents || 0,
+  };
+}
+
+function catalogCalculatorService(service) {
+  const version = currentVersion(service);
+  if (!version) return null;
+  return {
+    name: version.name_es,
+    versionNumber: version.version_number,
+    priceOnRequest: version.price_on_request,
+    basePriceCents: version.base_price_cents,
+    includedGuests: version.included_guests,
+    maxOccupancy: version.max_occupancy,
+    adultExtraCents: version.adult_extra_cents,
+    childExtraCents: version.child_extra_cents,
+  };
+}
+
+function calculatorValues() {
+  return {
+    nights: Number($("#calculator-nights").value),
+    adults: Number($("#calculator-adults").value),
+    children: Number($("#calculator-children").value),
+    infants: Number($("#calculator-infants").value),
+  };
+}
+
+function renderCalculator() {
+  if (!calculatorService) return;
+  const values = calculatorValues();
+  const errorHost = $("#calculator-error");
+  const resultHost = $("#calculator-result");
+  errorHost.textContent = "";
+  calculatorCopyText = "";
+
+  if (Object.values(values).some((value) => !Number.isInteger(value) || value < 0) || values.nights < 1) {
+    errorHost.textContent = "Ingresa cantidades enteras v\u00e1lidas.";
+    resultHost.innerHTML = "";
+    return;
+  }
+
+  const totalGuests = values.adults + values.children + values.infants;
+  if (!totalGuests) {
+    errorHost.textContent = "Agrega al menos un hu\u00e9sped.";
+    resultHost.innerHTML = "";
+    return;
+  }
+  if (totalGuests > calculatorService.maxOccupancy) {
+    errorHost.textContent = `La capacidad m\u00e1xima es de ${calculatorService.maxOccupancy} hu\u00e9spedes. Este escenario tiene ${totalGuests}.`;
+    resultHost.innerHTML = "";
+    return;
+  }
+
+  const commonLines = [
+    calculatorService.name,
+    `Escenario: ${values.nights} noche(s)`,
+    `${values.adults} adulto(s), ${values.children} ni\u00f1o(s), ${values.infants} menor(es) de 3 a\u00f1os`,
+    `Ocupaci\u00f3n: ${totalGuests} de ${calculatorService.maxOccupancy}`,
+  ];
+
+  if (calculatorService.priceOnRequest) {
+    resultHost.innerHTML = `
+      <div class="calculator-result-head"><span>Resultado</span><strong>Cotizaci\u00f3n personalizada</strong></div>
+      <p>La capacidad es v\u00e1lida, pero este servicio no tiene una f\u00f3rmula autom\u00e1tica.</p>`;
+    calculatorCopyText = [...commonLines, "Resultado: cotizaci\u00f3n personalizada"].join("\n");
+    return;
+  }
+
+  const extraAdults = Math.max(values.adults - calculatorService.includedGuests, 0);
+  const remainingIncluded = Math.max(calculatorService.includedGuests - values.adults, 0);
+  const extraChildren = Math.max(values.children - remainingIncluded, 0);
+  const baseTotal = calculatorService.basePriceCents * values.nights;
+  const adultTotal = extraAdults * calculatorService.adultExtraCents * values.nights;
+  const childTotal = extraChildren * calculatorService.childExtraCents * values.nights;
+  const total = baseTotal + adultTotal + childTotal;
+  const rows = [
+    `<div><span>${values.nights} \u00d7 base por noche</span><strong>${formatMoney(baseTotal)}</strong></div>`,
+    extraAdults ? `<div><span>${extraAdults} adulto(s) extra \u00d7 ${values.nights}</span><strong>${formatMoney(adultTotal)}</strong></div>` : "",
+    extraChildren ? `<div><span>${extraChildren} ni\u00f1o(s) extra \u00d7 ${values.nights}</span><strong>${formatMoney(childTotal)}</strong></div>` : "",
+    values.infants ? `<div><span>${values.infants} menor(es) de 3 a\u00f1os</span><strong>${formatMoney(0)}</strong></div>` : "",
+  ].filter(Boolean);
+  resultHost.innerHTML = `
+    <div class="calculator-result-head"><span>Ocupaci\u00f3n</span><strong>${totalGuests} de ${calculatorService.maxOccupancy}</strong></div>
+    <div class="request-quote-rows">${rows.join("")}
+      <div class="total"><span>Total estimado</span><strong>${formatMoney(total)}</strong></div>
+    </div>
+    <small>Estimaci\u00f3n sujeta a disponibilidad y confirmaci\u00f3n.</small>`;
+  calculatorCopyText = [
+    ...commonLines,
+    `Base: ${formatMoney(baseTotal)}`,
+    ...(extraAdults ? [`Adultos adicionales: ${formatMoney(adultTotal)}`] : []),
+    ...(extraChildren ? [`Ni\u00f1os adicionales: ${formatMoney(childTotal)}`] : []),
+    ...(values.infants ? ["Menores de 3 a\u00f1os: sin costo"] : []),
+    `Total estimado: ${formatMoney(total)}`,
+    "Sujeto a disponibilidad y confirmaci\u00f3n.",
+  ].join("\n");
+}
+
+function openCalculator(service, initialValues = null) {
+  calculatorService = service;
+  if (!service) return;
+  $("#calculator-title").textContent = `Calculadora \u00b7 ${service.name}`;
+  $("#calculator-version").textContent = `Versi\u00f3n ${service.versionNumber || "\u2014"} \u00b7 capacidad m\u00e1xima ${service.maxOccupancy}`;
+  $("#calculator-nights").value = initialValues?.nights || 1;
+  $("#calculator-adults").value = initialValues?.adults ?? 2;
+  $("#calculator-children").value = initialValues?.children ?? 0;
+  $("#calculator-infants").value = initialValues?.infants ?? 0;
+  calculatorModal.classList.remove("hidden");
+  renderCalculator();
+}
+
+function closeCalculator() {
+  calculatorService = null;
+  calculatorCopyText = "";
+  calculatorModal.classList.add("hidden");
+}
+
 function renderRequestDetail(request) {
   detailRequestId = request.id;
   $("#request-detail-title").textContent = `${formatRequestCode(request.request_number)} \u00b7 ${request.customer_name}`;
   requestDetailMessage.textContent = "";
   requestDetailMessage.className = "message";
+  const requestCalculator = requestCalculatorService(request);
+
+  $("#request-contact-actions").innerHTML = `
+    <button
+      class="contact-action whatsapp"
+      data-request-contact-action="whatsapp"
+      type="button"
+    >
+      Abrir WhatsApp
+    </button>
+
+    <button
+      class="contact-action email"
+      data-request-contact-action="email"
+      type="button"
+    >
+      Enviar correo
+    </button>
+
+    ${
+      requestCalculator
+        ? '<button class="contact-action calculate" data-request-contact-action="calculate" type="button">Calcular escenario</button>'
+        : ""
+    }
+  `;
   $("#request-detail-content").innerHTML = `
     <article class="request-detail-item"><span>Estado</span><strong class="status-badge ${request.status.replace("_", "-")}">${REQUEST_STATUS_LABELS[request.status]}</strong></article>
     <article class="request-detail-item"><span>Recibida</span><strong>${formatDateTime(request.submitted_at)}</strong></article>
@@ -1028,6 +1270,14 @@ $("#service-list").addEventListener("click", async (event) => {
   const service = services.find((item) => item.id === button.dataset.id);
   if (!service) return;
   const action = button.dataset.serviceAction;
+  if (action === "copy") {
+    copyText(serviceShareText(service), "Detalles del servicio copiados.");
+    return;
+  }
+  if (action === "calculate") {
+    openCalculator(catalogCalculatorService(service));
+    return;
+  }
   if (action === "edit") return openServiceModal(service);
   if (action === "history") return openServiceHistory(service);
   if (action === "delete" && !window.confirm(`\u00bfEliminar ${currentVersion(service)?.name_es}? Esta acci\u00f3n elimina todo su historial.`)) return;
@@ -1101,6 +1351,61 @@ $("#request-status-actions").addEventListener("click", (event) => {
   if (button && !button.disabled) changeRequestStatus(button);
 });
 
+$("#request-contact-actions").addEventListener("click", (event) => {
+  const button = event.target.closest("[data-request-contact-action]");
+  if (!button) return;
+
+  const request = informationRequests.find(
+    (item) => item.id === detailRequestId
+  );
+
+  if (!request) return;
+
+  const action = button.dataset.requestContactAction;
+  const message = requestCommunicationText(request);
+
+  if (action === "whatsapp") {
+    const phone = request.customer_cellphone.replace(/\D/g, "");
+
+    window.open(
+      `https://wa.me/${encodeURIComponent(phone)}?text=${encodeURIComponent(message)}`,
+      "_blank",
+      "noopener"
+    );
+
+    return;
+  }
+
+  if (action === "email") {
+    const subject =
+      `Cebolletas Copal \u00b7 ${formatRequestCode(request.request_number)}`;
+
+    window.location.href =
+      `mailto:${encodeURIComponent(request.customer_email)}` +
+      `?subject=${encodeURIComponent(subject)}` +
+      `&body=${encodeURIComponent(message)}`;
+
+    return;
+  }
+
+  if (action !== "calculate") return;
+
+  const service = requestCalculatorService(request);
+  if (!service) return;
+
+  openCalculator(service, {
+    nights: request.quote_snapshot?.stay?.nights || 1,
+    adults:
+      request.quote_snapshot?.occupancy?.adults ?? request.adults,
+    children:
+      request.quote_snapshot?.occupancy?.children ?? request.children,
+    infants:
+      request.quote_snapshot?.occupancy?.infants ??
+      request.infants ??
+      0,
+  });
+});
+
 $("#logout-button").addEventListener("click", async () => {
   await supabase.auth.signOut();
   loginForm.reset();
@@ -1128,6 +1433,18 @@ $("#close-service-history").addEventListener("click", closeServiceHistory);
 $(".history-modal-backdrop").addEventListener("click", closeServiceHistory);
 $("#close-request-detail").addEventListener("click", closeRequestDetail);
 $(".request-modal-backdrop").addEventListener("click", closeRequestDetail);
+$("#close-calculator").addEventListener("click", closeCalculator);
+$(".calculator-modal-backdrop").addEventListener("click", closeCalculator);
+["#calculator-nights", "#calculator-adults", "#calculator-children", "#calculator-infants"].forEach((selector) => {
+  $(selector).addEventListener("input", renderCalculator);
+});
+$("#copy-calculator-result").addEventListener("click", async (event) => {
+  if (!calculatorCopyText) return;
+  const button = event.currentTarget;
+  await copyText(calculatorCopyText, "");
+  button.textContent = "Escenario copiado";
+  window.setTimeout(() => { button.textContent = "Copiar escenario"; }, 1800);
+});
 $("#service-price-on-request").addEventListener("change", updatePricingFieldState);
 ["#service-base-price", "#service-included-guests", "#service-max-occupancy", "#service-adult-extra", "#service-child-extra"].forEach((selector) => {
   $(selector).addEventListener("input", updatePricingPreview);
@@ -1161,6 +1478,7 @@ window.addEventListener("keydown", (event) => {
     closeServiceModal();
     closeServiceHistory();
     closeRequestDetail();
+    closeCalculator();
   }
 });
 
