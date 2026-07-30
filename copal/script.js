@@ -34,8 +34,8 @@ const copy = {
     },
     requestedInfo: "Selecciona un servicio",
     servicesLoading: "Cargando servicios disponibles\u2026",
-    action: "Solicitar Informaci\u00f3n",
-    note: "Al continuar, guardaremos tu solicitud y se abrir\u00e1n WhatsApp (+52 449 102 8878) y tu aplicaci\u00f3n de correo con la informaci\u00f3n preparada. T\u00fa confirmar\u00e1s cada env\u00edo."
+    action: "Solicitar Informaci\u00f3n/Reservar",
+    note: "Al continuar, guardaremos tu solicitud y te mostraremos el ID para dar seguimiento. Nos pondremos en contacto contigo a la brevedad."
   },
   en: {
     eyebrow: "Glamping in Calvillo \u00b7 Aguascalientes, Mexico",
@@ -71,8 +71,8 @@ const copy = {
     },
     requestedInfo: "Select one service",
     servicesLoading: "Loading available services\u2026",
-    action: "Request info",
-    note: "Continuing will save your request and open WhatsApp and your email application with the prepared information. You will confirm each send."
+    action: "Request Information/Book",
+    note: "Continuing will save your request and display its ID for follow-up. We will contact you shortly."
   }
 };
 
