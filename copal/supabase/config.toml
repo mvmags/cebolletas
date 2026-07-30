@@ -1,0 +1,4 @@
+project_id = "cebolletas-copal"
+
+[functions.notify-new-request]
+verify_jwt = false
