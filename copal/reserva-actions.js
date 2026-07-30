@@ -3,22 +3,10 @@
 (function initReservaActions() {
   "use strict";
 
-  const RESERVA_CONTACT = Object.freeze({
-    whatsapp: "524491028878",
-    email: "cebolletascalvillo@gmail.com",
-    emailCc: "elcrio88@gmail.com"
-  });
-
   const SUPABASE = Object.freeze({
     url: "https://myqaotknkriuhdssbzlz.supabase.co",
     publishableKey: "sb_publishable_XuDt5xNF3EzE0K2TSE9QCg_hnDMWsVN"
   });
-
-//  const RESERVA_CONTACT = Object.freeze({
-//    whatsapp: "524491576284",
-//    email: "cebolletascalvillo@gmail.com",
-//    emailCc: "thecoyoteco@gmail.com"
-//  });
 
   const limits = Object.freeze({
     adults: 20,
@@ -52,33 +40,12 @@
       requiredInfo: "Selecciona al menos una opci\u00f3n.",
       longOther: "El texto es demasiado largo (m\u00e1ximo 1000 caracteres).",
       savingRequest: "Guardando tu solicitud\u2026",
-      openingChannels: "Solicitud guardada. Abriendo WhatsApp y email\u2026",
+      requestReceived: "Hemos recibido tu solicitud y a la brevedad nos pondremos en contacto",
+      requestId: "ID de solicitud",
+      closeConfirmation: "Cerrar",
       saveFailed: "No fue posible guardar la solicitud. Intenta nuevamente.",
-      automaticAction: "Solicitar reservaci\u00f3n",
-      manualAction: "Solicitar cotizaci\u00f3n",
-      infoSubject: "Solicitud de informaci\u00f3n",
-      labels: {
-        staySummary: "Resumen de estancia",
-        checkin: "Fecha llegada",
-        checkout: "Fecha salida",
-        nights: "Noches",
-        weekendNights: "Noches de fin de semana",
-        weekdayNights: "Noches entre semana",
-        adults: "Adultos",
-        kids: "Ni\u00f1os",
-        infants: "Menores de 3 a\u00f1os",
-        name: "Nombre",
-        email: "Email",
-        cell: "Celular",
-        requestedInfo: "Servicio",
-        estimatedTotal: "Total estimado",
-        otherDetails: "Otra informaci\u00f3n"
-      },
-      infoOptions: {
-        copal: "Hospedarse en Cebolletas Copal",
-        camping: "Acampar",
-        events: "Eventos"
-      }
+      automaticAction: "Solicitar Informaci\u00f3n/Reservar",
+      manualAction: "Solicitar cotizaci\u00f3n"
     },
     en: {
       requiredCheckin: "Check-in is required.",
@@ -101,33 +68,12 @@
       requiredInfo: "Select at least one option.",
       longOther: "Text is too long (maximum 1000 characters).",
       savingRequest: "Saving your request\u2026",
-      openingChannels: "Request saved. Opening WhatsApp and email\u2026",
+      requestReceived: "We have received your request and will contact you shortly",
+      requestId: "Request ID",
+      closeConfirmation: "Close",
       saveFailed: "We could not save your request. Please try again.",
-      automaticAction: "Request booking",
-      manualAction: "Request quotation",
-      infoSubject: "Information request",
-      labels: {
-        staySummary: "Stay summary",
-        checkin: "Check-in",
-        checkout: "Checkout",
-        nights: "Nights",
-        weekendNights: "Weekend nights",
-        weekdayNights: "Weekday nights",
-        adults: "Adults",
-        kids: "Kids",
-        infants: "Children under 3",
-        name: "Name",
-        email: "Email",
-        cell: "Cellphone",
-        requestedInfo: "Service",
-        estimatedTotal: "Estimated total",
-        otherDetails: "Other information"
-      },
-      infoOptions: {
-        copal: "Staying at Cebolletas Copal",
-        camping: "Camping",
-        events: "Events"
-      }
+      automaticAction: "Request Information/Book",
+      manualAction: "Request quotation"
     }
   };
 
@@ -511,44 +457,6 @@
     return { isValid: true, data };
   }
 
-  function buildMessage(data) {
-    const text = messages[getLanguage()];
-    const labels = text.labels;
-    const quote = calculateQuote(data.service, data.stay, data.adults, data.kids, data.infants);
-    const lines = [
-      `${labels.staySummary}:`,
-      `${labels.checkin}: ${data.checkin}`,
-      `${labels.checkout}: ${data.checkout}`,
-      `${labels.nights}: ${data.stay.nights}`,
-      `${labels.weekendNights}: ${data.stay.weekendNights}`,
-      `${labels.weekdayNights}: ${data.stay.weekdayNights}`,
-      "",
-      `${labels.adults}: ${data.adults}`,
-      `${labels.kids}: ${data.kids}`,
-      `${labels.infants}: ${data.infants}`,
-      `${labels.name}: ${data.name}`,
-      `${labels.email}: ${data.email}`,
-      `${labels.cell}: ${data.cell}`,
-      `${labels.requestedInfo}: ${localized(data.service, "name")}`
-    ];
-
-    if (quote && !quote.manual && !quote.capacityExceeded) {
-      lines.push(`${labels.estimatedTotal}: ${formatMoney(quote.total)}`);
-    } else if (quote?.manual) {
-      lines.push(`${labels.estimatedTotal}: ${getLanguage() === "es" ? "Cotizaci\u00f3n personalizada" : "Custom quotation"}`);
-    }
-
-    if (data.otherDetails) {
-      lines.push(`${labels.otherDetails}: ${data.otherDetails}`);
-    }
-    return lines.join("\n");
-  }
-
-  function buildSubject(data) {
-    const text = messages[getLanguage()];
-    return `${getLocalDate()} | ${text.infoSubject} - ${data.name}`;
-  }
-
   function showStatus(message, duration = 1800) {
     document.querySelector(".reserva-status-overlay")?.remove();
     const overlay = document.createElement("div");
@@ -560,6 +468,52 @@
     overlay.appendChild(modal);
     document.body.appendChild(overlay);
     window.setTimeout(() => overlay.remove(), duration);
+  }
+
+  function formatRequestNumber(requestNumber) {
+    return `SOL-${String(requestNumber).padStart(6, "0")}`;
+  }
+
+  function showConfirmation(requestNumber) {
+    document.querySelector(".reserva-status-overlay")?.remove();
+    const text = messages[getLanguage()];
+    const overlay = document.createElement("div");
+    const modal = document.createElement("div");
+    const message = document.createElement("p");
+    const reference = document.createElement("p");
+    const requestId = document.createElement("strong");
+    const closeButton = document.createElement("button");
+
+    overlay.className = "reserva-status-overlay";
+    overlay.setAttribute("role", "dialog");
+    overlay.setAttribute("aria-modal", "true");
+    overlay.setAttribute("aria-labelledby", "reserva-confirmation-message");
+    modal.className = "reserva-status-modal reserva-confirmation-modal";
+    message.id = "reserva-confirmation-message";
+    message.className = "reserva-confirmation-message";
+    message.textContent = text.requestReceived;
+    reference.className = "reserva-confirmation-reference";
+    reference.textContent = `${text.requestId}: `;
+    requestId.textContent = formatRequestNumber(requestNumber);
+    closeButton.className = "reserva-confirmation-close";
+    closeButton.type = "button";
+    closeButton.textContent = text.closeConfirmation;
+
+    const close = () => {
+      document.removeEventListener("keydown", handleKeydown);
+      overlay.remove();
+    };
+    const handleKeydown = (event) => {
+      if (event.key === "Escape") close();
+    };
+
+    reference.appendChild(requestId);
+    modal.append(message, reference, closeButton);
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+    closeButton.addEventListener("click", close);
+    document.addEventListener("keydown", handleKeydown);
+    closeButton.focus();
   }
 
   function configureDateLimits(form) {
@@ -581,22 +535,6 @@
     updateStaySummary(form);
     renderServices(form);
     updateQuoteSummary(form);
-  }
-
-  function buildWhatsAppUrl(message) {
-    return (
-      `https://wa.me/${RESERVA_CONTACT.whatsapp}` +
-      `?text=${encodeURIComponent(message)}`
-    );
-  }
-
-  function buildEmailUrl(data, message) {
-    const query = new URLSearchParams({
-      cc: RESERVA_CONTACT.emailCc,
-      subject: buildSubject(data),
-      body: message
-    });
-    return `mailto:${RESERVA_CONTACT.email}?${query.toString()}`;
   }
 
   function createSubmissionKey() {
@@ -644,7 +582,18 @@
       throw new Error(`Information request failed with status ${response.status}`);
     }
 
-    return response.json();
+    const payload = await response.json();
+    const savedRequest = Array.isArray(payload) ? payload[0] : payload;
+    const requestNumber = Number(savedRequest?.request_number);
+
+    if (!Number.isSafeInteger(requestNumber) || requestNumber < 1) {
+      throw new Error("Information request response did not include a valid request number");
+    }
+
+    return {
+      ...savedRequest,
+      request_number: requestNumber
+    };
   }
 
   document.addEventListener("reserva:rendered", () => {
@@ -714,14 +663,8 @@
     const result = validate(form);
     if (!result.isValid) return;
 
-    // Build the outbound content once so WhatsApp and email receive the exact
-    // same validated stay breakdown.
-    const outboundMessage = buildMessage(result.data);
-    const whatsappUrl = buildWhatsAppUrl(outboundMessage);
-    const emailUrl = buildEmailUrl(result.data, outboundMessage);
     const text = messages[getLanguage()];
     const originalLabel = button.textContent;
-    const whatsappWindow = window.open("", "_blank");
     const submissionFingerprint = JSON.stringify(result.data);
     if (pendingSubmission?.fingerprint !== submissionFingerprint) {
       pendingSubmission = {
@@ -734,28 +677,21 @@
     button.textContent = text.savingRequest;
     showStatus(text.savingRequest);
 
+    let savedRequest;
     try {
-      await saveInformationRequest(result.data, pendingSubmission.key);
+      savedRequest = await saveInformationRequest(result.data, pendingSubmission.key);
     } catch (error) {
       console.error(error);
-      whatsappWindow?.close();
       button.disabled = false;
       button.textContent = originalLabel;
       showStatus(text.saveFailed, 4500);
       return;
     }
 
-    showStatus(text.openingChannels);
-    if (whatsappWindow) {
-      whatsappWindow.opener = null;
-      whatsappWindow.location.href = whatsappUrl;
-    } else {
-      window.open(whatsappUrl, "_blank", "noopener,noreferrer");
-    }
-    window.location.href = emailUrl;
     clearForm(form);
     pendingSubmission = null;
     button.disabled = false;
     button.textContent = originalLabel;
+    showConfirmation(savedRequest.request_number);
   });
 })();
