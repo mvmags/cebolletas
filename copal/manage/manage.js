@@ -77,6 +77,8 @@ const REQUEST_REASON_LABELS = {
   "Request submitted": "Solicitud enviada",
 };
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 function showApp(show) {
   loginView.classList.toggle("hidden", show);
   appView.classList.toggle("hidden", !show);
@@ -97,6 +99,21 @@ function openView(name) {
   });
   closeMenu();
   window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function linkedRequestId() {
+  const requestId = new URL(window.location.href).searchParams.get("request");
+  return requestId && UUID_PATTERN.test(requestId) ? requestId : null;
+}
+
+function syncRequestUrl(requestId = null) {
+  const url = new URL(window.location.href);
+  if (requestId) {
+    url.searchParams.set("request", requestId);
+  } else {
+    url.searchParams.delete("request");
+  }
+  window.history.replaceState({}, "", url);
 }
 
 function setRecipientMessage(text = "", type = "") {
@@ -633,6 +650,7 @@ async function startSession(session) {
     await loadProfile(session.user.id);
     await refreshManagementData({ announce: false });
     showApp(true);
+    await openDeepLinkedRequest();
   } catch (error) {
     await supabase.auth.signOut();
     loginError.textContent = friendlyError(error);
@@ -847,7 +865,7 @@ function requestCommunicationText(request) {
     snapshot.stay?.checkout || request.checkout_date;
 
   const total =
-    request.pricing_status === "automatic"
+    request.pricing_status === "estimated"
       ? formatMoney(
           snapshot.pricing?.estimated_total_cents ??
             request.estimated_total_cents
@@ -1075,6 +1093,7 @@ async function loadRequestHistory(requestId) {
 }
 
 async function openRequestDetail(request) {
+  syncRequestUrl(request.id);
   renderRequestDetail(request);
   requestDetailModal.classList.remove("hidden");
   $("#request-history-list").innerHTML = '<p class="muted">Cargando historial\u2026</p>';
@@ -1089,6 +1108,24 @@ async function openRequestDetail(request) {
 function closeRequestDetail() {
   detailRequestId = null;
   requestDetailModal.classList.add("hidden");
+  syncRequestUrl();
+}
+
+async function openDeepLinkedRequest() {
+  const requestId = linkedRequestId();
+  if (!requestId) return;
+
+  openView("requests");
+  const request = informationRequests.find((item) => item.id === requestId);
+  if (!request) {
+    setRequestMessage("La solicitud vinculada no existe o ya no está disponible.", "error");
+    syncRequestUrl();
+    return;
+  }
+
+  calendarMonth = monthStart(request.checkin_date);
+  renderInformationRequests();
+  await openRequestDetail(request);
 }
 
 async function changeRequestStatus(button) {
