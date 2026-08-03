@@ -78,8 +78,11 @@ footer > p { display: block; margin: 0; font-size: 10px; font-weight: 700; lette
 .feature-caption span { color: #77796e; font-size: 12px; }
 .gallery-feature figure { min-height: 520px; margin: 0; overflow: hidden; background: var(--green); }
 .gallery-feature figure img { width: 100%; height: min(63vh, 690px); min-height: 520px; display: block; object-fit: cover; }
-.gallery-feature-button { width: 100%; display: block; padding: 0; border: 0; background: transparent; cursor: zoom-in; }
+.gallery-feature-button { position: relative; width: 100%; display: block; padding: 0; border: 0; background: transparent; cursor: zoom-in; overflow: hidden; }
+.gallery-feature-button::after { content: "\2315  Haz clic para ampliar"; position: absolute; right: 16px; bottom: 16px; z-index: 1; display: inline-flex; align-items: center; min-height: 34px; padding: 8px 12px; border: 1px solid rgba(255,255,255,.55); border-radius: 999px; background: rgba(20,24,17,.78); color: #fff; box-shadow: 0 3px 12px rgba(0,0,0,.25); font-size: 10px; font-weight: 800; letter-spacing: .04em; line-height: 1; pointer-events: none; }
+html[lang="en"] .gallery-feature-button::after { content: "\2315  Click to enlarge"; }
 .gallery-feature-button:focus-visible { outline: 3px solid var(--wine); outline-offset: -3px; }
+body.gallery-open { overflow: hidden; }
 .gallery-lightbox[hidden] { display: none; }
 .gallery-lightbox { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; padding: clamp(12px, 3vw, 38px); }
 .gallery-lightbox-backdrop { position: absolute; inset: 0; background: rgba(14, 17, 12, .94); }
@@ -199,6 +202,8 @@ footer > p { display: block; margin: 0; font-size: 10px; font-weight: 700; lette
   .feature-caption p { margin-bottom: 18px; }
   .gallery-feature figure, .gallery-feature figure img { min-height: 0; }
   .gallery-feature figure img { height: auto; aspect-ratio: 4 / 3; }
+  .gallery-feature-button::after { content: "\2315  Toca para ampliar"; right: 10px; bottom: 10px; min-height: 32px; padding: 7px 10px; font-size: 9px; }
+  html[lang="en"] .gallery-feature-button::after { content: "\2315  Tap to enlarge"; }
   .gallery-lightbox { padding: 12px; }
   .gallery-lightbox-panel { height: 100%; }
   .gallery-lightbox-header { min-height: 62px; }
