@@ -1,0 +1,34 @@
+name: Update gallery manifest
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "copal/assets/gallery/**"
+
+permissions:
+  contents: write
+
+jobs:
+  update-manifest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Generate gallery manifest
+        run: node scripts/generate-gallery-manifest.mjs
+
+      - name: Commit generated manifest
+        run: |
+          if git diff --quiet -- copal/gallery-manifest.js; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add copal/gallery-manifest.js
+          git commit -m "chore(copal): update gallery manifest"
+          git push
