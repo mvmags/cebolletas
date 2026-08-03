@@ -3,7 +3,7 @@ const copy = {
     eyebrow: "Glamping en Calvillo \u00b7 Aguascalientes, M\u00e9xico",
     title: "Descansa entre<br>\u00e1rboles,<br>senderos y cielo<br>abierto.",
     nav: { home: "Inicio", place: "El lugar", gallery: "Galer\u00eda", booking: "Reserva" },
-    parent: " ",
+    parent: "Es parte del desarrollo particular Cebolletas.",
     menu: "Abrir men\u00fa",
     placeEyebrow: "El lugar",
     placeTitle: "Lo esencial para disfrutar la naturaleza.",
@@ -16,6 +16,11 @@ const copy = {
     galleryEyebrow: "Galer\u00eda", galleryTitle: "Conoce cada rinc\u00f3n.",
     galleryIntro: "Im\u00e1genes temporales para definir la estructura de la galer\u00eda. Pr\u00f3ximamente ser\u00e1n reemplazadas por la sesi\u00f3n fotogr\u00e1fica final.",
     photoTour: "Recorrido fotogr\u00e1fico", temporary: "Fotograf\u00eda temporal",
+    openAlbum: "Abrir galer\u00eda",
+    closeAlbum: "Cerrar galer\u00eda",
+    previousPhoto: "Fotograf\u00eda anterior",
+    nextPhoto: "Fotograf\u00eda siguiente",
+    albumSize: count => `${count} ${count === 1 ? "fotograf\u00eda" : "fotograf\u00edas"}`,
     bookingEyebrow: "Reserva", bookingTitle: "Cu\u00e9ntanos sobre tu visita.",
     bookingText: "Comparte tus datos y el plan que tienes en mente. Te contactaremos para revisar disponibilidad y ayudarte a preparar tu estancia.",
     fields: {
@@ -53,6 +58,11 @@ const copy = {
     galleryEyebrow: "Gallery", galleryTitle: "Explore every corner.",
     galleryIntro: "Temporary images used to define the gallery structure. They will be replaced by the final photo session.",
     photoTour: "Photo tour", temporary: "Temporary photograph",
+    openAlbum: "Open gallery",
+    closeAlbum: "Close gallery",
+    previousPhoto: "Previous photograph",
+    nextPhoto: "Next photograph",
+    albumSize: count => `${count} ${count === 1 ? "photograph" : "photographs"}`,
     bookingEyebrow: "Booking", bookingTitle: "Tell us about your visit.",
     bookingText: "Share your details and the experience you have in mind. We will contact you to review availability and help prepare your stay.",
     fields: {
@@ -76,19 +86,45 @@ const copy = {
   }
 };
 
-const photos = [
-  ["interior-1.jpeg", "Interior", "Interior"],
-  ["interior-2.jpeg", "\u00c1rea de descanso", "Resting area"],
-  ["interior-3.jpeg", "Rec\u00e1mara", "Bedroom"],
-  ["terraza-1.jpeg", "Terraza", "Terrace"],
-  ["terraza-2.jpeg", "Vista exterior", "Outdoor view"],
-  ["paisaje.jpeg", "El paisaje", "The landscape"]
+const gallerySectionDefinitions = [
+  {
+    folder: "interior",
+    labels: { es: "Interior", en: "Interior" }
+  },
+  {
+    folder: "rest-area",
+    labels: { es: "\u00c1rea de descanso", en: "Resting area" }
+  },
+  {
+    folder: "bedroom",
+    labels: { es: "Rec\u00e1mara", en: "Bedroom" }
+  },
+  {
+    folder: "terrace",
+    labels: { es: "Terraza", en: "Terrace" }
+  },
+  {
+    folder: "outdoor-view",
+    labels: { es: "Vista exterior", en: "Outdoor view" }
+  },
+  {
+    folder: "landscape",
+    labels: { es: "El paisaje", en: "The landscape" }
+  }
 ];
+
+const gallerySections = gallerySectionDefinitions.map(section => ({
+  ...section,
+  images: window.galleryImageManifest?.[section.folder] || []
+})).filter(section => section.images.length > 0);
 
 let lang = "es";
 let activeView = "home";
 let sectionObserver;
 let activePhoto = 0;
+let activeAlbumPhoto = 0;
+let galleryReturnFocus = null;
+let galleryTouchStartX = null;
 const region = document.querySelector(".content-region");
 const nav = document.querySelector("nav");
 const menuButton = document.querySelector(".menu-button");
@@ -157,7 +193,7 @@ function home(t) {
     <img src="./assets/copal-hero.webp" alt="Cebolletas Copal y su entorno natural">
     <div class="hero-overlay"></div>
     <div class="hero-copy"><p>${t.eyebrow}</p><h1 id="hero-title">${t.title}</h1></div>
-    <div class="hero-identity"><img src="./assets/Both_logos_white_650w.png" alt="Cebolletas Copal"><p>${t.parent}</p></div>
+    <div class="hero-identity"><img src="./assets/logo-copal.png" alt="Cebolletas Copal"><p>${t.parent}</p></div>
   </section></div>`;
 }
 
@@ -173,16 +209,41 @@ function place(t) {
 }
 
 function gallery(t) {
-  const thumbs = photos.map((p, i) => `<button type="button" data-photo="${i}" class="${i === activePhoto ? "active" : ""}">
-    <img src="./assets/${p[0]}" alt=""><span>${p[lang === "es" ? 1 : 2]}</span>
+  const thumbs = gallerySections.map((section, i) => `<button type="button" data-photo="${i}" class="${i === activePhoto ? "active" : ""}">
+    <img src="${galleryImagePath(section, 0)}" alt=""><span>${section.labels[lang]}</span>
   </button>`).join("");
-  const p = photos[activePhoto];
+  const section = gallerySections[activePhoto];
+  const sectionLabel = section.labels[lang];
   return `<section class="gallery-section" id="gallery" aria-labelledby="gallery-title">
     <div class="gallery-heading"><div><p class="section-label">${t.galleryEyebrow}</p><h2 id="gallery-title">${t.galleryTitle}</h2></div><p>${t.galleryIntro}</p></div>
     <div class="photo-tour"><h3>${t.photoTour}</h3><div class="thumbnail-strip">${thumbs}</div></div>
-    <div class="gallery-feature"><div class="feature-caption"><p>${String(activePhoto + 1).padStart(2, "0")} / 06</p><h3>${p[lang === "es" ? 1 : 2]}</h3><span>${t.temporary}</span></div>
-    <figure><img src="./assets/${p[0]}" alt="${p[lang === "es" ? 1 : 2]}"></figure></div>
+    <div class="gallery-feature"><div class="feature-caption"><p>${gallerySectionCounter()}</p><h3>${sectionLabel}</h3><span>${t.albumSize(section.images.length)}</span></div>
+    <figure><button class="gallery-feature-button" type="button" data-open-gallery aria-label="${t.openAlbum}: ${sectionLabel}"><img src="${galleryImagePath(section, 0)}" alt="${sectionLabel}"></button></figure></div>
+    ${galleryLightbox(t, section)}
   </section>`;
+}
+
+function galleryImagePath(section, imageIndex) {
+  return `./assets/gallery/${section.folder}/${section.images[imageIndex]}`;
+}
+
+function gallerySectionCounter() {
+  return `${String(activePhoto + 1).padStart(2, "0")} / ${String(gallerySections.length).padStart(2, "0")}`;
+}
+
+function galleryLightbox(t, section) {
+  const label = section.labels[lang];
+  return `<div class="gallery-lightbox" data-gallery-lightbox role="dialog" aria-modal="true" aria-labelledby="gallery-lightbox-title" hidden>
+    <div class="gallery-lightbox-backdrop" data-close-gallery></div>
+    <div class="gallery-lightbox-panel">
+      <header class="gallery-lightbox-header"><div><h2 id="gallery-lightbox-title">${label}</h2><p data-gallery-count>01 / ${String(section.images.length).padStart(2, "0")}</p></div><button type="button" data-close-gallery aria-label="${t.closeAlbum}">×</button></header>
+      <div class="gallery-lightbox-stage">
+        <button class="gallery-lightbox-nav previous" type="button" data-gallery-previous aria-label="${t.previousPhoto}">‹</button>
+        <figure><img data-gallery-image src="${galleryImagePath(section, 0)}" alt="${label}"></figure>
+        <button class="gallery-lightbox-nav next" type="button" data-gallery-next aria-label="${t.nextPhoto}">›</button>
+      </div>
+    </div>
+  </div>`;
 }
 
 function booking(t) {
@@ -231,18 +292,70 @@ function render() {
 }
 
 function updateGallery() {
-  const p = photos[activePhoto];
+  const section = gallerySections[activePhoto];
+  const sectionLabel = section.labels[lang];
   region.querySelectorAll("[data-photo]").forEach((button, index) => {
     button.classList.toggle("active", index === activePhoto);
   });
   const counter = region.querySelector(".feature-caption p");
   const title = region.querySelector(".feature-caption h3");
+  const albumSize = region.querySelector(".feature-caption span");
+  const openButton = region.querySelector("[data-open-gallery]");
+  const lightboxTitle = region.querySelector("#gallery-lightbox-title");
   const image = region.querySelector(".gallery-feature figure img");
-  if (counter) counter.textContent = `${String(activePhoto + 1).padStart(2, "0")} / 06`;
-  if (title) title.textContent = p[lang === "es" ? 1 : 2];
+  if (counter) counter.textContent = gallerySectionCounter();
+  if (title) title.textContent = sectionLabel;
+  if (albumSize) albumSize.textContent = copy[lang].albumSize(section.images.length);
+  if (openButton) openButton.setAttribute("aria-label", `${copy[lang].openAlbum}: ${sectionLabel}`);
+  if (lightboxTitle) lightboxTitle.textContent = sectionLabel;
   if (image) {
-    image.src = `./assets/${p[0]}`;
-    image.alt = p[lang === "es" ? 1 : 2];
+    image.src = galleryImagePath(section, 0);
+    image.alt = sectionLabel;
+  }
+}
+
+function openGallery(trigger) {
+  const lightbox = region.querySelector("[data-gallery-lightbox]");
+  if (!lightbox) return;
+  activeAlbumPhoto = 0;
+  galleryReturnFocus = trigger;
+  updateLightbox();
+  lightbox.hidden = false;
+  document.body.classList.add("gallery-open");
+  lightbox.querySelector("[data-close-gallery]")?.focus();
+}
+
+function closeGallery() {
+  const lightbox = region.querySelector("[data-gallery-lightbox]");
+  if (!lightbox || lightbox.hidden) return;
+  lightbox.hidden = true;
+  document.body.classList.remove("gallery-open");
+  galleryReturnFocus?.focus();
+  galleryReturnFocus = null;
+}
+
+function moveGalleryPhoto(direction) {
+  const imageCount = gallerySections[activePhoto].images.length;
+  activeAlbumPhoto = (activeAlbumPhoto + direction + imageCount) % imageCount;
+  updateLightbox();
+}
+
+function updateLightbox() {
+  const section = gallerySections[activePhoto];
+  const image = region.querySelector("[data-gallery-image]");
+  const counter = region.querySelector("[data-gallery-count]");
+  const multiplePhotos = section.images.length > 1;
+  if (image) {
+    image.src = galleryImagePath(section, activeAlbumPhoto);
+    image.alt = `${section.labels[lang]} — ${activeAlbumPhoto + 1}`;
+  }
+  if (counter) counter.textContent = `${String(activeAlbumPhoto + 1).padStart(2, "0")} / ${String(section.images.length).padStart(2, "0")}`;
+  region.querySelectorAll("[data-gallery-previous], [data-gallery-next]").forEach(button => {
+    button.hidden = !multiplePhotos;
+  });
+  if (multiplePhotos) {
+    const nextIndex = (activeAlbumPhoto + 1) % section.images.length;
+    new Image().src = galleryImagePath(section, nextIndex);
   }
 }
 
@@ -276,9 +389,43 @@ document.querySelector(".language").addEventListener("click", event => {
 
 region.addEventListener("click", event => {
   const button = event.target.closest("[data-photo]");
-  if (!button) return;
-  activePhoto = Number(button.dataset.photo);
-  updateGallery();
+  if (button) {
+    activePhoto = Number(button.dataset.photo);
+    activeAlbumPhoto = 0;
+    updateGallery();
+    return;
+  }
+
+  const openButton = event.target.closest("[data-open-gallery]");
+  if (openButton) {
+    openGallery(openButton);
+    return;
+  }
+
+  if (event.target.closest("[data-close-gallery]")) closeGallery();
+  else if (event.target.closest("[data-gallery-previous]")) moveGalleryPhoto(-1);
+  else if (event.target.closest("[data-gallery-next]")) moveGalleryPhoto(1);
+});
+
+region.addEventListener("touchstart", event => {
+  if (!event.target.closest("[data-gallery-lightbox]")) return;
+  galleryTouchStartX = event.changedTouches[0]?.clientX ?? null;
+}, { passive: true });
+
+region.addEventListener("touchend", event => {
+  if (galleryTouchStartX === null || !event.target.closest("[data-gallery-lightbox]")) return;
+  const distance = (event.changedTouches[0]?.clientX ?? galleryTouchStartX) - galleryTouchStartX;
+  galleryTouchStartX = null;
+  if (Math.abs(distance) < 50 || gallerySections[activePhoto].images.length < 2) return;
+  moveGalleryPhoto(distance > 0 ? -1 : 1);
+}, { passive: true });
+
+document.addEventListener("keydown", event => {
+  const lightbox = region.querySelector("[data-gallery-lightbox]");
+  if (!lightbox || lightbox.hidden) return;
+  if (event.key === "Escape") closeGallery();
+  else if (event.key === "ArrowLeft") moveGalleryPhoto(-1);
+  else if (event.key === "ArrowRight") moveGalleryPhoto(1);
 });
 
 window.addEventListener("hashchange", () => {

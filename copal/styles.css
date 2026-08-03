@@ -32,7 +32,7 @@ nav a:hover, nav a:focus-visible, nav a.active { color: var(--wine); }
 .hero-overlay { background: linear-gradient(90deg, rgba(10,18,14,.45) 0%, rgba(10,18,14,.18) 42%, rgba(10,18,14,0) 68%); }
 .hero-copy { position: relative; z-index: 1; padding: clamp(64px, 8vh, 100px) 30px; color: #fff; }
 .hero-copy p { margin: 0 0 9px; font-size: 10px; font-weight: 700; letter-spacing: .02em; text-transform: uppercase; }
-.hero-identity { position: absolute; right: clamp(22px, 3.2vw, 48px); bottom: clamp(20px, 3vw, 42px); z-index: 2; display: flex; flex-direction: column; align-items: center; width: clamp(530px, 15vw, 205px); color: #fff; text-align: center; filter: drop-shadow(0 3px 12px rgba(0,0,0,.28)); }
+.hero-identity { position: absolute; right: clamp(22px, 3.2vw, 48px); bottom: clamp(20px, 3vw, 42px); z-index: 2; display: flex; flex-direction: column; align-items: center; width: clamp(130px, 15vw, 205px); color: #fff; text-align: center; filter: drop-shadow(0 3px 12px rgba(0,0,0,.28)); }
 .hero-identity img { width: 100%; height: auto; display: block; }
 .hero-identity p { margin: 7px 0 0; max-width: 190px; font-size: 9px; line-height: 1.4; }
 h1 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: clamp(50px, 5.7vw, 82px); font-weight: 400; line-height: 1.04; letter-spacing: -.025em; }
@@ -78,6 +78,22 @@ footer > p { display: block; margin: 0; font-size: 10px; font-weight: 700; lette
 .feature-caption span { color: #77796e; font-size: 12px; }
 .gallery-feature figure { min-height: 520px; margin: 0; overflow: hidden; background: var(--green); }
 .gallery-feature figure img { width: 100%; height: min(63vh, 690px); min-height: 520px; display: block; object-fit: cover; }
+.gallery-feature-button { width: 100%; display: block; padding: 0; border: 0; background: transparent; cursor: zoom-in; }
+.gallery-feature-button:focus-visible { outline: 3px solid var(--wine); outline-offset: -3px; }
+.gallery-lightbox[hidden] { display: none; }
+.gallery-lightbox { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; padding: clamp(12px, 3vw, 38px); }
+.gallery-lightbox-backdrop { position: absolute; inset: 0; background: rgba(14, 17, 12, .94); }
+.gallery-lightbox-panel { position: relative; z-index: 1; width: min(1200px, 100%); height: min(880px, 100%); display: grid; grid-template-rows: auto minmax(0, 1fr); color: var(--cream); }
+.gallery-lightbox-header { min-height: 70px; display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 0 4px 14px; }
+.gallery-lightbox-header h2 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: clamp(24px, 3vw, 38px); font-weight: 400; }
+.gallery-lightbox-header p { margin: 5px 0 0; color: rgba(244,238,215,.72); font-size: 10px; font-weight: 800; letter-spacing: .15em; }
+.gallery-lightbox-header > button { width: 44px; height: 44px; padding: 0; border: 1px solid rgba(244,238,215,.58); border-radius: 50%; background: transparent; color: var(--cream); cursor: pointer; font-size: 31px; font-weight: 300; line-height: 1; }
+.gallery-lightbox-stage { min-height: 0; display: grid; grid-template-columns: 52px minmax(0, 1fr) 52px; gap: clamp(8px, 2vw, 24px); align-items: center; }
+.gallery-lightbox-stage figure { min-width: 0; min-height: 0; height: 100%; display: grid; place-items: center; margin: 0; background: transparent; }
+.gallery-lightbox-stage img { max-width: 100%; max-height: 78vh; width: auto; height: auto; display: block; object-fit: contain; }
+.gallery-lightbox-nav { width: 48px; height: 48px; padding: 0; border: 1px solid rgba(244,238,215,.52); border-radius: 50%; background: rgba(48,56,38,.45); color: var(--cream); cursor: pointer; font-family: Georgia, "Times New Roman", serif; font-size: 38px; line-height: 1; }
+.gallery-lightbox-nav:hover, .gallery-lightbox-nav:focus-visible, .gallery-lightbox-header > button:hover, .gallery-lightbox-header > button:focus-visible { border-color: var(--cream); background: var(--cream); color: var(--green); }
+.gallery-lightbox-nav[hidden] { display: block; visibility: hidden; }
 .booking-section { min-height: 100%; display: grid; grid-template-columns: minmax(280px, .8fr) minmax(460px, 1.2fr); align-content: center; gap: clamp(48px, 8vw, 130px); padding: clamp(58px, 8vh, 96px) clamp(28px, 8vw, 130px); }
 .booking-section h2 { max-width: 760px; }
 .booking-intro > p:last-child { max-width: 520px; margin: 28px 0 0; color: #67695f; font-size: 15px; line-height: 1.75; }
@@ -183,6 +199,12 @@ footer > p { display: block; margin: 0; font-size: 10px; font-weight: 700; lette
   .feature-caption p { margin-bottom: 18px; }
   .gallery-feature figure, .gallery-feature figure img { min-height: 0; }
   .gallery-feature figure img { height: auto; aspect-ratio: 4 / 3; }
+  .gallery-lightbox { padding: 12px; }
+  .gallery-lightbox-panel { height: 100%; }
+  .gallery-lightbox-header { min-height: 62px; }
+  .gallery-lightbox-stage { grid-template-columns: 38px minmax(0, 1fr) 38px; gap: 4px; }
+  .gallery-lightbox-nav { width: 36px; height: 36px; font-size: 30px; }
+  .gallery-lightbox-stage img { max-height: calc(100dvh - 100px); }
   .booking-section { grid-template-columns: 1fr; align-content: start; gap: 42px; padding: 58px 20px 72px; }
   .booking-form { grid-template-columns: 1fr; }
   .booking-form label, .full-field { grid-column: 1; }
