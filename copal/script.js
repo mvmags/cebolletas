@@ -14,7 +14,7 @@ const copy = {
       ["Comodidades", "Regadera caliente", "Cocina equipada", "Tetera, t\u00e9 y caf\u00e9", "Estacionamiento"]
     ],
     galleryEyebrow: "Galer\u00eda", galleryTitle: "Conoce cada rinc\u00f3n.",
-    galleryIntro: "Im\u00e1genes temporales para definir la estructura de la galer\u00eda. Pr\u00f3ximamente ser\u00e1n reemplazadas por la sesi\u00f3n fotogr\u00e1fica final.",
+    galleryIntro: "",
     photoTour: "Recorrido fotogr\u00e1fico", temporary: "Fotograf\u00eda temporal",
     openAlbum: "Abrir galer\u00eda",
     closeAlbum: "Cerrar galer\u00eda",
