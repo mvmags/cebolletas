@@ -198,7 +198,7 @@ function home(t) {
 }
 
 function sectionLogo() {
-  return '<img class="section-brand-logo" src="./assets/logo-copal-black.png" alt="" aria-hidden="true">';
+  return '<img class="section-brand-logo" src="./assets/logo-xanadu.png" alt="" aria-hidden="true">';
 }
 
 function place(t) {
