@@ -17,10 +17,8 @@ copal/assets/gallery/
 │   ├── image-0001.jpeg
 │   ├── image-0002.jpeg
 │   └── ...
-├── rest-area/
 ├── bedroom/
 ├── terrace/
-├── outdoor-view/
 └── landscape/
 ```
 
@@ -30,14 +28,14 @@ section.
 The visible section names and their order are currently defined in
 `copal/script.js`, inside `gallerySectionDefinitions`:
 
-| Folder | Spanish label | English label |
-| --- | --- | --- |
-| `interior` | Interior | Interior |
-| `rest-area` | Área de descanso | Resting area |
-| `bedroom` | Recámara | Bedroom |
-| `terrace` | Terraza | Terrace |
-| `outdoor-view` | Vista exterior | Outdoor view |
-| `landscape` | El paisaje | The landscape |
+| Folder      | Spanish label | English label |
+|-------------|---------------|---------------|
+| `interior`  | Interior      | Interior      |
+| `bedroom`   | Recámara      | Bedroom       |
+| `bathroom`  | Ba;o          | Bathroom      |
+| `terrace`   | Terraza       | Terrace       |
+| `fire-pit`  | Fogata        | Fire pit      |
+| `landscape` | El paisaje    | The landscape |
 
 > Important: images inside an existing section are discovered automatically.
 > A new folder is included in the generated manifest, but it will not appear as

@@ -87,30 +87,30 @@ const copy = {
 };
 
 const gallerySectionDefinitions = [
+{
+    folder: "terrace",
+    labels: { es: "Terraza", en: "Terrace" }
+  },
+  {
+    folder: "landscape",
+    labels: { es: "El paisaje", en: "The landscape" }
+  },
   {
     folder: "interior",
     labels: { es: "Interior", en: "Interior" }
   },
   {
-    folder: "rest-area",
-    labels: { es: "\u00c1rea de descanso", en: "Resting area" }
+    folder: "bathroom",
+    labels: { es: "Ba\u00F1o", en: "Ba\u00F1o" }
   },
   {
     folder: "bedroom",
     labels: { es: "Rec\u00e1mara", en: "Bedroom" }
   },
   {
-    folder: "terrace",
-    labels: { es: "Terraza", en: "Terrace" }
-  },
-  {
-    folder: "outdoor-view",
-    labels: { es: "Vista exterior", en: "Outdoor view" }
-  },
-  {
-    folder: "landscape",
-    labels: { es: "El paisaje", en: "The landscape" }
-  }
+      folder: "fire-pit",
+      labels: { es: "Fogata", en: "Fire Pit" }
+    }
 ];
 
 const gallerySections = gallerySectionDefinitions.map(section => ({
