@@ -40,7 +40,7 @@ const copy = {
     requestedInfo: "Selecciona un servicio",
     servicesLoading: "Cargando servicios disponibles\u2026",
     action: "Solicitar Informaci\u00f3n/Reservar",
-    note: "Al continuar, guardaremos tu solicitud y te mostraremos el ID para dar seguimiento. Nos pondremos en contacto contigo a la brevedad."
+    note: "Por favor haz tu reserva con tiempo. Al continuar, guardaremos tu solicitud y te mostraremos el ID para dar seguimiento. Nos pondremos en contacto contigo a la brevedad."
   },
   en: {
     eyebrow: "Glamping in Calvillo \u00b7 Aguascalientes, Mexico",
