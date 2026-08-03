@@ -22,9 +22,8 @@ window.galleryImageManifest = {
   "interior": [
     "image-0001.jpeg",
     "image-0002.jpeg",
-    "image-0003.jpeg",
-    "image-0004.png",
-    "image-0005.jpeg"
+    "image-0003.png",
+    "image-0004.jpeg"
   ],
   "landscape": [
     "image-0001.jpeg",
