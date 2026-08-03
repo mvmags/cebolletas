@@ -32,7 +32,7 @@ The visible section names and their order are currently defined in
 |-------------|---------------|---------------|
 | `interior`  | Interior      | Interior      |
 | `bedroom`   | Recámara      | Bedroom       |
-| `bathroom`  | Ba;o          | Bathroom      |
+| `bathroom`  | Baño          | Bathroom      |
 | `terrace`   | Terraza       | Terrace       |
 | `fire-pit`  | Fogata        | Fire pit      |
 | `landscape` | El paisaje    | The landscape |

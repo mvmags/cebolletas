@@ -101,7 +101,7 @@ const gallerySectionDefinitions = [
   },
   {
     folder: "bathroom",
-    labels: { es: "Ba\u00F1o", en: "Ba\u00F1o" }
+    labels: { es: "Ba\u00F1o", en: "Bathroom" }
   },
   {
     folder: "bedroom",
