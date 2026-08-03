@@ -193,7 +193,7 @@ function home(t) {
     <img src="./assets/copal-hero.webp" alt="Cebolletas Copal y su entorno natural">
     <div class="hero-overlay"></div>
     <div class="hero-copy"><p>${t.eyebrow}</p><h1 id="hero-title">${t.title}</h1></div>
-    <div class="hero-identity"><img src="./assets/logo-copal.png" alt="Cebolletas Copal"><p>${t.parent}</p></div>
+    <div class="hero-identity"><img src="./assets/Both_logos_white_650w.png" alt="Cebolletas Copal"><p>${t.parent}</p></div>
   </section></div>`;
 }
 

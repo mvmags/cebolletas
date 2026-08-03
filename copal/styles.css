@@ -32,7 +32,7 @@ nav a:hover, nav a:focus-visible, nav a.active { color: var(--wine); }
 .hero-overlay { background: linear-gradient(90deg, rgba(10,18,14,.45) 0%, rgba(10,18,14,.18) 42%, rgba(10,18,14,0) 68%); }
 .hero-copy { position: relative; z-index: 1; padding: clamp(64px, 8vh, 100px) 30px; color: #fff; }
 .hero-copy p { margin: 0 0 9px; font-size: 10px; font-weight: 700; letter-spacing: .02em; text-transform: uppercase; }
-.hero-identity { position: absolute; right: clamp(22px, 3.2vw, 48px); bottom: clamp(20px, 3vw, 42px); z-index: 2; display: flex; flex-direction: column; align-items: center; width: clamp(130px, 15vw, 205px); color: #fff; text-align: center; filter: drop-shadow(0 3px 12px rgba(0,0,0,.28)); }
+.hero-identity { position: absolute; right: clamp(22px, 3.2vw, 48px); bottom: clamp(20px, 3vw, 42px); z-index: 2; display: flex; flex-direction: column; align-items: center; width: clamp(430px, 15vw, 505px); color: #fff; text-align: center; filter: drop-shadow(0 3px 12px rgba(0,0,0,.28)); }
 .hero-identity img { width: 100%; height: auto; display: block; }
 .hero-identity p { margin: 7px 0 0; max-width: 190px; font-size: 9px; line-height: 1.4; }
 h1 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: clamp(50px, 5.7vw, 82px); font-weight: 400; line-height: 1.04; letter-spacing: -.025em; }
