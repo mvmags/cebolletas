@@ -14,7 +14,7 @@ const copy = {
       ["Comodidades", "Regadera caliente", "Cocina equipada", "Tetera, t\u00e9 y caf\u00e9", "Estacionamiento"]
     ],
     galleryEyebrow: "Galer\u00eda", galleryTitle: "Conoce cada rinc\u00f3n.",
-    galleryIntro: "",
+    galleryIntro: "Explora los espacios, detalles y paisajes que forman parte de la experiencia Cebolletas Copal.",
     photoTour: "Recorrido fotogr\u00e1fico", temporary: "Fotograf\u00eda temporal",
     openAlbum: "Abrir galer\u00eda",
     closeAlbum: "Cerrar galer\u00eda",
@@ -56,7 +56,7 @@ const copy = {
       ["Comforts", "Hot shower", "Equipped kitchen", "Kettle, tea and coffee", "Parking"]
     ],
     galleryEyebrow: "Gallery", galleryTitle: "Explore every corner.",
-    galleryIntro: "Temporary images used to define the gallery structure. They will be replaced by the final photo session.",
+    galleryIntro: "Explore the spaces, details and landscapes that make up the Cebolletas Copal experience.",
     photoTour: "Photo tour", temporary: "Temporary photograph",
     openAlbum: "Open gallery",
     closeAlbum: "Close gallery",
@@ -219,7 +219,7 @@ function gallery(t) {
   const section = gallerySections[activePhoto];
   const sectionLabel = section.labels[lang];
   return `<section class="gallery-section" id="gallery" aria-labelledby="gallery-title">
-    <div class="gallery-heading"><div><p class="section-label">${t.galleryEyebrow}</p><h2 id="gallery-title">${t.galleryTitle}</h2></div><div class="gallery-intro"><p>${t.galleryIntro}</p>${sectionLogo()}</div></div>
+    <div class="gallery-heading"><div><p class="section-label">${t.galleryEyebrow}</p><h2 id="gallery-title">${t.galleryTitle}</h2><div class="gallery-intro"><p>${t.galleryIntro}</p></div></div><div class="gallery-intro">${sectionLogo()}</div></div>
     <div class="photo-tour"><h3>${t.photoTour}</h3><div class="thumbnail-strip">${thumbs}</div></div>
     <div class="gallery-feature"><div class="feature-caption"><p>${gallerySectionCounter()}</p><h3>${sectionLabel}</h3><span>${t.albumSize(section.images.length)}</span></div>
     <figure><button class="gallery-feature-button" type="button" data-open-gallery aria-label="${t.openAlbum}: ${sectionLabel}"><img src="${galleryImagePath(section, 0)}" alt="${sectionLabel}"></button></figure></div>
