@@ -3,7 +3,7 @@ const copy = {
     eyebrow: "Glamping en Calvillo \u00b7 Aguascalientes, M\u00e9xico",
     title: "Descansa entre<br>\u00e1rboles,<br>senderos y cielo<br>abierto.",
     nav: { home: "Inicio", place: "El lugar", gallery: "Galer\u00eda", booking: "Reserva" },
-    parent: "Es parte del desarrollo particular Cebolletas.",
+    parent: "",
     menu: "Abrir men\u00fa",
     placeEyebrow: "El lugar",
     placeTitle: "Lo esencial para disfrutar la naturaleza.",
