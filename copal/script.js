@@ -197,13 +197,17 @@ function home(t) {
   </section></div>`;
 }
 
+function sectionLogo() {
+  return '<img class="section-brand-logo" src="./assets/logo-copal-black.png" alt="" aria-hidden="true">';
+}
+
 function place(t) {
   const groups = t.amenityGroups.map((group, i) => `<article class="amenity-group">
     <div class="group-heading"><span>0${i + 1}</span><h3>${group[0]}</h3></div>
     <ul>${group.slice(1).map(item => `<li>${item}</li>`).join("")}</ul>
   </article>`).join("");
   return `<section class="place-section" id="place" aria-labelledby="place-title">
-    <div class="place-intro"><p class="section-label">${t.placeEyebrow}</p><h2 id="place-title">${t.placeTitle}</h2><p class="place-description">${t.placeIntro}</p></div>
+    <div class="place-intro"><p class="section-label">${t.placeEyebrow}</p><h2 id="place-title">${t.placeTitle}</h2><p class="place-description">${t.placeIntro}</p>${sectionLogo()}</div>
     <div class="amenity-groups">${groups}</div>
   </section>`;
 }
@@ -215,7 +219,7 @@ function gallery(t) {
   const section = gallerySections[activePhoto];
   const sectionLabel = section.labels[lang];
   return `<section class="gallery-section" id="gallery" aria-labelledby="gallery-title">
-    <div class="gallery-heading"><div><p class="section-label">${t.galleryEyebrow}</p><h2 id="gallery-title">${t.galleryTitle}</h2></div><p>${t.galleryIntro}</p></div>
+    <div class="gallery-heading"><div><p class="section-label">${t.galleryEyebrow}</p><h2 id="gallery-title">${t.galleryTitle}</h2></div><div class="gallery-intro"><p>${t.galleryIntro}</p>${sectionLogo()}</div></div>
     <div class="photo-tour"><h3>${t.photoTour}</h3><div class="thumbnail-strip">${thumbs}</div></div>
     <div class="gallery-feature"><div class="feature-caption"><p>${gallerySectionCounter()}</p><h3>${sectionLabel}</h3><span>${t.albumSize(section.images.length)}</span></div>
     <figure><button class="gallery-feature-button" type="button" data-open-gallery aria-label="${t.openAlbum}: ${sectionLabel}"><img src="${galleryImagePath(section, 0)}" alt="${sectionLabel}"></button></figure></div>
@@ -248,7 +252,7 @@ function galleryLightbox(t, section) {
 
 function booking(t) {
   return `<section class="booking-section" id="booking" aria-labelledby="booking-title">
-    <div class="booking-intro"><p class="section-label">${t.bookingEyebrow}</p><h2 id="booking-title">${t.bookingTitle}</h2><p>${t.bookingText}</p></div>
+    <div class="booking-intro"><p class="section-label">${t.bookingEyebrow}</p><h2 id="booking-title">${t.bookingTitle}</h2><p>${t.bookingText}</p>${sectionLogo()}</div>
     <form class="booking-form" id="reserva-form" novalidate>
       <fieldset class="service-options full-field" id="br-service-options">
         <legend>${t.requestedInfo}</legend>
