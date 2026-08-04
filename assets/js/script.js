@@ -34,7 +34,7 @@ const content = {
     ],
     socialEyebrow: "Redes sociales", socialTitle: "Sigue lo que pasa en Cebolletas.",
     socialText: "Consulta nuestras publicaciones m\u00E1s recientes, cambios de horario, novedades y momentos compartidos desde Cebolletas.",
-    instagramAction: "Ver en Instagram", facebookAction: "Ver en Facebook",
+    instagramAction: "Ver perfil en Instagram", instagramProfile: "Perfil oficial", facebookAction: "Ver en Facebook",
     micrositesEyebrow: "Micrositios", micrositesTitle: "Descubre Cebolletas Copal.",
     micrositesText: "Un espacio privado de hospedaje y camping dentro de Cebolletas, rodeado de senderos, paisaje semides\u00E9rtico y la tranquilidad de la naturaleza.",
     micrositesAction: "Visitar Cebolletas Copal",
@@ -78,7 +78,7 @@ const content = {
     ],
     socialEyebrow: "Social media", socialTitle: "Follow what is happening at Cebolletas.",
     socialText: "See our latest posts, schedule changes, news and moments shared from Cebolletas.",
-    instagramAction: "Open Instagram", facebookAction: "Open Facebook",
+    instagramAction: "View profile on Instagram", instagramProfile: "Official profile", facebookAction: "Open Facebook",
     micrositesEyebrow: "Microsites", micrositesTitle: "Discover Cebolletas Copal.",
     micrositesText: "A private lodging and camping space within Cebolletas, surrounded by trails, semi-desert scenery and the quiet of nature.",
     micrositesAction: "Visit Cebolletas Copal",
@@ -157,8 +157,17 @@ function render() {
       <div class="social-intro"><p class="eyebrow">${t.socialEyebrow}</p><h2>${t.socialTitle}</h2><p class="lead">${t.socialText}</p></div>
       <div class="social-grid">
         <article class="social-feed instagram-feed">
-          <div class="feed-heading"><strong>Instagram</strong><a href="https://www.instagram.com/cebolletascalvillooficial/" target="_blank" rel="noreferrer">${t.instagramAction}</a></div>
-          <blockquote class="instagram-media" data-instgrm-permalink="https://www.instagram.com/cebolletascalvillooficial/" data-instgrm-version="14"></blockquote>
+          <div class="feed-heading"><strong>Instagram</strong></div>
+          <a class="instagram-profile-card" href="https://www.instagram.com/cebolletascalvillooficial/" target="_blank" rel="noreferrer" aria-label="${t.instagramAction}">
+            <span class="instagram-card-accent" aria-hidden="true"></span>
+            <span class="instagram-avatar"><img src="./images/Logo_v6_290x65.png" alt=""></span>
+            <span class="instagram-profile-copy">
+              <span class="instagram-profile-label">${t.instagramProfile}</span>
+              <strong>@cebolletascalvillooficial</strong>
+              <span class="instagram-profile-name">Cebolletas</span>
+            </span>
+            <span class="instagram-profile-action">${t.instagramAction}<span aria-hidden="true">&#x2197;</span></span>
+          </a>
         </article>
         <article class="social-feed facebook-feed">
           <div class="feed-heading"><strong>Facebook</strong><a href="https://www.facebook.com/puentescolgantescebolletas" target="_blank" rel="noreferrer">${t.facebookAction}</a></div>
@@ -182,7 +191,6 @@ function render() {
     </section>`;
   bindDynamicEvents();
   observeSections();
-  if (window.instgrm?.Embeds) window.instgrm.Embeds.process();
   requestAnimationFrame(() => scrollToHash("auto"));
 }
 
