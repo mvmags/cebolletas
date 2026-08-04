@@ -43,14 +43,14 @@ h1, h2, h3 { font-family: Georgia, "Times New Roman", serif; font-weight: 400; }
 .hero h1 { margin: 0; font-size: clamp(52px, 6vw, 88px); line-height: .98; letter-spacing: -.035em; }
 .hero-copy > p:last-child { max-width: 590px; margin: 25px 0 0; color: rgba(255,255,255,.84); font-size: 15px; line-height: 1.7; }
 .scroll-cue { position: absolute; right: clamp(28px, 5vw, 74px); bottom: 38px; z-index: 2; display: flex; align-items: center; gap: 11px; color: #fff; font-size: 9px; font-weight: 800; letter-spacing: .14em; text-decoration: none; text-transform: uppercase; }
-.scroll-cue::after { content: "↓"; width: 37px; height: 37px; display: grid; place-items: center; border: 1px solid rgba(255,255,255,.55); border-radius: 50%; font-size: 18px; }
+.scroll-cue::after { content: "\2193"; width: 37px; height: 37px; display: grid; place-items: center; border: 1px solid rgba(255,255,255,.55); border-radius: 50%; font-size: 18px; }
 
 .feature { display: grid; grid-template-columns: minmax(310px, .86fr) minmax(420px, 1.14fr); background: var(--paper); }
 .feature.reverse { grid-template-columns: minmax(420px, 1.14fr) minmax(310px, .86fr); }
 .feature-media { min-height: 520px; overflow: hidden; background: var(--forest); }
 .feature-media img { width: 100%; height: 100%; display: block; object-fit: cover; }
 .feature-copy { display: flex; flex-direction: column; justify-content: center; padding: clamp(62px, 8vw, 124px) clamp(34px, 7vw, 105px); }
-.feature h2, .cards-section h2, .faq-section h2, .contact-section h2 { margin: 0; color: var(--forest); font-size: clamp(43px, 4.8vw, 70px); line-height: 1.02; letter-spacing: -.035em; }
+.feature h2, .cards-section h2, .faq-section h2, .social-section h2, .microsite-section h2, .contact-section h2 { margin: 0; color: var(--forest); font-size: clamp(43px, 4.8vw, 70px); line-height: 1.02; letter-spacing: -.035em; }
 .lead { margin: 26px 0 0; color: var(--muted); font-size: 15px; line-height: 1.75; }
 .stat { margin: 34px 0 0; padding-top: 25px; border-top: 1px solid var(--line); }
 .stat strong { display: block; color: var(--terracotta); font-family: Georgia, serif; font-size: clamp(34px, 4vw, 53px); font-weight: 400; }
@@ -83,6 +83,33 @@ h1, h2, h3 { font-family: Georgia, "Times New Roman", serif; font-weight: 400; }
 .faq-answer { display: none; max-width: 720px; padding: 0 35px 24px 0; color: var(--muted); font-size: 13px; line-height: 1.7; }
 .faq-item.open .faq-answer { display: block; }
 
+.social-section { padding: clamp(70px, 8vw, 120px) clamp(28px, 7vw, 110px); background: var(--cream); }
+.social-intro { max-width: 760px; margin-bottom: 42px; }
+.social-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: clamp(24px, 4vw, 56px); align-items: start; }
+.social-feed { min-width: 0; padding: 20px; background: var(--paper); border: 1px solid var(--line); }
+.feed-heading { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-bottom: 18px; padding-bottom: 15px; border-bottom: 1px solid var(--line); }
+.feed-heading strong { color: var(--forest); font-family: Georgia, serif; font-size: 24px; font-weight: 400; }
+.feed-heading a { color: var(--terracotta); font-size: 9px; font-weight: 800; letter-spacing: .08em; text-decoration: none; text-transform: uppercase; }
+.social-feed iframe { width: 100%; max-width: 500px; display: block; margin: 0 auto; border: 0; }
+.instagram-profile-card { position: relative; display: flex; min-height: 620px; overflow: hidden; flex-direction: column; align-items: center; justify-content: center; padding: 74px 28px 34px; border: 1px solid rgba(31,58,49,.12); background: linear-gradient(145deg, #fff 0%, #fffaf6 58%, #f7eee7 100%); color: var(--forest); text-align: center; text-decoration: none; transition: transform .25s ease, box-shadow .25s ease; }
+.instagram-profile-card:hover, .instagram-profile-card:focus-visible { transform: translateY(-3px); box-shadow: 0 18px 44px rgba(31,58,49,.13); }
+.instagram-profile-card:focus-visible { outline: 3px solid var(--terracotta); outline-offset: 4px; }
+.instagram-card-accent { position: absolute; inset: 0 0 auto; height: 9px; background: linear-gradient(90deg, #feda75, #fa7e1e, #d62976, #962fbf, #4f5bd5); }
+.instagram-avatar { display: grid; width: 112px; height: 112px; margin-bottom: 24px; place-items: center; border: 4px solid transparent; border-radius: 50%; background: linear-gradient(#fff, #fff) padding-box, linear-gradient(135deg, #feda75, #d62976 55%, #4f5bd5) border-box; box-shadow: 0 10px 30px rgba(31,58,49,.1); }
+.instagram-avatar img { width: 82px; height: auto; display: block; }
+.instagram-profile-copy { display: flex; flex-direction: column; align-items: center; }
+.instagram-profile-label { margin-bottom: 10px; color: var(--terracotta); font-size: 9px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; }
+.instagram-profile-copy strong { max-width: 100%; overflow-wrap: anywhere; font-family: Georgia, serif; font-size: clamp(20px, 2vw, 27px); font-weight: 400; }
+.instagram-profile-name { margin-top: 7px; color: var(--muted); font-size: 13px; }
+.instagram-profile-action { display: inline-flex; align-items: center; gap: 8px; margin-top: 32px; padding: 14px 19px; background: var(--forest); color: #fff; font-size: 10px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; }
+.instagram-profile-action span { font-size: 14px; }
+
+.microsite-section { display: grid; grid-template-columns: minmax(420px, 1.14fr) minmax(310px, .86fr); background: var(--paper); }
+.microsite-media { min-height: 520px; overflow: hidden; background: var(--forest); }
+.microsite-media img { width: 100%; height: 100%; display: block; object-fit: cover; }
+.microsite-copy { display: flex; flex-direction: column; justify-content: center; padding: clamp(62px, 8vw, 124px) clamp(34px, 7vw, 105px); }
+.microsite-logo { width: clamp(110px, 12vw, 150px); height: auto; display: block; align-self: flex-start; margin-top: 28px; }
+
 .contact-section { display: grid; grid-template-columns: minmax(290px, .82fr) minmax(450px, 1.18fr); background: var(--forest); color: #fff; }
 .contact-intro { padding: clamp(65px, 8vw, 120px) clamp(34px, 7vw, 105px); }
 .contact-section h2 { color: #fff; }
@@ -104,9 +131,9 @@ footer p { margin: 0; font-size: 9px; font-weight: 700; letter-spacing: .05em; t
 .footer-links a { font-size: 9px; font-weight: 800; letter-spacing: .08em; text-decoration: none; text-transform: uppercase; }
 
 @media (max-width: 1040px) {
-  nav { gap: 13px; }
-  nav a { font-size: 8px; }
-  .site-header { padding-inline: 24px; }
+  nav { gap: 10px; }
+  nav a { font-size: 7px; }
+  .site-header { gap: 15px; padding-inline: 20px; }
 }
 
 @media (max-width: 800px) {
@@ -141,6 +168,14 @@ footer p { margin: 0; font-size: 9px; font-weight: 700; letter-spacing: .05em; t
   .card h3 { min-height: auto; }
   .faq-section { padding: 66px 20px 76px; }
   .faq-layout { grid-template-columns: 1fr; gap: 43px; }
+  .social-section { padding: 66px 20px 72px; }
+  .social-grid { grid-template-columns: 1fr; }
+  .social-feed { padding: 14px; }
+  .instagram-profile-card { min-height: 420px; padding: 62px 18px 28px; }
+  .microsite-section { grid-template-columns: 1fr; }
+  .microsite-media { min-height: 330px; max-height: 55vh; }
+  .microsite-copy { padding: 64px 20px 72px; }
+  .microsite-logo { width: 120px; margin-top: 24px; }
   .contact-section { grid-template-columns: 1fr; }
   .contact-intro, .contact-form { padding: 64px 20px; }
   .contact-form { grid-template-columns: 1fr; padding-top: 0; }

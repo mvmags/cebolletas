@@ -1,52 +1,58 @@
 const content = {
   es: {
-    nav: { intro: "Intro", horario: "Horario", ubicacion: "Ubicación", actividades: "Actividades", sugerencias: "Sugerencias", lineamientos: "Lineamientos", faq: "Preguntas", contacto: "Contáctanos" },
-    menu: "Abrir menú",
-    heroEyebrow: "Turismo de naturaleza · Calvillo, Aguascalientes",
+    nav: { intro: "Intro", horario: "Horario", ubicacion: "Ubicaci\u00F3n", actividades: "Actividades", sugerencias: "Sugerencias", lineamientos: "Lineamientos", faq: "Preguntas", redes: "Redes sociales", micrositios: "Micrositios", contacto: "Cont\u00E1ctanos" },
+    menu: "Abrir men\u00FA",
+    heroEyebrow: "Turismo de naturaleza \u00B7 Calvillo, Aguascalientes",
     heroTitle: "Respira.<br>Explora.<br>Conecta.",
-    heroText: "Un espacio entre senderos, puentes y paisaje semidesértico creado para disfrutar la naturaleza con respeto.",
+    heroText: "Un espacio entre senderos, puentes y paisaje semides\u00E9rtico creado para disfrutar la naturaleza con respeto.",
     explore: "Conoce Cebolletas",
-    scheduleEyebrow: "Planea tu visita", scheduleTitle: "El fin de semana empieza aquí.",
-    scheduleText: "Abrimos sábados y domingos. Antes de salir, consulta nuestras redes sociales por posibles cambios de horario o condiciones del camino.",
-    scheduleHours: "9:00 — 17:00", scheduleDays: "Sábado y domingo",
-    locationEyebrow: "Ubicación", locationTitle: "A 12 km de Calvillo.",
-    locationText: "El acceso se encuentra sobre la carretera a Calvillo, aproximadamente 2.4 km después de la comunidad de El Sauz.",
+    scheduleEyebrow: "Planea tu visita", scheduleTitle: "El fin de semana empieza aqu\u00ED.",
+    scheduleText: "Abrimos s\u00E1bados y domingos. Antes de salir, consulta nuestras redes sociales por posibles cambios de horario o condiciones del camino.",
+    scheduleHours: "9:00 \u2014 17:00", scheduleDays: "S\u00E1bado y domingo",
+    locationEyebrow: "Ubicaci\u00F3n", locationTitle: "A 12 km de Calvillo.",
+    locationText: "El acceso se encuentra sobre la carretera a Calvillo, aproximadamente 2.4 km despu\u00E9s de la comunidad de El Sauz.",
     map: "Abrir ruta en Google Maps",
     activitiesEyebrow: "Actividades", activitiesTitle: "Tu ritmo, tu manera de vivir el paisaje.",
     activitiesText: "Recorre, observa o simplemente haz una pausa. Cebolletas invita a disfrutar el entorno sin prisas.",
     activities: [
-      ["Senderos y puentes", "Caminatas, puentes colgantes y escaleras panorámicas entre el paisaje natural."],
-      ["Pausa y bienestar", "Lectura, meditación y yoga en espacios abiertos y tranquilos."],
-      ["Observación", "Fotografía, paisajismo y observación responsable de flora y fauna."]
+      ["Senderos y puentes", "Caminatas, puentes colgantes y escaleras panor\u00E1micas entre el paisaje natural."],
+      ["Pausa y bienestar", "Lectura, meditaci\u00F3n y yoga en espacios abiertos y tranquilos."],
+      ["Observaci\u00F3n", "Fotograf\u00EDa, paisajismo y observaci\u00F3n responsable de flora y fauna."]
     ],
-    suggestionsEyebrow: "Antes de venir", suggestionsTitle: "Prepárate para disfrutar.",
+    suggestionsEyebrow: "Antes de venir", suggestionsTitle: "Prep\u00E1rate para disfrutar.",
     suggestionsText: "El terreno y el clima cambian con la temporada. Ven preparado y ayuda a conservar el lugar.",
-    suggestions: ["Usa ropa y calzado cómodos", "Trae agua en un envase reutilizable", "Lleva sombrero o protección para el sol", "Considera un paraguas durante temporada de lluvia", "Evita plásticos de un solo uso", "Mantén un volumen que respete a visitantes y animales"],
+    suggestions: ["Usa ropa y calzado c\u00F3modos", "Trae agua en un envase reutilizable", "Lleva sombrero o protecci\u00F3n para el sol", "Considera un paraguas durante temporada de lluvia", "Evita pl\u00E1sticos de un solo uso", "Mant\u00E9n un volumen que respete a visitantes y animales"],
     rulesEyebrow: "Lineamientos", rulesTitle: "Cuidar el lugar es parte de la visita.",
     rulesText: "Estas reglas protegen a las personas, la flora y la fauna de Cebolletas.",
-    rules: ["No se permiten bebidas alcohólicas", "Estaciona únicamente en las áreas designadas", "Respeta las indicaciones y medidas de seguridad", "No dañes, molestes ni interactúes con animales, insectos o plantas", "No dejes basura; todo lo que traigas debe regresar contigo", "No ingreses al arroyo usando protector solar"],
+    rules: ["No se permiten bebidas alcoh\u00F3licas", "Estaciona \u00FAnicamente en las \u00E1reas designadas", "Respeta las indicaciones y medidas de seguridad", "No da\u00F1es, molestes ni interact\u00FAes con animales, insectos o plantas", "No dejes basura; todo lo que traigas debe regresar contigo", "No ingreses al arroyo usando protector solar"],
     faqEyebrow: "Preguntas frecuentes", faqTitle: "Lo que conviene saber.",
     faqs: [
-      ["¿Cómo llego a Cebolletas?", "El acceso está sobre la carretera a Calvillo, 2.4 km después de la comunidad de El Sauz. Puedes abrir la ruta desde la sección Ubicación."],
-      ["¿Necesito reservar para visitar?", "Te recomendamos contactarnos antes de salir para confirmar horarios, disponibilidad y condiciones actuales."],
-      ["¿Puedo acampar?", "Sí, sujeto a disponibilidad y condiciones. Escríbenos para revisar las fechas y características de tu visita."],
-      ["¿Qué debo llevar?", "Calzado cómodo, agua en recipiente reutilizable y protección adecuada para sol o lluvia, según la temporada."]
+      ["\u00BFC\u00F3mo llego a Cebolletas?", "El acceso est\u00E1 sobre la carretera a Calvillo, 2.4 km despu\u00E9s de la comunidad de El Sauz. Puedes abrir la ruta desde la secci\u00F3n Ubicaci\u00F3n."],
+      ["\u00BFNecesito reservar para visitar?", "Te recomendamos contactarnos antes de salir para confirmar horarios, disponibilidad y condiciones actuales."],
+      ["\u00BFPuedo acampar?", "S\u00ED, sujeto a disponibilidad y condiciones. Escr\u00EDbenos para revisar las fechas y caracter\u00EDsticas de tu visita."],
+      ["\u00BFQu\u00E9 debo llevar?", "Calzado c\u00F3modo, agua en recipiente reutilizable y protecci\u00F3n adecuada para sol o lluvia, seg\u00FAn la temporada."]
     ],
-    contactEyebrow: "Contáctanos", contactTitle: "Cuéntanos sobre tu visita.",
+    socialEyebrow: "Redes sociales", socialTitle: "Sigue lo que pasa en Cebolletas.",
+    socialText: "Consulta nuestras publicaciones m\u00E1s recientes, cambios de horario, novedades y momentos compartidos desde Cebolletas.",
+    instagramAction: "Ver perfil en Instagram", instagramProfile: "Perfil oficial", facebookAction: "Ver en Facebook",
+    micrositesEyebrow: "Micrositios", micrositesTitle: "Descubre Cebolletas Copal.",
+    micrositesText: "Un espacio privado de hospedaje y camping dentro de Cebolletas, rodeado de senderos, paisaje semides\u00E9rtico y la tranquilidad de la naturaleza.",
+    micrositesAction: "Visitar Cebolletas Copal",
+    contactEyebrow: "Cont\u00E1ctanos", contactTitle: "Cu\u00E9ntanos sobre tu visita.",
     contactText: "Confirma disponibilidad, pregunta por camping o resuelve cualquier duda antes de llegar.",
     fields: { name: "Nombre", email: "Email", phone: "Celular", message: "Mensaje" },
     emailAction: "Enviar por email", whatsappAction: "Enviar por WhatsApp"
   },
   en: {
-    nav: { intro: "Intro", horario: "Hours", ubicacion: "Location", actividades: "Activities", sugerencias: "Suggestions", lineamientos: "Guidelines", faq: "FAQ", contacto: "Contact" },
+    nav: { intro: "Intro", horario: "Hours", ubicacion: "Location", actividades: "Activities", sugerencias: "Suggestions", lineamientos: "Guidelines", faq: "FAQ", redes: "Social media", micrositios: "Microsites", contacto: "Contact" },
     menu: "Open menu",
-    heroEyebrow: "Nature tourism · Calvillo, Aguascalientes",
+    heroEyebrow: "Nature tourism \u00B7 Calvillo, Aguascalientes",
     heroTitle: "Breathe.<br>Explore.<br>Connect.",
     heroText: "A place among trails, bridges and semi-desert landscapes, created to enjoy nature respectfully.",
     explore: "Discover Cebolletas",
     scheduleEyebrow: "Plan your visit", scheduleTitle: "Your weekend starts here.",
     scheduleText: "We open Saturdays and Sundays. Before leaving, check our social media for possible schedule changes or road conditions.",
-    scheduleHours: "9:00 — 17:00", scheduleDays: "Saturday and Sunday",
+    scheduleHours: "9:00 \u2014 17:00", scheduleDays: "Saturday and Sunday",
     locationEyebrow: "Location", locationTitle: "12 km from Calvillo.",
     locationText: "The entrance is on the road to Calvillo, approximately 2.4 km after the community of El Sauz.",
     map: "Open route in Google Maps",
@@ -70,6 +76,12 @@ const content = {
       ["Can I camp?", "Yes, subject to availability and conditions. Contact us to discuss your dates and plans."],
       ["What should I bring?", "Comfortable shoes, water in a reusable container and appropriate sun or rain protection for the season."]
     ],
+    socialEyebrow: "Social media", socialTitle: "Follow what is happening at Cebolletas.",
+    socialText: "See our latest posts, schedule changes, news and moments shared from Cebolletas.",
+    instagramAction: "View profile on Instagram", instagramProfile: "Official profile", facebookAction: "Open Facebook",
+    micrositesEyebrow: "Microsites", micrositesTitle: "Discover Cebolletas Copal.",
+    micrositesText: "A private lodging and camping space within Cebolletas, surrounded by trails, semi-desert scenery and the quiet of nature.",
+    micrositesAction: "Visit Cebolletas Copal",
     contactEyebrow: "Contact", contactTitle: "Tell us about your visit.",
     contactText: "Confirm availability, ask about camping or clear up any questions before you arrive.",
     fields: { name: "Name", email: "Email", phone: "Phone", message: "Message" },
@@ -140,6 +152,32 @@ function render() {
     </section>
     <section class="faq-section" id="faq">
       <div class="faq-layout"><div><p class="eyebrow">${t.faqEyebrow}</p><h2>${t.faqTitle}</h2></div><div class="faq-list">${t.faqs.map((item, index) => `<article class="faq-item ${index === 0 ? "open" : ""}"><button type="button" aria-expanded="${index === 0}"><span>${item[0]}</span><span>+</span></button><div class="faq-answer">${item[1]}</div></article>`).join("")}</div></div>
+    </section>
+    <section class="social-section" id="redes">
+      <div class="social-intro"><p class="eyebrow">${t.socialEyebrow}</p><h2>${t.socialTitle}</h2><p class="lead">${t.socialText}</p></div>
+      <div class="social-grid">
+        <article class="social-feed instagram-feed">
+          <div class="feed-heading"><strong>Instagram</strong></div>
+          <a class="instagram-profile-card" href="https://www.instagram.com/cebolletascalvillooficial/" target="_blank" rel="noreferrer" aria-label="${t.instagramAction}">
+            <span class="instagram-card-accent" aria-hidden="true"></span>
+            <span class="instagram-avatar"><img src="./images/Logo_v6_290x65.png" alt=""></span>
+            <span class="instagram-profile-copy">
+              <span class="instagram-profile-label">${t.instagramProfile}</span>
+              <strong>@cebolletascalvillooficial</strong>
+              <span class="instagram-profile-name">Cebolletas</span>
+            </span>
+            <span class="instagram-profile-action">${t.instagramAction}<span aria-hidden="true">&#x2197;</span></span>
+          </a>
+        </article>
+        <article class="social-feed facebook-feed">
+          <div class="feed-heading"><strong>Facebook</strong><a href="https://www.facebook.com/puentescolgantescebolletas" target="_blank" rel="noreferrer">${t.facebookAction}</a></div>
+          <iframe title="Facebook Cebolletas" src="https://www.facebook.com/plugins/page.php?href=https%3A%2F%2Fwww.facebook.com%2Fpuentescolgantescebolletas&amp;tabs=timeline&amp;width=500&amp;height=620&amp;small_header=true&amp;adapt_container_width=true&amp;hide_cover=false&amp;show_facepile=false" width="500" height="620" scrolling="no" frameborder="0" allowfullscreen="true" allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"></iframe>
+        </article>
+      </div>
+    </section>
+    <section class="microsite-section" id="micrositios">
+      <div class="microsite-media"><img src="./images/cebolletas-copal-construction.jpeg" alt="Cebolletas Copal"></div>
+      <div class="microsite-copy"><p class="eyebrow">${t.micrositesEyebrow}</p><h2>${t.micrositesTitle}</h2><p class="lead">${t.micrositesText}</p><a class="primary-link" href="./copal/">${t.micrositesAction}</a><img class="microsite-logo" src="./copal/assets/logo-xanadu.png" alt="Cebolletas Copal"></div>
     </section>
     <section class="contact-section" id="contacto">
       <div class="contact-intro"><p class="eyebrow">${t.contactEyebrow}</p><h2>${t.contactTitle}</h2><p class="lead">${t.contactText}</p></div>
