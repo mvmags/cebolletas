@@ -48,6 +48,8 @@ const PRICING_UNIT_LABELS = {
   per_person_night: "por persona/noche",
   fixed: "precio fijo",
 };
+const TIME_MODEL_LABELS = { overnight: "por noche", calendar_day: "por día", fixed_window: "por ventana" };
+const PRICING_MODEL_LABELS = { fixed: "precio fijo", base_plus_guests: "base + adicionales", manual_quote: "estimación manual" };
 
 const REQUEST_STATUS_LABELS = {
   new: "Nueva",
@@ -489,6 +491,12 @@ function currentVersion(service) {
     || null;
 }
 
+function currentRateVersion(service) {
+  const plan = service.rate_plans?.find((item) => item.rate_code === "standard") || service.rate_plans?.[0];
+  return plan?.rate_plan_versions?.find((version) => version.id === plan.current_version_id)
+    || plan?.rate_plan_versions?.[0] || null;
+}
+
 function filteredServices() {
   const query = $("#service-search").value.trim().toLocaleLowerCase("es-MX");
   const category = $("#service-category-filter").value;
@@ -525,12 +533,13 @@ function renderServices() {
 
   visible.forEach((service) => {
     const version = currentVersion(service);
+    const rate = currentRateVersion(service);
     if (!version) return;
     const row = document.createElement("div");
     row.className = "service-row";
-    const price = version.price_on_request
-      ? "Precio a consultar"
-      : `${formatMoney(version.base_price_cents)} ${PRICING_UNIT_LABELS[version.pricing_unit] || ""}`;
+    const price = !rate || rate.pricing_model === "manual_quote"
+      ? "Precio estimado"
+      : `${rate.pricing_model === "base_plus_guests" ? "Desde " : ""}${formatMoney(rate.base_price_cents)} ${TIME_MODEL_LABELS[rate.booking_time_model] || ""}`;
     row.innerHTML = `
       <div class="service-title">
         <strong>${escapeHtml(version.name_es)}</strong>
@@ -542,9 +551,7 @@ function renderServices() {
       </div>
       <div class="service-price">
         <strong>${escapeHtml(price)}</strong>
-        <small>${version.price_on_request
-          ? `Cotizaci\u00f3n manual \u00b7 m\u00e1ximo ${version.max_occupancy}`
-          : `Incluye ${version.included_guests} \u00b7 m\u00e1ximo ${version.max_occupancy}<br>Extra adulto ${formatMoney(version.adult_extra_cents)} \u00b7 ni\u00f1o ${formatMoney(version.child_extra_cents)}`}</small>
+        <small>${rate ? `${PRICING_MODEL_LABELS[rate.pricing_model]} · mínimo ${rate.min_guests} · máximo ${rate.max_occupancy}` : "Sin plan de tarifa"}</small>
       </div>
       <span class="status-badge ${service.is_active ? "active" : "inactive"}">${service.is_active ? "Activo" : "Inactivo"}</span>
       <div class="row-actions">
@@ -575,6 +582,16 @@ async function loadServices() {
         max_occupancy, adult_extra_cents, child_extra_cents,
         child_min_age, child_max_age, adult_min_age,
         amenities_es, amenities_en, created_at
+      ),
+      rate_plans (
+        id, rate_code, is_active, display_order, current_version_id,
+        rate_plan_versions (
+          id, version_number, booking_time_model, pricing_model, base_price_cents,
+          included_guests, min_guests, max_occupancy, max_adults, max_children,
+          max_infants, adult_extra_cents, child_extra_cents, infant_extra_cents,
+          supplement_basis, min_units, max_units, window_start, window_end,
+          buffer_before_minutes, buffer_after_minutes, restrictions_es, restrictions_en, created_at
+        )
       )
     `)
     .order("display_order")
@@ -583,6 +600,7 @@ async function loadServices() {
   services = data || [];
   services.forEach((service) => {
     service.service_versions?.sort((a, b) => b.version_number - a.version_number);
+    service.rate_plans?.forEach((plan) => plan.rate_plan_versions?.sort((a, b) => b.version_number - a.version_number));
   });
   renderServices();
 }
@@ -693,18 +711,23 @@ function slugify(value) {
 }
 
 function updatePricingFieldState() {
-  const disabled = $("#service-price-on-request").checked;
+  const model = $("#service-pricing-model").value;
+  const disabled = model === "manual_quote";
   ["#service-base-price", "#service-included-guests", "#service-adult-extra", "#service-child-extra"].forEach((selector) => {
     const input = $(selector);
     input.disabled = disabled;
     input.required = !disabled;
   });
+  $("#service-included-guests").disabled = disabled || model === "fixed";
+  $("#service-included-guests").required = model === "base_plus_guests";
+  $("#service-window-fields").classList.toggle("hidden", $("#service-booking-time-model").value !== "fixed_window");
   $(".pricing-definition").classList.toggle("manual", disabled);
   updatePricingPreview();
 }
 
 function updatePricingPreview() {
-  const manual = $("#service-price-on-request").checked;
+  const model = $("#service-pricing-model").value;
+  const manual = model === "manual_quote";
   const base = centsFromInput("#service-base-price");
   const included = Number($("#service-included-guests").value || 0);
   const capacity = Number($("#service-max-occupancy").value || 0);
@@ -718,24 +741,29 @@ function updatePricingPreview() {
     return;
   }
 
-  $("#pricing-preview-formula").textContent = "Base + adultos extra + ni\u00f1os extra";
-  $("#pricing-preview-description").textContent = `${formatMoney(base)} por noche incluye ${included || "\u2014"} hu\u00e9sped(es). Despu\u00e9s se suman ${formatMoney(adultExtra)} por adulto y ${formatMoney(childExtra)} por ni\u00f1o de 3\u201312 a\u00f1os.`;
+  const unit = TIME_MODEL_LABELS[$("#service-booking-time-model").value];
+  $("#pricing-preview-formula").textContent = PRICING_MODEL_LABELS[model];
+  $("#pricing-preview-description").textContent = model === "fixed"
+    ? `${formatMoney(base)} ${unit}; el número de huéspedes no cambia el precio.`
+    : `${formatMoney(base)} ${unit} incluye ${included || "\u2014"} huésped(es). Después se suman ${formatMoney(adultExtra)} por adulto y ${formatMoney(childExtra)} por niño.`;
 
-  if (!capacity || !included || included > capacity) {
+  if (!capacity || (model === "base_plus_guests" && (!included || included > capacity))) {
     $("#pricing-preview-total").textContent = "Revisa incluidos y capacidad";
     return;
   }
 
-  const extraAdults = Math.max(capacity - included, 0);
-  $("#pricing-preview-total").textContent = `${formatMoney(base + (extraAdults * adultExtra))} / noche`;
+  const extraAdults = model === "base_plus_guests" ? Math.max(capacity - included, 0) : 0;
+  $("#pricing-preview-total").textContent = `${formatMoney(base + (extraAdults * adultExtra))} ${unit}`;
 }
 
 function openServiceModal(service = null) {
   const version = service ? currentVersion(service) : null;
+  const rate = service ? currentRateVersion(service) : null;
   serviceForm.reset();
   $("#service-id").value = service?.id || "";
   $("#service-category").value = service?.category_code || "copal";
-  $("#service-pricing-unit").value = version?.pricing_unit || "per_night";
+  $("#service-booking-time-model").value = rate?.booking_time_model || "overnight";
+  $("#service-pricing-model").value = rate?.pricing_model || "base_plus_guests";
   $("#service-display-order").value = service?.display_order ?? services.length * 10;
   $("#service-name-es").value = version?.name_es || "";
   $("#service-name-en").value = version?.name_en || "";
@@ -743,12 +771,23 @@ function openServiceModal(service = null) {
   $("#service-description-en").value = version?.description_en || "";
   $("#service-amenities-es").value = (version?.amenities_es || []).join("\n");
   $("#service-amenities-en").value = (version?.amenities_en || []).join("\n");
-  $("#service-price-on-request").checked = version?.price_on_request || false;
-  $("#service-base-price").value = version ? pesosFromCents(version.base_price_cents) : 1200;
-  $("#service-included-guests").value = version?.included_guests ?? 3;
-  $("#service-max-occupancy").value = version?.max_occupancy ?? 6;
-  $("#service-adult-extra").value = version ? pesosFromCents(version.adult_extra_cents) : 500;
-  $("#service-child-extra").value = version ? pesosFromCents(version.child_extra_cents) : 350;
+  $("#service-base-price").value = rate ? pesosFromCents(rate.base_price_cents) : 1200;
+  $("#service-included-guests").value = rate?.included_guests ?? 3;
+  $("#service-min-guests").value = rate?.min_guests ?? 1;
+  $("#service-max-occupancy").value = rate?.max_occupancy ?? 6;
+  $("#service-max-adults").value = rate?.max_adults ?? "";
+  $("#service-max-children").value = rate?.max_children ?? "";
+  $("#service-max-infants").value = rate?.max_infants ?? "";
+  $("#service-adult-extra").value = rate ? pesosFromCents(rate.adult_extra_cents) : 500;
+  $("#service-child-extra").value = rate ? pesosFromCents(rate.child_extra_cents) : 350;
+  $("#service-infant-extra").value = rate ? pesosFromCents(rate.infant_extra_cents) : 0;
+  $("#service-supplement-basis").value = rate?.supplement_basis || "per_unit";
+  $("#service-min-units").value = rate?.min_units ?? 1;
+  $("#service-max-units").value = rate?.max_units ?? "";
+  $("#service-window-start").value = rate?.window_start?.slice(0, 5) || "10:00";
+  $("#service-window-end").value = rate?.window_end?.slice(0, 5) || "18:00";
+  $("#service-restrictions-es").value = rate?.restrictions_es || "";
+  $("#service-restrictions-en").value = rate?.restrictions_en || "";
   $("#service-active").checked = service?.is_active ?? true;
   $("#service-modal-title").textContent = service ? `Nueva versi\u00f3n de ${version.name_es}` : "Agregar servicio";
   $("#service-form-error").textContent = "";
@@ -1230,13 +1269,28 @@ serviceForm.addEventListener("submit", async (event) => {
   submit.disabled = true;
   $("#service-form-error").textContent = "";
   const id = $("#service-id").value;
-  const priceOnRequest = $("#service-price-on-request").checked;
+  const pricingModel = $("#service-pricing-model").value;
+  const priceOnRequest = pricingModel === "manual_quote";
   const includedGuests = Number($("#service-included-guests").value);
+  const minGuests = Number($("#service-min-guests").value);
   const maxOccupancy = Number($("#service-max-occupancy").value);
   if (!priceOnRequest && includedGuests > maxOccupancy) {
     submit.disabled = false;
     $("#service-form-error").textContent = "Los hu\u00e9spedes incluidos no pueden exceder la capacidad f\u00edsica m\u00e1xima.";
     $("#service-included-guests").focus();
+    return;
+  }
+  if (minGuests > maxOccupancy) {
+    submit.disabled = false;
+    $("#service-form-error").textContent = "El mínimo de huéspedes no puede exceder la capacidad máxima.";
+    $("#service-min-guests").focus();
+    return;
+  }
+  if ($("#service-booking-time-model").value === "fixed_window"
+    && $("#service-window-start").value >= $("#service-window-end").value) {
+    submit.disabled = false;
+    $("#service-form-error").textContent = "La hora final debe ser posterior a la hora inicial.";
+    $("#service-window-start").focus();
     return;
   }
   const commonArgs = {
@@ -1247,7 +1301,7 @@ serviceForm.addEventListener("submit", async (event) => {
     p_name_en: $("#service-name-en").value.trim(),
     p_description_es: $("#service-description-es").value.trim(),
     p_description_en: $("#service-description-en").value.trim(),
-    p_pricing_unit: $("#service-pricing-unit").value,
+    p_pricing_unit: "per_night",
     p_price_on_request: priceOnRequest,
     p_base_price_cents: priceOnRequest ? 0 : centsFromInput("#service-base-price"),
     p_included_guests: priceOnRequest ? 0 : includedGuests,
@@ -1257,7 +1311,7 @@ serviceForm.addEventListener("submit", async (event) => {
     p_amenities_es: linesFromTextarea("#service-amenities-es"),
     p_amenities_en: linesFromTextarea("#service-amenities-en"),
   };
-  const { error } = id
+  const { data: savedService, error } = id
     ? await supabase.rpc("create_service_version", {
       p_service_id: id,
       p_expected_current_version_id: services.find((service) => service.id === id)?.current_version_id,
@@ -1269,6 +1323,40 @@ serviceForm.addEventListener("submit", async (event) => {
     });
   submit.disabled = false;
   if (error) return void ($("#service-form-error").textContent = friendlyError(error));
+
+  const serviceId = id || savedService?.id;
+  const existingPlan = services.find((service) => service.id === serviceId)?.rate_plans?.find((plan) => plan.rate_code === "standard");
+  const integerOrNull = (selector) => $(selector).value === "" ? null : Number($(selector).value);
+  const fixedWindow = $("#service-booking-time-model").value === "fixed_window";
+  const { error: rateError } = await supabase.rpc("save_primary_rate_plan", {
+    p_service_id: serviceId,
+    p_expected_current_version_id: existingPlan?.current_version_id || null,
+    p_booking_time_model: $("#service-booking-time-model").value,
+    p_pricing_model: pricingModel,
+    p_base_price_cents: priceOnRequest ? 0 : centsFromInput("#service-base-price"),
+    p_included_guests: pricingModel === "base_plus_guests" ? includedGuests : 0,
+    p_min_guests: minGuests,
+    p_max_occupancy: maxOccupancy,
+    p_max_adults: integerOrNull("#service-max-adults"),
+    p_max_children: integerOrNull("#service-max-children"),
+    p_max_infants: integerOrNull("#service-max-infants"),
+    p_adult_extra_cents: pricingModel === "base_plus_guests" ? centsFromInput("#service-adult-extra") : 0,
+    p_child_extra_cents: pricingModel === "base_plus_guests" ? centsFromInput("#service-child-extra") : 0,
+    p_infant_extra_cents: pricingModel === "base_plus_guests" ? centsFromInput("#service-infant-extra") : 0,
+    p_supplement_basis: $("#service-supplement-basis").value,
+    p_min_units: Number($("#service-min-units").value),
+    p_max_units: integerOrNull("#service-max-units"),
+    p_window_start: fixedWindow ? $("#service-window-start").value : null,
+    p_window_end: fixedWindow ? $("#service-window-end").value : null,
+    p_buffer_before_minutes: 0,
+    p_buffer_after_minutes: 0,
+    p_restrictions_es: $("#service-restrictions-es").value.trim(),
+    p_restrictions_en: $("#service-restrictions-en").value.trim(),
+  });
+  if (rateError) {
+    submit.disabled = false;
+    return void ($("#service-form-error").textContent = friendlyError(rateError));
+  }
 
   closeServiceModal();
   await loadServices();
@@ -1482,8 +1570,8 @@ $("#copy-calculator-result").addEventListener("click", async (event) => {
   button.textContent = "Escenario copiado";
   window.setTimeout(() => { button.textContent = "Copiar escenario"; }, 1800);
 });
-$("#service-price-on-request").addEventListener("change", updatePricingFieldState);
-["#service-base-price", "#service-included-guests", "#service-max-occupancy", "#service-adult-extra", "#service-child-extra"].forEach((selector) => {
+["#service-pricing-model", "#service-booking-time-model"].forEach((selector) => $(selector).addEventListener("change", updatePricingFieldState));
+["#service-base-price", "#service-included-guests", "#service-max-occupancy", "#service-adult-extra", "#service-child-extra", "#service-infant-extra"].forEach((selector) => {
   $(selector).addEventListener("input", updatePricingPreview);
 });
 $("#recipient-search").addEventListener("input", renderRecipients);

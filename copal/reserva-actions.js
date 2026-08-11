@@ -95,7 +95,7 @@
 
   function selectedService(form) {
     const id = form?.querySelector('input[name="service-id"]:checked')?.value;
-    return activeServices.find((service) => service.service_id === id) || null;
+    return activeServices.find((service) => service.rate_plan_id === id) || null;
   }
 
   function localized(service, field) {
@@ -111,27 +111,83 @@
   function calculateQuote(service, stay, adults, children, infants) {
     if (!service || !stay) return null;
     const totalGuests = adults + children + infants;
-    if (![adults, children, infants].every(Number.isInteger) || totalGuests > service.max_occupancy) {
+    if (![adults, children, infants].every(Number.isInteger)
+      || totalGuests < service.min_guests || totalGuests > service.max_occupancy
+      || (service.max_adults !== null && adults > service.max_adults)
+      || (service.max_children !== null && children > service.max_children)
+      || (service.max_infants !== null && infants > service.max_infants)) {
       return { capacityExceeded: true, totalGuests };
     }
-    if (service.price_on_request) {
-      return { manual: true, totalGuests, nights: stay.nights };
+    const units = service.booking_time_model === "fixed_window" ? 1
+      : service.booking_time_model === "calendar_day" ? stay.nights + 1 : stay.nights;
+    if (units < service.min_units || (service.max_units !== null && units > service.max_units)) {
+      return { durationExceeded: true, totalGuests, units };
+    }
+    if (service.pricing_model === "manual_quote") {
+      return { manual: true, totalGuests, units };
+    }
+    if (service.pricing_model === "fixed") {
+      return { manual: false, fixed: true, totalGuests, units, total: service.base_price_cents * units };
     }
     const extraAdults = Math.max(adults - service.included_guests, 0);
     const remainingIncluded = Math.max(service.included_guests - adults, 0);
     const extraChildren = Math.max(children - remainingIncluded, 0);
-    const nightlyTotal = service.base_price_cents
-      + (extraAdults * service.adult_extra_cents)
-      + (extraChildren * service.child_extra_cents);
+    const supplementUnits = service.supplement_basis === "per_reservation" ? 1 : units;
+    const supplements = (extraAdults * service.adult_extra_cents)
+      + (extraChildren * service.child_extra_cents)
+      + (infants * service.infant_extra_cents);
     return {
       manual: false,
       totalGuests,
-      nights: stay.nights,
+      units,
       extraAdults,
       extraChildren,
-      nightlyTotal,
-      total: nightlyTotal * stay.nights
+      total: (service.base_price_cents * units) + (supplements * supplementUnits)
     };
+  }
+
+  function unitLabel(service, plural = false) {
+    const es = getLanguage() === "es";
+    if (service.booking_time_model === "fixed_window") return es ? "ventana" : "window";
+    if (service.booking_time_model === "calendar_day") return es ? (plural ? "días" : "día") : (plural ? "days" : "day");
+    return es ? (plural ? "noches" : "noche") : (plural ? "nights" : "night");
+  }
+
+  function priceLabel(service) {
+    if (service.pricing_model === "manual_quote") return getLanguage() === "es" ? "Precio estimado" : "Estimated price";
+    const prefix = service.pricing_model === "base_plus_guests" ? (getLanguage() === "es" ? "Desde " : "From ") : "";
+    return `${prefix}${formatMoney(service.base_price_cents)} / ${unitLabel(service)}`;
+  }
+
+  function showServiceDetails(service) {
+    const es = getLanguage() === "es";
+    const amenities = service[`amenities_${getLanguage()}`] || [];
+    const restrictions = localized(service, "restrictions");
+    let dialog = document.querySelector("#service-details-dialog");
+    if (!dialog) {
+      dialog = document.createElement("dialog");
+      dialog.id = "service-details-dialog";
+      dialog.className = "service-details-dialog";
+      document.body.append(dialog);
+      dialog.addEventListener("click", (event) => {
+        if (event.target === dialog || event.target.closest("[data-close-service-details]")) dialog.close();
+      });
+    }
+    const duration = service.booking_time_model === "fixed_window"
+      ? `${String(service.window_start).slice(0, 5)}–${String(service.window_end).slice(0, 5)}`
+      : `${service.min_units}${service.max_units ? `–${service.max_units}` : "+"} ${unitLabel(service, true)}`;
+    dialog.innerHTML = `<article>
+      <button class="service-details-close" data-close-service-details type="button" aria-label="${es ? "Cerrar" : "Close"}">×</button>
+      <p class="section-label">${escapeHtml(localized(service, "rate_name"))}</p>
+      <h3>${escapeHtml(localized(service, "name"))}</h3>
+      <strong class="service-details-price">${escapeHtml(priceLabel(service))}</strong>
+      <p>${escapeHtml(localized(service, "description"))}</p>
+      <dl><div><dt>${es ? "Duración" : "Duration"}</dt><dd>${escapeHtml(duration)}</dd></div>
+      <div><dt>${es ? "Capacidad" : "Capacity"}</dt><dd>${service.min_guests}–${service.max_occupancy}</dd></div></dl>
+      ${restrictions ? `<section><h4>${es ? "Restricciones" : "Restrictions"}</h4><p>${escapeHtml(restrictions)}</p></section>` : ""}
+      ${amenities.length ? `<section><h4>${es ? "Incluye" : "Includes"}</h4><ul>${amenities.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul></section>` : ""}
+    </article>`;
+    dialog.showModal();
   }
 
   function renderServices(form) {
@@ -145,16 +201,10 @@
       return;
     }
     host.innerHTML = `${legend}<div class="service-grid">${activeServices.map((service, index) => {
-      const amenities = service[`amenities_${getLanguage()}`] || [];
-      const price = service.price_on_request
-        ? (getLanguage() === "es" ? "Precio a consultar" : "Custom quotation")
-        : `${getLanguage() === "es" ? "Desde" : "From"} ${formatMoney(service.base_price_cents)} / ${getLanguage() === "es" ? "noche" : "night"}`;
       return `<label class="service-card">
-        <input type="radio" name="service-id" value="${service.service_id}" ${index === 0 ? "checked" : ""}>
-        <strong>${escapeHtml(localized(service, "name"))}</strong>
-        <p>${escapeHtml(localized(service, "description"))}</p>
-        ${amenities.length ? `<ul>${amenities.slice(0, 4).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>` : ""}
-        <small>${price} \u00b7 ${getLanguage() === "es" ? "M\u00e1ximo" : "Up to"} ${service.max_occupancy}</small>
+        <input type="radio" name="service-id" value="${service.rate_plan_id}" ${index === 0 ? "checked" : ""}>
+        <span class="service-card-copy"><strong>${escapeHtml(localized(service, "name"))}</strong><small>${escapeHtml(priceLabel(service))}</small></span>
+        <button class="service-info-button" data-service-info="${service.rate_plan_id}" type="button" aria-label="${getLanguage() === "es" ? "Ver detalles de" : "View details for"} ${escapeHtml(localized(service, "name"))}">?</button>
       </label>`;
     }).join("")}</div>`;
   }
@@ -190,19 +240,28 @@
       host.innerHTML = `<p class="quote-capacity-error">${messages[getLanguage()].capacityExceeded} (${quote.totalGuests}/${service.max_occupancy})</p>`;
       return quote;
     }
+    if (quote.durationExceeded) {
+      host.innerHTML = `<p class="quote-capacity-error">${isEs ? "La duración no cumple las reglas de este servicio." : "The duration does not meet this service's rules."}</p>`;
+      return quote;
+    }
     if (quote.manual) {
       host.innerHTML = `<h3>${escapeHtml(localized(service, "name"))}</h3>
-        <div class="quote-summary-row"><span>${stay.nights} ${isEs ? "noche(s)" : "night(s)"}</span><span>${quote.totalGuests}/${service.max_occupancy} ${isEs ? "hu\u00e9spedes" : "guests"}</span></div>
+        <div class="quote-summary-row"><span>${quote.units} ${unitLabel(service, quote.units !== 1)}</span><span>${quote.totalGuests}/${service.max_occupancy} ${isEs ? "hu\u00e9spedes" : "guests"}</span></div>
         <div class="quote-summary-row total"><span>${isEs ? "Cotizaci\u00f3n personalizada" : "Custom quotation"}</span><strong>${isEs ? "A consultar" : "Contact us"}</strong></div>
         <p class="quote-summary-note">${isEs ? "Revisaremos los detalles y confirmaremos el precio contigo." : "We will review the details and confirm the price with you."}</p>`;
       return quote;
     }
 
+    if (quote.fixed) {
+      host.innerHTML = `<h3>${escapeHtml(localized(service, "name"))}</h3>
+        <div class="quote-summary-row"><span>${quote.units} × ${isEs ? "precio fijo" : "fixed price"}</span><strong>${formatMoney(quote.total)}</strong></div>
+        <div class="quote-summary-row total"><span>${isEs ? "Total estimado" : "Estimated total"}</span><strong>${formatMoney(quote.total)}</strong></div>
+        <p class="quote-summary-note">${isEs ? "Sujeto a confirmación de disponibilidad." : "Subject to availability confirmation."}</p>`;
+      return quote;
+    }
+
     host.innerHTML = `<h3>${escapeHtml(localized(service, "name"))}</h3>
-      <div class="quote-summary-row"><span>${stay.nights} \u00d7 ${isEs ? "base por noche" : "nightly base"}</span><strong>${formatMoney(service.base_price_cents * stay.nights)}</strong></div>
-      ${quote.extraAdults ? `<div class="quote-summary-row"><span>${quote.extraAdults} \u00d7 ${isEs ? "adulto extra" : "extra adult"} \u00d7 ${stay.nights}</span><strong>${formatMoney(quote.extraAdults * service.adult_extra_cents * stay.nights)}</strong></div>` : ""}
-      ${quote.extraChildren ? `<div class="quote-summary-row"><span>${quote.extraChildren} \u00d7 ${isEs ? "ni\u00f1o extra" : "extra child"} \u00d7 ${stay.nights}</span><strong>${formatMoney(quote.extraChildren * service.child_extra_cents * stay.nights)}</strong></div>` : ""}
-      ${infants ? `<div class="quote-summary-row"><span>${infants} \u00d7 ${isEs ? "menor de 3 a\u00f1os" : "child under 3"}</span><strong>${formatMoney(0)}</strong></div>` : ""}
+      <div class="quote-summary-row"><span>${quote.units} × ${isEs ? "precio base" : "base price"}</span><strong>${formatMoney(service.base_price_cents * quote.units)}</strong></div>
       <div class="quote-summary-row total"><span>${isEs ? "Total estimado" : "Estimated total"}</span><strong>${formatMoney(quote.total)}</strong></div>
       <p class="quote-summary-note">${isEs ? "Sujeto a confirmaci\u00f3n de disponibilidad." : "Subject to availability confirmation."}</p>`;
     return quote;
@@ -657,6 +716,13 @@
   let pendingSubmission = null;
 
   document.addEventListener("click", async (event) => {
+    const infoButton = event.target.closest("[data-service-info]");
+    if (infoButton) {
+      event.preventDefault();
+      const service = activeServices.find((item) => item.rate_plan_id === infoButton.dataset.serviceInfo);
+      if (service) showServiceDetails(service);
+      return;
+    }
     const button = event.target.closest("#reserva-form #br-request-info");
     if (!button) return;
     const form = getForm();

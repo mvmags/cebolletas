@@ -126,15 +126,30 @@ body.gallery-open { overflow: hidden; }
 .service-options { display: grid; gap: 14px; margin: 0; padding: 0; border: 0; }
 .service-options legend { margin: 0 0 4px; padding: 0; color: var(--green); font-size: 10px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
 .service-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-.service-card { position: relative; display: grid !important; gap: 10px !important; min-height: 172px; padding: 18px; border: 1px solid rgba(48,56,38,.23); background: #fff; cursor: pointer; transition: border-color .2s ease, box-shadow .2s ease, background .2s ease; }
+.service-card { position: relative; display: grid !important; grid-template-columns: 18px minmax(0,1fr) 36px; align-items: center; gap: 13px !important; min-height: 76px; padding: 14px; border: 1px solid rgba(48,56,38,.23); background: #fff; cursor: pointer; transition: border-color .2s ease, box-shadow .2s ease, background .2s ease; }
 .service-card:hover { border-color: rgba(126,36,36,.6); }
 .service-card:has(input:checked) { border-color: var(--wine); background: rgba(126,36,36,.035); box-shadow: 0 0 0 2px rgba(126,36,36,.09); }
-.service-card input { position: absolute; top: 16px; right: 16px; width: 18px; height: 18px; margin: 0; padding: 0; accent-color: var(--wine); }
-.service-card strong { padding-right: 28px; color: var(--green); font-family: Georgia, "Times New Roman", serif; font-size: 22px; font-weight: 400; line-height: 1.1; }
+.service-card input { position: static; width: 18px; height: 18px; margin: 0; padding: 0; accent-color: var(--wine); }
+.service-card-copy { display: grid; gap: 5px; }
+.service-card strong { padding: 0; color: var(--green); font-family: Georgia, "Times New Roman", serif; font-size: 19px; font-weight: 400; line-height: 1.1; }
 .service-card p { margin: 0; color: #67695f; font-size: 12px; line-height: 1.5; }
 .service-card small { align-self: end; color: var(--wine); font-size: 11px; font-weight: 700; line-height: 1.45; }
 .service-card ul { display: flex; flex-wrap: wrap; gap: 5px 12px; margin: 0; padding: 0; color: #62655b; font-size: 10px; list-style: none; }
 .service-card li::before { content: "\00B7"; margin-right: 5px; color: var(--wine); }
+.service-info-button { display: grid; place-items: center; width: 34px; height: 34px; padding: 0; border: 1px solid var(--wine); border-radius: 50%; background: transparent; color: var(--wine); font: 700 16px/1 Georgia, serif; cursor: pointer; }
+.service-info-button:hover, .service-info-button:focus-visible { background: var(--wine); color: #fff; }
+.service-details-dialog { width: min(560px, calc(100% - 32px)); max-height: calc(100dvh - 32px); padding: 0; border: 0; color: #34382e; box-shadow: 0 24px 80px rgba(20,24,17,.35); }
+.service-details-dialog::backdrop { background: rgba(18,23,17,.72); backdrop-filter: blur(3px); }
+.service-details-dialog article { position: relative; padding: clamp(26px, 6vw, 46px); }
+.service-details-dialog h3 { margin: 5px 44px 8px 0; color: var(--green); font: 400 clamp(28px, 6vw, 42px)/1.1 Georgia, serif; }
+.service-details-dialog h4 { margin: 22px 0 8px; color: var(--green); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; }
+.service-details-dialog p, .service-details-dialog li, .service-details-dialog dd { font-size: 13px; line-height: 1.65; }
+.service-details-dialog dl { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; margin: 22px 0; }
+.service-details-dialog dl div { padding: 12px; background: rgba(48,56,38,.05); }
+.service-details-dialog dt { color: #73766c; font-size: 9px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.service-details-dialog dd { margin: 4px 0 0; color: var(--green); font-weight: 700; }
+.service-details-price { color: var(--wine); font-size: 14px; }
+.service-details-close { position: absolute; top: 16px; right: 16px; width: 36px; height: 36px; border: 0; background: transparent; color: var(--wine); font-size: 30px; cursor: pointer; }
 .service-loading, .service-empty { margin: 0; padding: 18px; border: 1px dashed rgba(48,56,38,.25); color: #70736a; font-size: 13px; }
 .quote-summary { padding: 20px; border: 1px solid rgba(48,56,38,.2); background: rgba(48,56,38,.035); }
 .quote-summary-placeholder { margin: 0; color: #70736a; font-size: 12px; line-height: 1.55; }
