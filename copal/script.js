@@ -40,7 +40,7 @@ const copy = {
     requestedInfo: "Selecciona un servicio",
     servicesLoading: "Cargando servicios disponibles\u2026",
     action: "Solicitar Informaci\u00f3n/Reservar",
-    note: "Por favor haz tu reserva con tiempo. Al continuar, guardaremos tu solicitud y te mostraremos el ID para dar seguimiento. Nos pondremos en contacto contigo a la brevedad."
+    note: "Este es un estimado. Envíanos tu información para dar seguimiento. Por favor haz tu reserva con tiempo. Al continuar, guardaremos tu solicitud y te mostraremos el ID para dar seguimiento. Nos pondremos en contacto contigo a la brevedad."
   },
   en: {
     eyebrow: "Glamping in Calvillo \u00b7 Aguascalientes, Mexico",
@@ -82,7 +82,7 @@ const copy = {
     requestedInfo: "Select one service",
     servicesLoading: "Loading available services\u2026",
     action: "Request Information/Book",
-    note: "Continuing will save your request and display its ID for follow-up. We will contact you shortly."
+    note: "This is an estimate. Continuing will save your request and display its ID for follow-up. We will contact you shortly."
   }
 };
 
