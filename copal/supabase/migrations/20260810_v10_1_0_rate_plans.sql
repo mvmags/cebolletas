@@ -83,9 +83,15 @@ set current_version_id = version.id
 from public.rate_plan_versions version
 where version.rate_plan_id = plan.id and version.version_number = 1;
 
+-- Validate the deferred FK and clear its pending trigger events
+-- before later ALTER TABLE statements.
+set constraints rate_plans_current_version_id_fkey immediate;
+
 alter table public.information_requests
   add column selected_rate_plan_id uuid references public.rate_plans(id),
   add column selected_rate_plan_version_id uuid references public.rate_plan_versions(id);
+
+drop function if exists public.get_active_service_catalog();
 
 create or replace function public.get_active_service_catalog()
 returns table (
@@ -125,6 +131,8 @@ as $$
   where service.is_active
   order by service.display_order, plan.display_order, service.created_at, plan.created_at;
 $$;
+revoke all on function public.get_active_service_catalog() from public;
+grant execute on function public.get_active_service_catalog() to anon, authenticated;
 
 create or replace function public.save_primary_rate_plan(
   p_service_id uuid, p_expected_current_version_id uuid, p_booking_time_model text,
@@ -235,10 +243,21 @@ begin
     raise exception 'Duration is outside rate plan limits';
   end if;
 
-  select * into v_result from public.create_information_request_legacy_v10_0_1(
-    p_submission_key,p_locale,p_customer_name,p_customer_email,p_customer_cellphone,
-    p_checkin_date,p_checkout_date,p_adults,p_children,p_infants,p_service_id,p_customer_message
-  );
+  select * into v_result
+    from public.create_information_request_legacy_v10_0_1(
+      p_submission_key,
+      p_locale,
+      p_customer_name,
+      p_customer_email,
+      p_customer_cellphone,
+      p_checkin_date,
+      p_checkout_date,
+      p_adults,
+      p_children,
+      p_infants,
+      p_service_id,
+      p_customer_message
+    );
   select * into v_request from public.information_requests where id = v_result.request_id;
   select * into v_service from public.services where id = p_service_id;
   select * into v_service_version from public.service_versions where id = v_service.current_version_id;
