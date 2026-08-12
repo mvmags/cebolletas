@@ -1,5 +1,43 @@
 begin;
 
+-- Foundational administrator schema.
+-- Production already had this schema before migrations were introduced,
+-- but fresh environments need it created explicitly.
+
+do $$
+begin
+  create type public.admin_role as enum ('admin', 'viewer');
+exception
+  when duplicate_object then null;
+end
+$$;
+
+create table if not exists public.admin_profiles (
+  user_id uuid primary key
+    references auth.users(id)
+    on delete cascade,
+  display_name text not null
+    check (char_length(btrim(display_name)) between 1 and 80),
+  role public.admin_role not null default 'viewer',
+  active boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table public.admin_profiles enable row level security;
+
+drop policy if exists "Users read own admin profile"
+on public.admin_profiles;
+
+create policy "Users read own admin profile"
+on public.admin_profiles
+for select
+to authenticated
+using (user_id = auth.uid());
+
+revoke all on public.admin_profiles from anon, authenticated;
+grant select on public.admin_profiles to authenticated;
+
 create table if not exists public.whatsapp_recipients (
   id uuid primary key default gen_random_uuid(),
   display_name text not null check (char_length(btrim(display_name)) between 1 and 80),
