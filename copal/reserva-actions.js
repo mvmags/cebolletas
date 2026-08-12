@@ -657,21 +657,41 @@ import config from "./config/environment.js";
     };
   }
 
-  document.addEventListener("reserva:rendered", () => {
+  let initializedReservaForm = null;
+
+  function initializeReservaForm() {
     const form = getForm();
+
+    if (!form || form === initializedReservaForm) return;
+
+    initializedReservaForm = form;
     configureDateLimits(form);
     updateStaySummary(form);
+
     loadActiveServices(form).catch((error) => {
       console.error(error);
-      const host = form?.querySelector("#br-service-options");
+
+      const host = form.querySelector("#br-service-options");
+
       if (host) {
         const legend = host.querySelector("legend")?.outerHTML || "";
-        host.innerHTML = `${legend}<p class="service-empty">${getLanguage() === "es"
-          ? "No fue posible cargar los servicios. Intenta nuevamente."
-          : "Services could not be loaded. Please try again."}</p>`;
+
+        host.innerHTML = `${legend}<p class="service-empty">${
+          getLanguage() === "es"
+            ? "No fue posible cargar los servicios. Intenta nuevamente."
+            : "Services could not be loaded. Please try again."
+        }</p>`;
       }
     });
-  });
+  }
+
+  document.addEventListener(
+    "reserva:rendered",
+    initializeReservaForm
+  );
+
+  // Reserva may already exist before this module executes.
+  initializeReservaForm();
 
   document.addEventListener("submit", (event) => {
     if (event.target.matches("#reserva-form")) event.preventDefault();
