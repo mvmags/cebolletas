@@ -1,11 +1,13 @@
 // Reserva validation and delivery actions.
 // Intentionally independent from the Version 4 navigation code.
+import config from "./config/environment.js";
+
 (function initReservaActions() {
   "use strict";
 
   const SUPABASE = Object.freeze({
-    url: "https://myqaotknkriuhdssbzlz.supabase.co",
-    publishableKey: "sb_publishable_XuDt5xNF3EzE0K2TSE9QCg_hnDMWsVN"
+    url: config.supabaseUrl,
+    publishableKey: config.supabasePublishableKey
   });
 
   const limits = Object.freeze({

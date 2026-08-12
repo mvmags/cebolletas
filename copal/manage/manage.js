@@ -1,8 +1,7 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+import config from "../config/environment.js";
 
-const SUPABASE_URL = "https://myqaotknkriuhdssbzlz.supabase.co";
-const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_XuDt5xNF3EzE0K2TSE9QCg_hnDMWsVN";
-const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+const supabase = createClient(config.supabaseUrl, config.supabasePublishableKey);
 const $ = (selector) => document.querySelector(selector);
 
 const loginView = $("#login-view");
@@ -583,14 +582,15 @@ async function loadServices() {
         child_min_age, child_max_age, adult_min_age,
         amenities_es, amenities_en, created_at
       ),
-      rate_plans (
+      rate_plans!rate_plans_service_id_fkey (
         id, rate_code, is_active, display_order, current_version_id,
-        rate_plan_versions (
+        rate_plan_versions!rate_plan_versions_rate_plan_id_fkey (
           id, version_number, booking_time_model, pricing_model, base_price_cents,
           included_guests, min_guests, max_occupancy, max_adults, max_children,
           max_infants, adult_extra_cents, child_extra_cents, infant_extra_cents,
           supplement_basis, min_units, max_units, window_start, window_end,
-          buffer_before_minutes, buffer_after_minutes, restrictions_es, restrictions_en, created_at
+          buffer_before_minutes, buffer_after_minutes,
+          restrictions_es, restrictions_en, created_at
         )
       )
     `)
