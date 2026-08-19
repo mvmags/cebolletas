@@ -1,6 +1,7 @@
 // Reserva validation and delivery actions.
 // Intentionally independent from the Version 4 navigation code.
 import config from "./config/environment.js";
+import { calculateQuote } from "./pricing-engine.mjs?v=10.4.0-2";
 
 (function initReservaActions() {
   "use strict";
@@ -108,44 +109,6 @@ import config from "./config/environment.js";
     const element = document.createElement("div");
     element.textContent = String(value ?? "");
     return element.innerHTML;
-  }
-
-  function calculateQuote(service, stay, adults, children, infants) {
-    if (!service || !stay) return null;
-    const totalGuests = adults + children + infants;
-    if (![adults, children, infants].every(Number.isInteger)
-      || totalGuests < service.min_guests || totalGuests > service.max_occupancy
-      || (service.max_adults !== null && adults > service.max_adults)
-      || (service.max_children !== null && children > service.max_children)
-      || (service.max_infants !== null && infants > service.max_infants)) {
-      return { capacityExceeded: true, totalGuests };
-    }
-    const units = service.booking_time_model === "fixed_window" ? 1
-      : service.booking_time_model === "calendar_day" ? stay.nights + 1 : stay.nights;
-    if (units < service.min_units || (service.max_units !== null && units > service.max_units)) {
-      return { durationExceeded: true, totalGuests, units };
-    }
-    if (service.pricing_model === "manual_quote") {
-      return { manual: true, totalGuests, units };
-    }
-    if (service.pricing_model === "fixed") {
-      return { manual: false, fixed: true, totalGuests, units, total: service.base_price_cents * units };
-    }
-    const extraAdults = Math.max(adults - service.included_guests, 0);
-    const remainingIncluded = Math.max(service.included_guests - adults, 0);
-    const extraChildren = Math.max(children - remainingIncluded, 0);
-    const supplementUnits = service.supplement_basis === "per_reservation" ? 1 : units;
-    const supplements = (extraAdults * service.adult_extra_cents)
-      + (extraChildren * service.child_extra_cents)
-      + (infants * service.infant_extra_cents);
-    return {
-      manual: false,
-      totalGuests,
-      units,
-      extraAdults,
-      extraChildren,
-      total: (service.base_price_cents * units) + (supplements * supplementUnits)
-    };
   }
 
   function unitLabel(service, plural = false) {
@@ -256,14 +219,17 @@ import config from "./config/environment.js";
 
     if (quote.fixed) {
       host.innerHTML = `<h3>${escapeHtml(localized(service, "name"))}</h3>
-        <div class="quote-summary-row"><span>${quote.units} × ${isEs ? "precio fijo" : "fixed price"}</span><strong>${formatMoney(quote.total)}</strong></div>
+        <div class="quote-summary-row"><span>${quote.units} × ${isEs ? "precio fijo por" : "fixed price per"} ${unitLabel(service)}</span><strong>${formatMoney(quote.total)}</strong></div>
         <div class="quote-summary-row total"><span>${isEs ? "Total estimado" : "Estimated total"}</span><strong>${formatMoney(quote.total)}</strong></div>
         <p class="quote-summary-note">${isEs ? "Sujeto a confirmación de disponibilidad." : "Subject to availability confirmation."}</p>`;
       return quote;
     }
 
     host.innerHTML = `<h3>${escapeHtml(localized(service, "name"))}</h3>
-      <div class="quote-summary-row"><span>${quote.units} × ${isEs ? "precio base" : "base price"}</span><strong>${formatMoney(service.base_price_cents * quote.units)}</strong></div>
+      <div class="quote-summary-row"><span>${quote.units} × ${isEs ? "precio base" : "base price"}</span><strong>${formatMoney(quote.baseTotal)}</strong></div>
+      ${quote.extraAdults ? `<div class="quote-summary-row"><span>${quote.extraAdults} × ${isEs ? "adulto adicional" : "extra adult"}${quote.supplementUnits > 1 ? ` × ${quote.supplementUnits}` : ""}</span><strong>${formatMoney(quote.extraAdults * service.adult_extra_cents * quote.supplementUnits)}</strong></div>` : ""}
+      ${quote.extraChildren ? `<div class="quote-summary-row"><span>${quote.extraChildren} × ${isEs ? "niño adicional" : "extra child"}${quote.supplementUnits > 1 ? ` × ${quote.supplementUnits}` : ""}</span><strong>${formatMoney(quote.extraChildren * service.child_extra_cents * quote.supplementUnits)}</strong></div>` : ""}
+      ${quote.extraInfants ? `<div class="quote-summary-row"><span>${quote.extraInfants} × ${isEs ? "menor de 3 años" : "child under 3"}${quote.supplementUnits > 1 ? ` × ${quote.supplementUnits}` : ""}</span><strong>${formatMoney(quote.extraInfants * service.infant_extra_cents * quote.supplementUnits)}</strong></div>` : ""}
       <div class="quote-summary-row total"><span>${isEs ? "Total estimado" : "Estimated total"}</span><strong>${formatMoney(quote.total)}</strong></div>
       <p class="quote-summary-note">${isEs ? "Sujeto a confirmaci\u00f3n de disponibilidad." : "Subject to availability confirmation."}</p>`;
     return quote;
@@ -309,7 +275,7 @@ import config from "./config/environment.js";
   function calculateStay(checkinValue, checkoutValue) {
     const checkin = parseIsoDateUtc(checkinValue);
     const checkout = parseIsoDateUtc(checkoutValue);
-    if (!checkin || !checkout || checkout <= checkin) return null;
+    if (!checkin || !checkout || checkout < checkin) return null;
 
     const millisecondsPerDay = 24 * 60 * 60 * 1000;
     const nights = Math.round((checkout - checkin) / millisecondsPerDay);
@@ -340,8 +306,10 @@ import config from "./config/environment.js";
     );
 
     if (!summary) return stay;
-    summary.hidden = !stay;
-    if (stay) {
+    const service = selectedService(form);
+    const showNightBreakdown = !service || service.booking_time_model === "overnight";
+    summary.hidden = !stay || !showNightBreakdown;
+    if (stay && showNightBreakdown) {
       summary.querySelector("#br-nights").textContent = String(stay.nights);
       summary.querySelector("#br-weekend-nights").textContent = String(
         stay.weekendNights
@@ -444,7 +412,10 @@ import config from "./config/environment.js";
     else if (data.checkin < today) reject(fields.checkin, text.pastCheckin);
 
     if (!data.checkout) reject(fields.checkout, text.requiredCheckout);
-    else if (data.checkin && (!data.stay || data.checkout <= data.checkin)) {
+    else if (data.checkin && (
+      !data.stay
+      || (service?.booking_time_model === "overnight" && data.checkout <= data.checkin)
+    )) {
       reject(fields.checkout, text.invalidCheckout);
     }
 
@@ -633,7 +604,7 @@ import config from "./config/environment.js";
           p_adults: data.adults,
           p_children: data.kids,
           p_infants: data.infants,
-          p_service_id: data.service.service_id,
+          p_rate_plan_id: data.service.rate_plan_id,
           p_customer_message: data.otherDetails || null
         })
       }
@@ -731,6 +702,7 @@ import config from "./config/environment.js";
   });
   document.addEventListener("change", (event) => {
     if (event.target.matches('input[name="service-id"]')) {
+      updateStaySummary(getForm());
       updateQuoteSummary(getForm());
     }
   });
