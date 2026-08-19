@@ -124,10 +124,66 @@ import { calculateQuote } from "./pricing-engine.mjs?v=10.4.0-2";
     return `${prefix}${formatMoney(service.base_price_cents)} / ${unitLabel(service)}`;
   }
 
+  function detailList(value) {
+    const items = Array.isArray(value) ? value : String(value || "").split(/\r?\n/);
+    return items.map((item) => String(item).trim()).filter(Boolean);
+  }
+
+  function guestLabel(count, es) {
+    return `${count} ${es ? (count === 1 ? "persona" : "personas") : (count === 1 ? "person" : "people")}`;
+  }
+
+  function guestRange(service, es) {
+    if (service.min_guests === service.max_occupancy) return guestLabel(service.max_occupancy, es);
+    return `${service.min_guests}\u2013${service.max_occupancy} ${es ? "personas" : "people"}`;
+  }
+
+  function formatTime(value) {
+    const [hours, minutes] = String(value || "").slice(0, 5).split(":").map(Number);
+    if (!Number.isInteger(hours) || !Number.isInteger(minutes)) return "";
+    return new Intl.DateTimeFormat(getLanguage() === "es" ? "es-MX" : "en-US", {
+      hour: "numeric",
+      minute: "2-digit"
+    }).format(new Date(2000, 0, 1, hours, minutes));
+  }
+
+  function serviceFacts(service, es) {
+    const facts = [];
+    if (service.pricing_model === "base_plus_guests" && service.included_guests > 0) {
+      facts.push({
+        label: es ? "Precio base incluye" : "Base price includes",
+        value: guestLabel(service.included_guests, es)
+      });
+    } else if (service.pricing_model === "fixed" && service.booking_time_model !== "fixed_window") {
+      facts.push({
+        label: es ? "Precio base incluye" : "Base price includes",
+        value: guestLabel(service.max_occupancy, es)
+      });
+    }
+
+    facts.push({
+      label: service.booking_time_model === "fixed_window"
+        ? (es ? "Capacidad" : "Capacity")
+        : (es ? "Capacidad m\u00e1xima" : "Maximum capacity"),
+      value: service.booking_time_model === "fixed_window"
+        ? guestRange(service, es)
+        : guestLabel(service.max_occupancy, es)
+    });
+
+    if (service.booking_time_model === "fixed_window") {
+      facts.push({
+        label: es ? "Duraci\u00f3n" : "Duration",
+        value: `${formatTime(service.window_start)}\u2013${formatTime(service.window_end)}`
+      });
+    }
+    return facts;
+  }
+
   function showServiceDetails(service) {
     const es = getLanguage() === "es";
-    const amenities = service[`amenities_${getLanguage()}`] || [];
-    const restrictions = localized(service, "restrictions");
+    const amenities = detailList(service[`amenities_${getLanguage()}`]);
+    const restrictions = detailList(localized(service, "restrictions"));
+    const facts = serviceFacts(service, es);
     let dialog = document.querySelector("#service-details-dialog");
     if (!dialog) {
       dialog = document.createElement("dialog");
@@ -138,21 +194,20 @@ import { calculateQuote } from "./pricing-engine.mjs?v=10.4.0-2";
         if (event.target === dialog || event.target.closest("[data-close-service-details]")) dialog.close();
       });
     }
-    const duration = service.booking_time_model === "fixed_window"
-      ? `${String(service.window_start).slice(0, 5)}–${String(service.window_end).slice(0, 5)}`
-      : `${service.min_units}${service.max_units ? `–${service.max_units}` : "+"} ${unitLabel(service, true)}`;
+    dialog.setAttribute("aria-labelledby", "service-details-title");
+    dialog.setAttribute("aria-describedby", "service-details-description");
     dialog.innerHTML = `<article>
       <button class="service-details-close" data-close-service-details type="button" aria-label="${es ? "Cerrar" : "Close"}">×</button>
-      <p class="section-label">${escapeHtml(localized(service, "rate_name"))}</p>
-      <h3>${escapeHtml(localized(service, "name"))}</h3>
+      <p class="service-details-eyebrow">${escapeHtml(localized(service, "rate_name"))}</p>
+      <h3 id="service-details-title">${escapeHtml(localized(service, "name"))}</h3>
       <strong class="service-details-price">${escapeHtml(priceLabel(service))}</strong>
-      <p>${escapeHtml(localized(service, "description"))}</p>
-      <dl><div><dt>${es ? "Duración" : "Duration"}</dt><dd>${escapeHtml(duration)}</dd></div>
-      <div><dt>${es ? "Capacidad" : "Capacity"}</dt><dd>${service.min_guests}–${service.max_occupancy}</dd></div></dl>
-      ${restrictions ? `<section><h4>${es ? "Restricciones" : "Restrictions"}</h4><p>${escapeHtml(restrictions)}</p></section>` : ""}
+      <p class="service-details-description" id="service-details-description">${escapeHtml(localized(service, "description"))}</p>
+      <dl class="service-details-facts">${facts.map((fact) => `<div><dt>${escapeHtml(fact.label)}</dt><dd>${escapeHtml(fact.value)}</dd></div>`).join("")}</dl>
       ${amenities.length ? `<section><h4>${es ? "Incluye" : "Includes"}</h4><ul>${amenities.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul></section>` : ""}
+      ${restrictions.length ? `<section><h4>${es ? "Restricciones" : "Restrictions"}</h4><ul>${restrictions.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul></section>` : ""}
     </article>`;
     dialog.showModal();
+    dialog.querySelector("[data-close-service-details]")?.focus();
   }
 
   function renderServices(form) {

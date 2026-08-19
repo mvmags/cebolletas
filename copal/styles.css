@@ -138,18 +138,24 @@ body.gallery-open { overflow: hidden; }
 .service-card li::before { content: "\00B7"; margin-right: 5px; color: var(--wine); }
 .service-info-button { display: grid; place-items: center; width: 34px; height: 34px; padding: 0; border: 1px solid var(--wine); border-radius: 50%; background: transparent; color: var(--wine); font: 700 16px/1 Georgia, serif; cursor: pointer; }
 .service-info-button:hover, .service-info-button:focus-visible { background: var(--wine); color: #fff; }
-.service-details-dialog { width: min(560px, calc(100% - 32px)); max-height: calc(100dvh - 32px); padding: 0; border: 0; color: #34382e; box-shadow: 0 24px 80px rgba(20,24,17,.35); }
+.service-details-dialog { width: min(880px, calc(100% - 32px)); max-height: calc(100dvh - 32px); padding: 0; overflow: auto; border: 0; background: var(--paper); color: #34382e; box-shadow: 0 24px 80px rgba(20,24,17,.35); }
 .service-details-dialog::backdrop { background: rgba(18,23,17,.72); backdrop-filter: blur(3px); }
-.service-details-dialog article { position: relative; padding: clamp(26px, 6vw, 46px); }
-.service-details-dialog h3 { margin: 5px 44px 8px 0; color: var(--green); font: 400 clamp(28px, 6vw, 42px)/1.1 Georgia, serif; }
-.service-details-dialog h4 { margin: 22px 0 8px; color: var(--green); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; }
-.service-details-dialog p, .service-details-dialog li, .service-details-dialog dd { font-size: 13px; line-height: 1.65; }
-.service-details-dialog dl { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; margin: 22px 0; }
-.service-details-dialog dl div { padding: 12px; background: rgba(48,56,38,.05); }
-.service-details-dialog dt { color: #73766c; font-size: 9px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
-.service-details-dialog dd { margin: 4px 0 0; color: var(--green); font-weight: 700; }
-.service-details-price { color: var(--wine); font-size: 14px; }
-.service-details-close { position: absolute; top: 16px; right: 16px; width: 36px; height: 36px; border: 0; background: transparent; color: var(--wine); font-size: 30px; cursor: pointer; }
+.service-details-dialog article { position: relative; padding: clamp(32px, 6vw, 68px); }
+.service-details-eyebrow { margin: 0 52px 12px 0; color: var(--wine); font-size: 10px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; }
+.service-details-dialog h3 { max-width: 720px; margin: 0 52px 18px 0; color: var(--green); font: 400 clamp(38px, 6vw, 62px)/1.03 Georgia, serif; letter-spacing: -.025em; }
+.service-details-price { display: block; margin-top: 2px; color: var(--wine); font-size: clamp(20px, 2.5vw, 28px); line-height: 1.2; }
+.service-details-description { max-width: 720px; margin: 24px 0 0; color: #4d5147; font-size: 15px; line-height: 1.65; }
+.service-details-facts { display: grid; grid-template-columns: repeat(auto-fit,minmax(170px,1fr)); gap: 12px; margin: 30px 0 36px; }
+.service-details-facts div { min-height: 82px; padding: 16px 18px; background: rgba(48,56,38,.055); }
+.service-details-dialog dt { color: var(--green); font-size: 10px; font-weight: 800; letter-spacing: .065em; text-transform: uppercase; }
+.service-details-dialog dd { margin: 7px 0 0; color: #1f241c; font-size: 14px; font-weight: 700; line-height: 1.4; }
+.service-details-dialog section + section { margin-top: 34px; }
+.service-details-dialog h4 { margin: 0 0 14px; color: var(--green); font-size: 20px; letter-spacing: .035em; text-transform: uppercase; }
+.service-details-dialog ul { display: grid; gap: 7px; margin: 0; padding-left: 22px; }
+.service-details-dialog li { padding-left: 5px; color: #34382e; font-size: 14px; line-height: 1.5; }
+.service-details-dialog li::marker { color: var(--wine); }
+.service-details-close { position: absolute; top: 20px; right: 20px; display: grid; place-items: center; width: 42px; height: 42px; padding: 0; border: 1px solid rgba(126,36,36,.35); border-radius: 50%; background: var(--paper); color: var(--wine); font-size: 30px; line-height: 1; cursor: pointer; }
+.service-details-close:hover, .service-details-close:focus-visible { border-color: var(--wine); background: var(--wine); color: #fff; outline: 0; }
 .service-loading, .service-empty { margin: 0; padding: 18px; border: 1px dashed rgba(48,56,38,.25); color: #70736a; font-size: 13px; }
 .quote-summary { padding: 20px; border: 1px solid rgba(48,56,38,.2); background: rgba(48,56,38,.035); }
 .quote-summary-placeholder { margin: 0; color: #70736a; font-size: 12px; line-height: 1.55; }
@@ -241,6 +247,13 @@ body.gallery-open { overflow: hidden; }
   .booking-actions { display: grid; grid-template-columns: 1fr; }
   .booking-actions button { width: 100%; }
   .service-grid { grid-template-columns: 1fr; }
+  .service-details-dialog { width: calc(100% - 20px); max-height: calc(100dvh - 20px); }
+  .service-details-dialog article { padding: 32px 24px 40px; }
+  .service-details-dialog h3 { margin-right: 40px; font-size: clamp(34px, 11vw, 46px); }
+  .service-details-description { margin-top: 20px; font-size: 14px; }
+  .service-details-facts { grid-template-columns: 1fr; margin: 26px 0 32px; }
+  .service-details-facts div { min-height: 0; }
+  .service-details-close { top: 14px; right: 14px; width: 38px; height: 38px; }
 }
 
 @media (max-width: 420px) {
