@@ -15,7 +15,7 @@ const copy = {
     ],
     galleryEyebrow: "Galer\u00eda", galleryTitle: "Conoce cada rinc\u00f3n.",
     galleryIntro: "Explora los espacios, detalles y paisajes que forman parte de la experiencia Cebolletas Copal.",
-    photoTour: "Recorrido fotogr\u00e1fico", temporary: "Fotograf\u00eda temporal",
+    temporary: "Fotograf\u00eda temporal",
     openAlbum: "Abrir galer\u00eda",
     closeAlbum: "Cerrar galer\u00eda",
     previousPhoto: "Fotograf\u00eda anterior",
@@ -57,7 +57,7 @@ const copy = {
     ],
     galleryEyebrow: "Gallery", galleryTitle: "Explore every corner.",
     galleryIntro: "Explore the spaces, details and landscapes that make up the Cebolletas Copal experience.",
-    photoTour: "Photo tour", temporary: "Temporary photograph",
+    temporary: "Temporary photograph",
     openAlbum: "Open gallery",
     closeAlbum: "Close gallery",
     previousPhoto: "Previous photograph",
@@ -118,11 +118,19 @@ const gallerySections = gallerySectionDefinitions.map(section => ({
   images: window.galleryImageManifest?.[section.folder] || []
 })).filter(section => section.images.length > 0);
 
+const galleryImages = gallerySections.flatMap((section, sectionIndex) =>
+  section.images.map((_, imageIndex) => ({
+    section,
+    sectionIndex,
+    imageIndex
+  }))
+);
+
 let lang = "es";
 let activeView = "home";
 let sectionObserver;
 let activePhoto = 0;
-let activeAlbumPhoto = 0;
+let activeGalleryImage = 0;
 let galleryReturnFocus = null;
 let galleryTouchStartX = null;
 const region = document.querySelector(".content-region");
@@ -213,17 +221,17 @@ function place(t) {
 }
 
 function gallery(t) {
-  const thumbs = gallerySections.map((section, i) => `<button type="button" data-photo="${i}" class="${i === activePhoto ? "active" : ""}">
-    <img src="${galleryImagePath(section, 0)}" alt=""><span>${section.labels[lang]}</span>
+  const sectionLinks = gallerySections.map((section, i) => `<button type="button" data-photo="${i}" class="${i === activePhoto ? "active" : ""}" aria-pressed="${i === activePhoto}">
+    <span aria-hidden="true">${String(i + 1).padStart(2, "0")}</span>${section.labels[lang]}
   </button>`).join("");
   const section = gallerySections[activePhoto];
   const sectionLabel = section.labels[lang];
   return `<section class="gallery-section" id="gallery" aria-labelledby="gallery-title">
     <div class="gallery-heading"><div><p class="section-label">${t.galleryEyebrow}</p><h2 id="gallery-title">${t.galleryTitle}</h2><div class="gallery-intro"><p>${t.galleryIntro}</p></div></div><div class="gallery-intro">${sectionLogo()}</div></div>
-    <div class="photo-tour"><h3>${t.photoTour}</h3><div class="thumbnail-strip">${thumbs}</div></div>
+    <div class="gallery-section-links" aria-label="${t.galleryEyebrow}">${sectionLinks}</div>
     <div class="gallery-feature"><div class="feature-caption"><p>${gallerySectionCounter()}</p><h3>${sectionLabel}</h3><span>${t.albumSize(section.images.length)}</span></div>
     <figure><button class="gallery-feature-button" type="button" data-open-gallery aria-label="${t.openAlbum}: ${sectionLabel}"><img src="${galleryImagePath(section, 0)}" alt="${sectionLabel}"></button></figure></div>
-    ${galleryLightbox(t, section)}
+    ${galleryLightbox(t)}
   </section>`;
 }
 
@@ -235,12 +243,13 @@ function gallerySectionCounter() {
   return `${String(activePhoto + 1).padStart(2, "0")} / ${String(gallerySections.length).padStart(2, "0")}`;
 }
 
-function galleryLightbox(t, section) {
+function galleryLightbox(t) {
+  const section = gallerySections[activePhoto];
   const label = section.labels[lang];
   return `<div class="gallery-lightbox" data-gallery-lightbox role="dialog" aria-modal="true" aria-labelledby="gallery-lightbox-title" hidden>
     <div class="gallery-lightbox-backdrop" data-close-gallery></div>
     <div class="gallery-lightbox-panel">
-      <header class="gallery-lightbox-header"><div><h2 id="gallery-lightbox-title">${label}</h2><p data-gallery-count>01 / ${String(section.images.length).padStart(2, "0")}</p></div><button type="button" data-close-gallery aria-label="${t.closeAlbum}">×</button></header>
+      <header class="gallery-lightbox-header"><div><h2 id="gallery-lightbox-title">${label}</h2><p data-gallery-count>01 / ${String(galleryImages.length).padStart(2, "0")}</p></div><button type="button" data-close-gallery aria-label="${t.closeAlbum}">×</button></header>
       <div class="gallery-lightbox-stage">
         <button class="gallery-lightbox-nav previous" type="button" data-gallery-previous aria-label="${t.previousPhoto}">‹</button>
         <figure><img data-gallery-image src="${galleryImagePath(section, 0)}" alt="${label}"></figure>
@@ -299,7 +308,9 @@ function updateGallery() {
   const section = gallerySections[activePhoto];
   const sectionLabel = section.labels[lang];
   region.querySelectorAll("[data-photo]").forEach((button, index) => {
-    button.classList.toggle("active", index === activePhoto);
+    const active = index === activePhoto;
+    button.classList.toggle("active", active);
+    button.setAttribute("aria-pressed", String(active));
   });
   const counter = region.querySelector(".feature-caption p");
   const title = region.querySelector(".feature-caption h3");
@@ -321,7 +332,8 @@ function updateGallery() {
 function openGallery(trigger) {
   const lightbox = region.querySelector("[data-gallery-lightbox]");
   if (!lightbox) return;
-  activeAlbumPhoto = 0;
+  activeGalleryImage = galleryImages.findIndex(image => image.sectionIndex === activePhoto);
+  if (activeGalleryImage < 0) activeGalleryImage = 0;
   galleryReturnFocus = trigger;
   updateLightbox();
   lightbox.hidden = false;
@@ -339,27 +351,32 @@ function closeGallery() {
 }
 
 function moveGalleryPhoto(direction) {
-  const imageCount = gallerySections[activePhoto].images.length;
-  activeAlbumPhoto = (activeAlbumPhoto + direction + imageCount) % imageCount;
+  const imageCount = galleryImages.length;
+  if (!imageCount) return;
+  activeGalleryImage = (activeGalleryImage + direction + imageCount) % imageCount;
   updateLightbox();
 }
 
 function updateLightbox() {
-  const section = gallerySections[activePhoto];
+  const current = galleryImages[activeGalleryImage];
+  if (!current) return;
+  const { section, imageIndex } = current;
   const image = region.querySelector("[data-gallery-image]");
   const counter = region.querySelector("[data-gallery-count]");
-  const multiplePhotos = section.images.length > 1;
+  const title = region.querySelector("#gallery-lightbox-title");
+  const multiplePhotos = galleryImages.length > 1;
+  if (title) title.textContent = section.labels[lang];
   if (image) {
-    image.src = galleryImagePath(section, activeAlbumPhoto);
-    image.alt = `${section.labels[lang]} — ${activeAlbumPhoto + 1}`;
+    image.src = galleryImagePath(section, imageIndex);
+    image.alt = `${section.labels[lang]} — ${imageIndex + 1}`;
   }
-  if (counter) counter.textContent = `${String(activeAlbumPhoto + 1).padStart(2, "0")} / ${String(section.images.length).padStart(2, "0")}`;
+  if (counter) counter.textContent = `${String(activeGalleryImage + 1).padStart(2, "0")} / ${String(galleryImages.length).padStart(2, "0")}`;
   region.querySelectorAll("[data-gallery-previous], [data-gallery-next]").forEach(button => {
     button.hidden = !multiplePhotos;
   });
   if (multiplePhotos) {
-    const nextIndex = (activeAlbumPhoto + 1) % section.images.length;
-    new Image().src = galleryImagePath(section, nextIndex);
+    const next = galleryImages[(activeGalleryImage + 1) % galleryImages.length];
+    new Image().src = galleryImagePath(next.section, next.imageIndex);
   }
 }
 
@@ -395,7 +412,6 @@ region.addEventListener("click", event => {
   const button = event.target.closest("[data-photo]");
   if (button) {
     activePhoto = Number(button.dataset.photo);
-    activeAlbumPhoto = 0;
     updateGallery();
     return;
   }
@@ -420,7 +436,7 @@ region.addEventListener("touchend", event => {
   if (galleryTouchStartX === null || !event.target.closest("[data-gallery-lightbox]")) return;
   const distance = (event.changedTouches[0]?.clientX ?? galleryTouchStartX) - galleryTouchStartX;
   galleryTouchStartX = null;
-  if (Math.abs(distance) < 50 || gallerySections[activePhoto].images.length < 2) return;
+  if (Math.abs(distance) < 50 || galleryImages.length < 2) return;
   moveGalleryPhoto(distance > 0 ? -1 : 1);
 }, { passive: true });
 
