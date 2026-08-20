@@ -97,7 +97,7 @@ import { calculateQuote } from "./pricing-engine.mjs?v=10.4.0-2";
   }
 
   function selectedService(form) {
-    const id = form?.querySelector('input[name="service-id"]:checked')?.value;
+    const id = form?.querySelector('select[name="service-id"]')?.value;
     return activeServices.find((service) => service.rate_plan_id === id) || null;
   }
 
@@ -214,19 +214,37 @@ import { calculateQuote } from "./pricing-engine.mjs?v=10.4.0-2";
     const host = form?.querySelector("#br-service-options");
     if (!host) return;
     const legend = host.querySelector("legend")?.outerHTML || "";
+    const previousSelection = host.querySelector('select[name="service-id"]')?.value;
     if (!activeServices.length) {
       host.innerHTML = `${legend}<p class="service-empty">${getLanguage() === "es"
         ? "No hay servicios activos disponibles por el momento."
         : "There are no active services available right now."}</p>`;
       return;
     }
-    host.innerHTML = `${legend}<div class="service-grid">${activeServices.map((service, index) => {
-      return `<label class="service-card">
-        <input type="radio" name="service-id" value="${service.rate_plan_id}" ${index === 0 ? "checked" : ""}>
-        <span class="service-card-copy"><strong>${escapeHtml(localized(service, "name"))}</strong><small>${escapeHtml(priceLabel(service))}</small></span>
-        <button class="service-info-button" data-service-info="${service.rate_plan_id}" type="button" aria-label="${getLanguage() === "es" ? "Ver detalles de" : "View details for"} ${escapeHtml(localized(service, "name"))}">?</button>
-      </label>`;
-    }).join("")}</div>`;
+    const selectedId = activeServices.some((service) => service.rate_plan_id === previousSelection)
+      ? previousSelection
+      : activeServices[0].rate_plan_id;
+    const selected = activeServices.find((service) => service.rate_plan_id === selectedId);
+    const detailsLabel = getLanguage() === "es" ? "Ver detalles de" : "View details for";
+    host.innerHTML = `${legend}<div class="service-select-row">
+      <div class="service-select-control">
+        <select class="service-select" id="br-service" name="service-id" required>${activeServices.map((service) => (
+          `<option value="${service.rate_plan_id}" ${service.rate_plan_id === selectedId ? "selected" : ""}>${escapeHtml(localized(service, "name"))}</option>`
+        )).join("")}</select>
+      </div>
+      <button class="service-info-button" data-service-info="${selectedId}" type="button" aria-haspopup="dialog" aria-label="${detailsLabel} ${escapeHtml(localized(selected, "name"))}">?</button>
+    </div>`;
+  }
+
+  function syncServiceInfoButton(form) {
+    const service = selectedService(form);
+    const button = form?.querySelector("[data-service-info]");
+    if (!button || !service) return;
+    button.dataset.serviceInfo = service.rate_plan_id;
+    button.setAttribute(
+      "aria-label",
+      `${getLanguage() === "es" ? "Ver detalles de" : "View details for"} ${localized(service, "name")}`
+    );
   }
 
   function updateQuoteSummary(form) {
@@ -490,7 +508,7 @@ import { calculateQuote } from "./pricing-engine.mjs?v=10.4.0-2";
       reject(
         fields.service,
         text.requiredService,
-        fields.service.querySelector('input[name="service-id"]') || fields.service
+        fields.service.querySelector('select[name="service-id"]') || fields.service
       );
     } else if (
       Number.isInteger(data.adults) &&
@@ -726,7 +744,7 @@ import { calculateQuote } from "./pricing-engine.mjs?v=10.4.0-2";
   document.addEventListener("focusin", (event) => {
     if (!event.target.closest("#reserva-form")) return;
     clearFieldError(event.target);
-    if (event.target.matches('input[name="service-id"]')) {
+    if (event.target.matches('select[name="service-id"]')) {
       clearFieldError(event.target.closest(".service-options"));
     }
   });
@@ -756,9 +774,12 @@ import { calculateQuote } from "./pricing-engine.mjs?v=10.4.0-2";
     }
   });
   document.addEventListener("change", (event) => {
-    if (event.target.matches('input[name="service-id"]')) {
-      updateStaySummary(getForm());
-      updateQuoteSummary(getForm());
+    if (event.target.matches('select[name="service-id"]')) {
+      const form = getForm();
+      clearFieldError(event.target.closest(".service-options"));
+      syncServiceInfoButton(form);
+      updateStaySummary(form);
+      updateQuoteSummary(form);
     }
   });
 
