@@ -175,6 +175,25 @@ import { calculateQuote } from "./pricing-engine.mjs?v=10.4.0-3";
     }).format(date);
   }
 
+  function addDaysToIsoDate(value, days) {
+    const date = parseIsoDateUtc(value);
+    if (!date) return "";
+    date.setUTCDate(date.getUTCDate() + days);
+    return date.toISOString().slice(0, 10);
+  }
+
+  function checkoutForSpecificDate(service, checkinValue) {
+    if (!checkinValue) return "";
+    const minimumUnits = Math.max(Number(service?.min_units) || 1, 1);
+    if (service?.booking_time_model === "overnight") {
+      return addDaysToIsoDate(checkinValue, minimumUnits);
+    }
+    if (service?.booking_time_model === "calendar_day") {
+      return addDaysToIsoDate(checkinValue, minimumUnits - 1);
+    }
+    return checkinValue;
+  }
+
   function serviceFacts(service, es) {
     const facts = [];
     if (service.pricing_model === "base_plus_guests" && service.included_guests > 0) {
@@ -409,7 +428,9 @@ import { calculateQuote } from "./pricing-engine.mjs?v=10.4.0-3";
     const checkin = form.querySelector("#br-checkin");
     const specificDate = form.querySelector("#br-specific-date");
     const checkout = form.querySelector("#br-checkout");
-    if (!checkin || !checkout || !specificDate) return;
+    const checkinLabel = form.querySelector("#br-checkin-label");
+    const checkoutField = form.querySelector("#br-checkout-field");
+    if (!checkin || !checkout || !specificDate || !checkoutField) return;
 
     const today = getLocalDate();
     const dates = availableDates(service);
@@ -419,10 +440,13 @@ import { calculateQuote } from "./pricing-engine.mjs?v=10.4.0-3";
     checkin.removeAttribute("max");
     checkout.min = checkin.value || today;
     checkout.removeAttribute("max");
-    checkin.classList.remove("hidden");
-    specificDate.classList.add("hidden");
+    checkout.readOnly = false;
+    checkoutField.hidden = false;
+    checkin.hidden = false;
+    specificDate.hidden = true;
     specificDate.disabled = true;
     specificDate.replaceChildren();
+    if (checkinLabel) checkinLabel.textContent = checkinLabel.dataset.openLabel;
 
     if (service?.availability_model === "specific_dates" && dates.length) {
       specificDate.replaceChildren(...dates.map((value) => {
@@ -431,13 +455,20 @@ import { calculateQuote } from "./pricing-engine.mjs?v=10.4.0-3";
         option.textContent = formatServiceDate(value);
         return option;
       }));
-      checkin.classList.add("hidden");
-      specificDate.classList.remove("hidden");
+      checkin.hidden = true;
+      specificDate.hidden = false;
       specificDate.disabled = false;
+      checkoutField.hidden = true;
+      if (checkinLabel) checkinLabel.textContent = checkinLabel.dataset.specificLabel;
       checkin.min = dates[0];
       checkin.max = dates[dates.length - 1];
       if (selectDefault || !dates.includes(checkin.value)) checkin.value = dates[0];
       specificDate.value = checkin.value;
+      checkout.value = checkoutForSpecificDate(service, checkin.value);
+      checkout.min = checkout.value;
+      checkout.max = checkout.value;
+      checkout.readOnly = true;
+      return;
     }
 
     if (service?.booking_time_model === "fixed_window" && checkin.value) {
@@ -872,7 +903,12 @@ import { calculateQuote } from "./pricing-engine.mjs?v=10.4.0-3";
     if (event.target.matches("#br-checkin, #br-specific-date")) {
       const checkout = form.querySelector("#br-checkout");
       const service = selectedService(form);
-      if (service?.booking_time_model === "fixed_window") {
+      if (service?.availability_model === "specific_dates") {
+        const checkoutValue = checkoutForSpecificDate(service, form.querySelector("#br-checkin").value);
+        checkout.value = checkoutValue;
+        checkout.min = checkoutValue;
+        checkout.max = checkoutValue;
+      } else if (service?.booking_time_model === "fixed_window") {
         const checkinValue = form.querySelector("#br-checkin").value;
         checkout.value = checkinValue;
         checkout.min = checkinValue || getLocalDate();

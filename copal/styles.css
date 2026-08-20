@@ -105,6 +105,7 @@ body.gallery-open { overflow: hidden; }
 .booking-intro > p:not(.section-label) { max-width: 520px; margin: 28px 0 0; color: #67695f; font-size: 15px; line-height: 1.75; }
 .booking-intro > .section-brand-logo { margin-top: 30px; }
 .booking-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px 18px; align-self: center; }
+.booking-form [hidden], .booking-form .hidden { display: none; }
 .booking-form label { display: grid; gap: 8px; }
 .booking-form label > span { color: var(--green); font-size: 10px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
 .booking-form input, .booking-form textarea, .booking-form label > select { width: 100%; border: 1px solid rgba(48,56,38,.28); border-radius: 0; background: #fff; color: #1f241c; padding: 14px 15px; font: inherit; font-size: 14px; outline: none; transition: border-color .2s ease, box-shadow .2s ease; }

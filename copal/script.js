@@ -25,6 +25,7 @@ const copy = {
     bookingText: "Comparte tus datos y el plan que tienes en mente. Te contactaremos para revisar disponibilidad y ayudarte a preparar tu estancia.",
     fields: {
       checkin: "Fecha llegada",
+      availableDate: "Fecha disponible",
       checkout: "Fecha salida",
       nights: "Noches",
       weekendNights: "Noches de fin de semana",
@@ -67,6 +68,7 @@ const copy = {
     bookingText: "Share your details and the experience you have in mind. We will contact you to review availability and help prepare your stay.",
     fields: {
       checkin: "Check-in",
+      availableDate: "Available date",
       checkout: "Checkout",
       nights: "Nights",
       weekendNights: "Weekend nights",
@@ -267,8 +269,8 @@ function booking(t) {
         <legend>${t.requestedInfo}</legend>
         <p class="service-loading">${t.servicesLoading}</p>
       </fieldset>
-      <label><span>${t.fields.checkin}</span><input id="br-checkin" name="checkin" type="date" required><select id="br-specific-date" class="hidden" aria-label="${t.fields.checkin}" disabled></select></label>
-      <label><span>${t.fields.checkout}</span><input id="br-checkout" name="checkout" type="date" required></label>
+      <label id="br-checkin-field"><span id="br-checkin-label" data-open-label="${t.fields.checkin}" data-specific-label="${t.fields.availableDate}">${t.fields.checkin}</span><input id="br-checkin" name="checkin" type="date" required><select id="br-specific-date" aria-labelledby="br-checkin-label" hidden disabled></select></label>
+      <label id="br-checkout-field"><span>${t.fields.checkout}</span><input id="br-checkout" name="checkout" type="date" required></label>
       <div class="stay-summary full-field" id="br-stay-summary" aria-live="polite" hidden>
         <div><span>${t.fields.nights}</span><strong id="br-nights">0</strong></div>
         <div><span>${t.fields.weekendNights}</span><strong id="br-weekend-nights">0</strong></div>
