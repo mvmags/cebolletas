@@ -1,8 +1,8 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+import config from "../config/environment.js";
+import { calculateQuoteForUnits } from "../pricing-engine.mjs?v=10.4.0-2";
 
-const SUPABASE_URL = "https://myqaotknkriuhdssbzlz.supabase.co";
-const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_XuDt5xNF3EzE0K2TSE9QCg_hnDMWsVN";
-const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+const supabase = createClient(config.supabaseUrl, config.supabasePublishableKey);
 const $ = (selector) => document.querySelector(selector);
 
 const loginView = $("#login-view");
@@ -48,6 +48,14 @@ const PRICING_UNIT_LABELS = {
   per_person_night: "por persona/noche",
   fixed: "precio fijo",
 };
+const TIME_MODEL_LABELS = { overnight: "por noche", calendar_day: "por día", fixed_window: "por ventana" };
+const PRICING_MODEL_LABELS = { fixed: "precio fijo", base_plus_guests: "base + adicionales", per_person: "por persona", manual_quote: "estimación manual" };
+
+function rateUnitLabel(service, plural = false) {
+  if (service.booking_time_model === "fixed_window") return "ventana";
+  if (service.booking_time_model === "calendar_day") return plural ? "días" : "día";
+  return plural ? "noches" : "noche";
+}
 
 const REQUEST_STATUS_LABELS = {
   new: "Nueva",
@@ -145,6 +153,10 @@ function friendlyError(error) {
   if (error?.message?.includes("Checkout date must have passed")) return "La solicitud solo puede cerrarse despu\u00e9s de la fecha de salida.";
   if (error?.message?.includes("not-converted reason")) return "Selecciona el motivo por el que no se convirti\u00f3.";
   if (error?.message?.includes("Information request not found")) return "La solicitud ya no existe.";
+  if (error?.message?.includes("Maximum adults cannot exceed")) return "El máximo de adultos no puede exceder la capacidad física máxima.";
+  if (error?.message?.includes("Maximum children cannot exceed")) return "El máximo de niños no puede exceder la capacidad física máxima.";
+  if (error?.message?.includes("Maximum infants cannot exceed")) return "El máximo de menores de 3 años no puede exceder la capacidad física máxima.";
+  if (error?.message?.includes("rate_plan_versions_category_limits")) return "Los máximos por tipo de huésped no pueden exceder la capacidad física máxima.";
   return error?.message || "No fue posible completar la operaci\u00f3n.";
 }
 
@@ -229,6 +241,24 @@ function requestServicesLabel(request) {
     .join(", ");
 }
 
+function renderRequestServiceFilter() {
+  const select = $("#request-service-filter");
+  const selectedServiceId = select.value;
+  const options = [new Option("Todos los servicios", "all")];
+
+  services
+    .filter((service) => service.is_active)
+    .forEach((service) => {
+      const version = currentVersion(service);
+      if (version?.name_es) options.push(new Option(version.name_es, service.id));
+    });
+
+  select.replaceChildren(...options);
+  select.value = options.some((option) => option.value === selectedServiceId)
+    ? selectedServiceId
+    : "all";
+}
+
 function filteredInformationRequests() {
   if (!calendarMonth) calendarMonth = monthStart(mexicoCityDate());
   const query = $("#request-search").value.trim().toLocaleLowerCase("es-MX");
@@ -251,7 +281,7 @@ function filteredInformationRequests() {
     ].join(" ").toLocaleLowerCase("es-MX");
     return (!query || haystack.includes(query))
       && (status === "all" || request.status === status)
-      && (service === "all" || request.requested_services.includes(service))
+      && (service === "all" || request.selected_service_id === service)
       && request.checkin_date <= monthEndKey
       && request.checkout_date >= monthStartKey;
   });
@@ -489,6 +519,28 @@ function currentVersion(service) {
     || null;
 }
 
+function currentRateVersion(service) {
+  const plan = service.rate_plans?.find((item) => item.rate_code === "standard") || service.rate_plans?.[0];
+  return plan?.rate_plan_versions?.find((version) => version.id === plan.current_version_id)
+    || plan?.rate_plan_versions?.[0] || null;
+}
+
+function effectiveParticipantPrice(rate, category) {
+  return rate?.[`${category}_price_cents`] ?? rate?.person_price_cents ?? 0;
+}
+
+function ratePriceLabel(rate) {
+  if (!rate || rate.pricing_model === "manual_quote") return "Precio estimado";
+  if (rate.pricing_model === "per_person") {
+    const prices = ["adult", "child", "infant"].map((category) => effectiveParticipantPrice(rate, category));
+    const positivePrices = prices.filter((price) => price > 0);
+    const minimum = positivePrices.length ? Math.min(...positivePrices) : 0;
+    const samePrice = prices.every((price) => price === prices[0]);
+    return `${samePrice ? "" : "Desde "}${formatMoney(samePrice ? prices[0] : minimum)} por persona ${TIME_MODEL_LABELS[rate.booking_time_model] || ""}`;
+  }
+  return `${rate.pricing_model === "base_plus_guests" ? "Desde " : ""}${formatMoney(rate.base_price_cents)} ${TIME_MODEL_LABELS[rate.booking_time_model] || ""}`;
+}
+
 function filteredServices() {
   const query = $("#service-search").value.trim().toLocaleLowerCase("es-MX");
   const category = $("#service-category-filter").value;
@@ -525,12 +577,11 @@ function renderServices() {
 
   visible.forEach((service) => {
     const version = currentVersion(service);
+    const rate = currentRateVersion(service);
     if (!version) return;
     const row = document.createElement("div");
     row.className = "service-row";
-    const price = version.price_on_request
-      ? "Precio a consultar"
-      : `${formatMoney(version.base_price_cents)} ${PRICING_UNIT_LABELS[version.pricing_unit] || ""}`;
+    const price = ratePriceLabel(rate);
     row.innerHTML = `
       <div class="service-title">
         <strong>${escapeHtml(version.name_es)}</strong>
@@ -542,9 +593,7 @@ function renderServices() {
       </div>
       <div class="service-price">
         <strong>${escapeHtml(price)}</strong>
-        <small>${version.price_on_request
-          ? `Cotizaci\u00f3n manual \u00b7 m\u00e1ximo ${version.max_occupancy}`
-          : `Incluye ${version.included_guests} \u00b7 m\u00e1ximo ${version.max_occupancy}<br>Extra adulto ${formatMoney(version.adult_extra_cents)} \u00b7 ni\u00f1o ${formatMoney(version.child_extra_cents)}`}</small>
+        <small>${rate ? `${PRICING_MODEL_LABELS[rate.pricing_model]} · mínimo ${rate.min_guests} · máximo ${rate.max_occupancy}` : "Sin plan de tarifa"}</small>
       </div>
       <span class="status-badge ${service.is_active ? "active" : "inactive"}">${service.is_active ? "Activo" : "Inactivo"}</span>
       <div class="row-actions">
@@ -575,6 +624,19 @@ async function loadServices() {
         max_occupancy, adult_extra_cents, child_extra_cents,
         child_min_age, child_max_age, adult_min_age,
         amenities_es, amenities_en, created_at
+      ),
+      rate_plans!rate_plans_service_id_fkey (
+        id, rate_code, is_active, display_order, current_version_id,
+        rate_plan_versions!rate_plan_versions_rate_plan_id_fkey (
+          id, version_number, booking_time_model, pricing_model, base_price_cents,
+          included_guests, min_guests, max_occupancy, max_adults, max_children,
+          max_infants, adult_extra_cents, child_extra_cents, infant_extra_cents,
+          supplement_basis, min_units, max_units, window_start, window_end,
+          buffer_before_minutes, buffer_after_minutes, availability_model,
+          person_price_cents, adult_price_cents, child_price_cents, infant_price_cents,
+          restrictions_es, restrictions_en, created_at,
+          rate_plan_available_dates (available_date)
+        )
       )
     `)
     .order("display_order")
@@ -583,8 +645,10 @@ async function loadServices() {
   services = data || [];
   services.forEach((service) => {
     service.service_versions?.sort((a, b) => b.version_number - a.version_number);
+    service.rate_plans?.forEach((plan) => plan.rate_plan_versions?.sort((a, b) => b.version_number - a.version_number));
   });
   renderServices();
+  renderRequestServiceFilter();
 }
 
 async function loadRecipients() {
@@ -682,8 +746,16 @@ function centsFromInput(selector) {
   return Math.round(Number($(selector).value || 0) * 100);
 }
 
+function optionalCentsFromInput(selector) {
+  return $(selector).value === "" ? null : centsFromInput(selector);
+}
+
 function linesFromTextarea(selector) {
   return $(selector).value.split("\n").map((line) => line.trim()).filter(Boolean);
+}
+
+function datesFromTextarea(selector) {
+  return [...new Set(linesFromTextarea(selector))].sort();
 }
 
 function slugify(value) {
@@ -693,23 +765,70 @@ function slugify(value) {
 }
 
 function updatePricingFieldState() {
-  const disabled = $("#service-price-on-request").checked;
-  ["#service-base-price", "#service-included-guests", "#service-adult-extra", "#service-child-extra"].forEach((selector) => {
+  const model = $("#service-pricing-model").value;
+  const manual = model === "manual_quote";
+  const guestSupplements = model === "base_plus_guests";
+  const participantPricing = model === "per_person";
+  const fixedWindow = $("#service-booking-time-model").value === "fixed_window";
+  ["#service-base-price"].forEach((selector) => {
     const input = $(selector);
-    input.disabled = disabled;
-    input.required = !disabled;
+    input.disabled = manual || participantPricing;
+    input.required = !manual && !participantPricing;
   });
-  $(".pricing-definition").classList.toggle("manual", disabled);
+  ["#service-included-guests", "#service-adult-extra", "#service-child-extra", "#service-infant-extra"].forEach((selector) => {
+    const input = $(selector);
+    input.disabled = !guestSupplements;
+    input.required = guestSupplements;
+  });
+  $("#service-supplement-basis").disabled = !guestSupplements;
+  document.querySelectorAll(".base-price-field").forEach((field) => field.classList.toggle("hidden", manual || participantPricing));
+  document.querySelectorAll(".guest-supplement-field").forEach((field) => field.classList.toggle("hidden", !guestSupplements));
+  document.querySelectorAll(".participant-price-field").forEach((field) => field.classList.toggle("hidden", !participantPricing));
+  ["#service-person-price", "#service-adult-price", "#service-child-price", "#service-infant-price"].forEach((selector) => {
+    $(selector).disabled = !participantPricing;
+  });
+  const specificDates = $("#service-availability-model").value === "specific_dates";
+  $("#service-available-dates-field").classList.toggle("hidden", !specificDates);
+  $("#service-available-dates").required = specificDates;
+  $("#service-window-fields").classList.toggle("hidden", !fixedWindow);
+  $("#service-min-units").disabled = fixedWindow;
+  $("#service-max-units").disabled = fixedWindow;
+  if (fixedWindow) {
+    $("#service-min-units").value = 1;
+    $("#service-max-units").value = 1;
+  }
+  $(".pricing-definition").classList.toggle("manual", manual);
   updatePricingPreview();
 }
 
+function syncCategoryCapacityLimits() {
+  const capacity = Number($("#service-max-occupancy").value || 0);
+  ["#service-max-adults", "#service-max-children", "#service-max-infants"].forEach((selector) => {
+    const input = $(selector);
+    if (capacity > 0) input.max = String(capacity);
+    else input.removeAttribute("max");
+  });
+}
+
 function updatePricingPreview() {
-  const manual = $("#service-price-on-request").checked;
+  const model = $("#service-pricing-model").value;
+  const manual = model === "manual_quote";
   const base = centsFromInput("#service-base-price");
   const included = Number($("#service-included-guests").value || 0);
   const capacity = Number($("#service-max-occupancy").value || 0);
   const adultExtra = centsFromInput("#service-adult-extra");
   const childExtra = centsFromInput("#service-child-extra");
+
+  if (model === "per_person") {
+    const generic = optionalCentsFromInput("#service-person-price");
+    const adult = optionalCentsFromInput("#service-adult-price") ?? generic ?? 0;
+    const child = optionalCentsFromInput("#service-child-price") ?? generic ?? 0;
+    const infant = optionalCentsFromInput("#service-infant-price") ?? generic ?? 0;
+    $("#pricing-preview-formula").textContent = "Precio por persona";
+    $("#pricing-preview-description").textContent = `Adulto ${formatMoney(adult)}, niño ${formatMoney(child)}, menor de 3 ${formatMoney(infant)} ${TIME_MODEL_LABELS[$("#service-booking-time-model").value]}.`;
+    $("#pricing-preview-total").textContent = `${formatMoney(adult * Math.max(capacity, 1))} ${TIME_MODEL_LABELS[$("#service-booking-time-model").value]}`;
+    return;
+  }
 
   if (manual) {
     $("#pricing-preview-formula").textContent = "Cotizaci\u00f3n manual";
@@ -718,24 +837,31 @@ function updatePricingPreview() {
     return;
   }
 
-  $("#pricing-preview-formula").textContent = "Base + adultos extra + ni\u00f1os extra";
-  $("#pricing-preview-description").textContent = `${formatMoney(base)} por noche incluye ${included || "\u2014"} hu\u00e9sped(es). Despu\u00e9s se suman ${formatMoney(adultExtra)} por adulto y ${formatMoney(childExtra)} por ni\u00f1o de 3\u201312 a\u00f1os.`;
+  const unit = TIME_MODEL_LABELS[$("#service-booking-time-model").value];
+  $("#pricing-preview-formula").textContent = PRICING_MODEL_LABELS[model];
+  $("#pricing-preview-description").textContent = model === "fixed"
+    ? `${formatMoney(base)} ${unit}; el número de huéspedes no cambia el precio.`
+    : `${formatMoney(base)} ${unit} incluye ${included || "\u2014"} huésped(es). Después se suman ${formatMoney(adultExtra)} por adulto y ${formatMoney(childExtra)} por niño.`;
 
-  if (!capacity || !included || included > capacity) {
+  if (!capacity || (model === "base_plus_guests" && (!included || included > capacity))) {
     $("#pricing-preview-total").textContent = "Revisa incluidos y capacidad";
     return;
   }
 
-  const extraAdults = Math.max(capacity - included, 0);
-  $("#pricing-preview-total").textContent = `${formatMoney(base + (extraAdults * adultExtra))} / noche`;
+  const extraAdults = model === "base_plus_guests" ? Math.max(capacity - included, 0) : 0;
+  $("#pricing-preview-total").textContent = `${formatMoney(base + (extraAdults * adultExtra))} ${unit}`;
 }
 
 function openServiceModal(service = null) {
   const version = service ? currentVersion(service) : null;
+  const rate = service ? currentRateVersion(service) : null;
   serviceForm.reset();
   $("#service-id").value = service?.id || "";
   $("#service-category").value = service?.category_code || "copal";
-  $("#service-pricing-unit").value = version?.pricing_unit || "per_night";
+  $("#service-booking-time-model").value = rate?.booking_time_model || "overnight";
+  $("#service-pricing-model").value = rate?.pricing_model || "base_plus_guests";
+  $("#service-availability-model").value = rate?.availability_model || "open_calendar";
+  $("#service-available-dates").value = (rate?.rate_plan_available_dates || []).map((item) => item.available_date).sort().join("\n");
   $("#service-display-order").value = service?.display_order ?? services.length * 10;
   $("#service-name-es").value = version?.name_es || "";
   $("#service-name-en").value = version?.name_en || "";
@@ -743,15 +869,31 @@ function openServiceModal(service = null) {
   $("#service-description-en").value = version?.description_en || "";
   $("#service-amenities-es").value = (version?.amenities_es || []).join("\n");
   $("#service-amenities-en").value = (version?.amenities_en || []).join("\n");
-  $("#service-price-on-request").checked = version?.price_on_request || false;
-  $("#service-base-price").value = version ? pesosFromCents(version.base_price_cents) : 1200;
-  $("#service-included-guests").value = version?.included_guests ?? 3;
-  $("#service-max-occupancy").value = version?.max_occupancy ?? 6;
-  $("#service-adult-extra").value = version ? pesosFromCents(version.adult_extra_cents) : 500;
-  $("#service-child-extra").value = version ? pesosFromCents(version.child_extra_cents) : 350;
+  $("#service-base-price").value = rate ? pesosFromCents(rate.base_price_cents) : 1200;
+  $("#service-included-guests").value = rate?.included_guests ?? 3;
+  $("#service-min-guests").value = rate?.min_guests ?? 1;
+  $("#service-max-occupancy").value = rate?.max_occupancy ?? 6;
+  $("#service-max-adults").value = rate?.max_adults ?? "";
+  $("#service-max-children").value = rate?.max_children ?? "";
+  $("#service-max-infants").value = rate?.max_infants ?? "";
+  $("#service-adult-extra").value = rate ? pesosFromCents(rate.adult_extra_cents) : 500;
+  $("#service-child-extra").value = rate ? pesosFromCents(rate.child_extra_cents) : 350;
+  $("#service-infant-extra").value = rate ? pesosFromCents(rate.infant_extra_cents) : 0;
+  $("#service-person-price").value = rate?.person_price_cents == null ? "" : pesosFromCents(rate.person_price_cents);
+  $("#service-adult-price").value = rate?.adult_price_cents == null ? "" : pesosFromCents(rate.adult_price_cents);
+  $("#service-child-price").value = rate?.child_price_cents == null ? "" : pesosFromCents(rate.child_price_cents);
+  $("#service-infant-price").value = rate?.infant_price_cents == null ? "" : pesosFromCents(rate.infant_price_cents);
+  $("#service-supplement-basis").value = rate?.supplement_basis || "per_unit";
+  $("#service-min-units").value = rate?.min_units ?? 1;
+  $("#service-max-units").value = rate?.max_units ?? "";
+  $("#service-window-start").value = rate?.window_start?.slice(0, 5) || "10:00";
+  $("#service-window-end").value = rate?.window_end?.slice(0, 5) || "18:00";
+  $("#service-restrictions-es").value = rate?.restrictions_es || "";
+  $("#service-restrictions-en").value = rate?.restrictions_en || "";
   $("#service-active").checked = service?.is_active ?? true;
   $("#service-modal-title").textContent = service ? `Nueva versi\u00f3n de ${version.name_es}` : "Agregar servicio";
   $("#service-form-error").textContent = "";
+  syncCategoryCapacityLimits();
   updatePricingFieldState();
   serviceModal.classList.remove("hidden");
   $("#service-name-es").focus();
@@ -764,26 +906,29 @@ function closeServiceModal() {
 function openServiceHistory(service) {
   const versions = service.service_versions || [];
   const current = currentVersion(service);
+  const primaryPlan = service.rate_plans?.find((plan) => plan.rate_code === "standard") || service.rate_plans?.[0];
+  const rateVersions = primaryPlan?.rate_plan_versions || [];
   historyServiceId = service.id;
   $("#service-history-title").textContent = `Versiones de ${current?.name_es || "servicio"}`;
   serviceHistoryMessage.textContent = "";
   serviceHistoryMessage.className = "message";
-  $("#service-history-list").innerHTML = versions.map((version) => `
-    <article class="history-item ${version.id === service.current_version_id ? "current" : ""}">
+  $("#service-history-list").innerHTML = versions.map((version) => {
+    const rate = rateVersions.find((item) => item.version_number === version.version_number);
+    const currentPair = version.id === service.current_version_id && rate?.id === primaryPlan?.current_version_id;
+    const price = ratePriceLabel(rate);
+    return `
+    <article class="history-item ${currentPair ? "current" : ""}">
       <div class="history-item-head">
-        <strong>Versi\u00f3n ${version.version_number}${version.id === service.current_version_id ? " \u00b7 actual" : ""}</strong>
+        <strong>Versi\u00f3n ${version.version_number}${currentPair ? " \u00b7 actual" : ""}</strong>
         <span>${new Intl.DateTimeFormat("es-MX", { dateStyle: "medium", timeStyle: "short" }).format(new Date(version.created_at))}</span>
       </div>
       <p><strong>${escapeHtml(version.name_es)}</strong> / ${escapeHtml(version.name_en)}</p>
-      <p>${version.price_on_request ? "Precio a consultar" : `${formatMoney(version.base_price_cents)} ${PRICING_UNIT_LABELS[version.pricing_unit] || ""}; adulto adicional ${formatMoney(version.adult_extra_cents)}; ni\u00f1o adicional ${formatMoney(version.child_extra_cents)}.`}</p>
-      <p>Incluye ${version.included_guests} hu\u00e9sped(es); capacidad m\u00e1xima ${version.max_occupancy}. Menores de 3 a\u00f1os sin costo y cuentan en capacidad.</p>
-      <div class="history-item-actions">
-        ${version.id === service.current_version_id
-          ? '<span class="current-label">Versi\u00f3n actual</span>'
-          : `<button data-history-action="make-current" data-version-id="${version.id}" type="button">Hacer versi\u00f3n actual</button>`}
-      </div>
+      <p>${escapeHtml(price)}${rate ? ` \u00b7 ${PRICING_MODEL_LABELS[rate.pricing_model]}` : " \u00b7 sin tarifa asociada"}</p>
+      <p>${rate ? `Capacidad ${rate.min_guests}\u2013${rate.max_occupancy}; ${rate.min_units}${rate.max_units ? `\u2013${rate.max_units}` : "+"} ${rateUnitLabel(rate, true)}.` : `Capacidad m\u00e1xima ${version.max_occupancy}.`}</p>
+      ${rate?.restrictions_es ? `<p><strong>Restricciones:</strong> ${escapeHtml(rate.restrictions_es)}</p>` : ""}
+      ${currentPair ? '<div class="history-item-actions"><span class="current-label">Versi\u00f3n actual</span></div>' : ""}
     </article>
-  `).join("");
+  `; }).join("");
   serviceHistoryModal.classList.remove("hidden");
 }
 
@@ -815,24 +960,46 @@ function renderRequestQuote(request) {
   if (!snapshot || !request.pricing_status) {
     return '<article class="request-detail-item full"><span>Cotizaci\u00f3n</span><p>Solicitud anterior sin estimaci\u00f3n guardada.</p></article>';
   }
+  const ratePlan = snapshot.rate_plan || null;
+  const units = snapshot.stay?.units ?? snapshot.stay?.nights ?? 0;
+  const unit = ratePlan
+    ? rateUnitLabel(ratePlan, units !== 1)
+    : (units === 1 ? "noche" : "noches");
   if (request.pricing_status === "manual") {
     return `<article class="request-detail-item full"><span>Cotizaci\u00f3n</span>
       <p><strong>Cotizaci\u00f3n personalizada pendiente</strong><br>
-      ${snapshot.stay?.nights || "\u2014"} noche(s) \u00b7 capacidad ${snapshot.occupancy?.total || "\u2014"}/${snapshot.occupancy?.max_occupancy || "\u2014"}</p></article>`;
+      ${units || "\u2014"} ${unit} \u00b7 capacidad ${snapshot.occupancy?.total || "\u2014"}/${snapshot.occupancy?.max_occupancy || "\u2014"}</p></article>`;
   }
 
   const pricing = snapshot.pricing || {};
-  const nights = snapshot.stay?.nights || 0;
+  if (ratePlan?.pricing_model === "per_person") {
+    const rows = [];
+    const occupancy = snapshot.occupancy || {};
+    if (occupancy.adults) rows.push(`<div><span>${occupancy.adults} adulto(s) × ${units} ${unit}</span><strong>${formatMoney(pricing.adult_total_cents || 0)}</strong></div>`);
+    if (occupancy.children) rows.push(`<div><span>${occupancy.children} niño(s) × ${units} ${unit}</span><strong>${formatMoney(pricing.child_total_cents || 0)}</strong></div>`);
+    if (occupancy.infants) rows.push(`<div><span>${occupancy.infants} menor(es) de 3 años × ${units} ${unit}</span><strong>${formatMoney(pricing.infant_total_cents || 0)}</strong></div>`);
+    return `<article class="request-detail-item full request-quote-detail">
+      <span>Estimación presentada</span>
+      <div class="request-quote-rows">${rows.join("")}
+        <div class="total"><span>Total estimado</span><strong>${formatMoney(request.estimated_total_cents)}</strong></div>
+      </div>
+      <small>Servicio v${snapshot.service?.version_number || "—"} · tarifa v${ratePlan.version_number || "—"} · cálculo guardado al enviar la solicitud</small>
+    </article>`;
+  }
+  const supplementUnits = pricing.supplement_units ?? units;
+  const baseTotal = pricing.base_total_cents ?? ((pricing.base_price_cents || 0) * units);
   const rows = [
-    `<div><span>${nights} \u00d7 base por noche</span><strong>${formatMoney((pricing.base_price_cents || 0) * nights)}</strong></div>`,
+    `<div><span>${units} \u00d7 ${ratePlan?.pricing_model === "fixed" ? "precio fijo" : "precio base"} por ${rateUnitLabel(ratePlan || { booking_time_model: "overnight" })}</span><strong>${formatMoney(baseTotal)}</strong></div>`,
   ];
   if (pricing.extra_adults) {
-    rows.push(`<div><span>${pricing.extra_adults} adulto(s) extra \u00d7 ${nights}</span><strong>${formatMoney(pricing.extra_adults * pricing.adult_extra_cents * nights)}</strong></div>`);
+    rows.push(`<div><span>${pricing.extra_adults} adulto(s) extra \u00d7 ${supplementUnits}</span><strong>${formatMoney(pricing.extra_adults * pricing.adult_extra_cents * supplementUnits)}</strong></div>`);
   }
   if (pricing.extra_children) {
-    rows.push(`<div><span>${pricing.extra_children} ni\u00f1o(s) extra \u00d7 ${nights}</span><strong>${formatMoney(pricing.extra_children * pricing.child_extra_cents * nights)}</strong></div>`);
+    rows.push(`<div><span>${pricing.extra_children} ni\u00f1o(s) extra \u00d7 ${supplementUnits}</span><strong>${formatMoney(pricing.extra_children * pricing.child_extra_cents * supplementUnits)}</strong></div>`);
   }
-  if (snapshot.occupancy?.infants) {
+  if (pricing.extra_infants) {
+    rows.push(`<div><span>${pricing.extra_infants} menor(es) de 3 a\u00f1os \u00d7 ${supplementUnits}</span><strong>${formatMoney(pricing.extra_infants * pricing.infant_extra_cents * supplementUnits)}</strong></div>`);
+  } else if (!ratePlan && snapshot.occupancy?.infants) {
     rows.push(`<div><span>${snapshot.occupancy.infants} menor(es) de 3 a\u00f1os</span><strong>${formatMoney(0)}</strong></div>`);
   }
   return `<article class="request-detail-item full request-quote-detail">
@@ -840,7 +1007,7 @@ function renderRequestQuote(request) {
     <div class="request-quote-rows">${rows.join("")}
       <div class="total"><span>Total estimado</span><strong>${formatMoney(request.estimated_total_cents)}</strong></div>
     </div>
-    <small>Versi\u00f3n ${snapshot.service?.version_number || "\u2014"} \u00b7 c\u00e1lculo guardado al enviar la solicitud</small>
+    <small>Servicio v${snapshot.service?.version_number || "\u2014"}${ratePlan ? ` \u00b7 tarifa v${ratePlan.version_number}` : ""} \u00b7 c\u00e1lculo guardado al enviar la solicitud</small>
   </article>`;
 }
 
@@ -888,36 +1055,46 @@ function requestCommunicationText(request) {
 function requestCalculatorService(request) {
   const snapshot = request.quote_snapshot;
   if (!snapshot?.pricing || !snapshot?.occupancy) return null;
+  const rate = snapshot.rate_plan || {};
   return {
     name: snapshot.service?.name_es || requestServicesLabel(request),
-    versionNumber: snapshot.service?.version_number || null,
-    priceOnRequest: request.pricing_status === "manual",
-    basePriceCents: snapshot.pricing.base_price_cents || 0,
-    includedGuests: snapshot.pricing.included_guests || 0,
-    maxOccupancy: snapshot.occupancy.max_occupancy || 0,
-    adultExtraCents: snapshot.pricing.adult_extra_cents || 0,
-    childExtraCents: snapshot.pricing.child_extra_cents || 0,
+    versionNumber: rate.version_number || snapshot.service?.version_number || null,
+    booking_time_model: rate.booking_time_model || "overnight",
+    pricing_model: rate.pricing_model || (request.pricing_status === "manual" ? "manual_quote" : "base_plus_guests"),
+    base_price_cents: snapshot.pricing.base_price_cents || 0,
+    included_guests: snapshot.pricing.included_guests || 0,
+    min_guests: snapshot.occupancy.min_guests || 1,
+    max_occupancy: snapshot.occupancy.max_occupancy || 0,
+    max_adults: snapshot.occupancy.max_adults ?? null,
+    max_children: snapshot.occupancy.max_children ?? null,
+    max_infants: snapshot.occupancy.max_infants ?? null,
+    adult_extra_cents: snapshot.pricing.adult_extra_cents || 0,
+    child_extra_cents: snapshot.pricing.child_extra_cents || 0,
+    infant_extra_cents: snapshot.pricing.infant_extra_cents || 0,
+    person_price_cents: snapshot.pricing.person_price_cents ?? null,
+    adult_price_cents: snapshot.pricing.adult_price_cents ?? null,
+    child_price_cents: snapshot.pricing.child_price_cents ?? null,
+    infant_price_cents: snapshot.pricing.infant_price_cents ?? null,
+    supplement_basis: rate.supplement_basis || "per_unit",
+    min_units: 1,
+    max_units: null,
   };
 }
 
 function catalogCalculatorService(service) {
   const version = currentVersion(service);
-  if (!version) return null;
+  const rate = currentRateVersion(service);
+  if (!version || !rate) return null;
   return {
+    ...rate,
     name: version.name_es,
-    versionNumber: version.version_number,
-    priceOnRequest: version.price_on_request,
-    basePriceCents: version.base_price_cents,
-    includedGuests: version.included_guests,
-    maxOccupancy: version.max_occupancy,
-    adultExtraCents: version.adult_extra_cents,
-    childExtraCents: version.child_extra_cents,
+    versionNumber: rate.version_number,
   };
 }
 
 function calculatorValues() {
   return {
-    nights: Number($("#calculator-nights").value),
+    units: Number($("#calculator-nights").value),
     adults: Number($("#calculator-adults").value),
     children: Number($("#calculator-children").value),
     infants: Number($("#calculator-infants").value),
@@ -932,7 +1109,7 @@ function renderCalculator() {
   errorHost.textContent = "";
   calculatorCopyText = "";
 
-  if (Object.values(values).some((value) => !Number.isInteger(value) || value < 0) || values.nights < 1) {
+  if (Object.values(values).some((value) => !Number.isInteger(value) || value < 0) || values.units < 1) {
     errorHost.textContent = "Ingresa cantidades enteras v\u00e1lidas.";
     resultHost.innerHTML = "";
     return;
@@ -944,20 +1121,32 @@ function renderCalculator() {
     resultHost.innerHTML = "";
     return;
   }
-  if (totalGuests > calculatorService.maxOccupancy) {
-    errorHost.textContent = `La capacidad m\u00e1xima es de ${calculatorService.maxOccupancy} hu\u00e9spedes. Este escenario tiene ${totalGuests}.`;
+  const quote = calculateQuoteForUnits(
+    calculatorService,
+    values.units,
+    values.adults,
+    values.children,
+    values.infants
+  );
+  if (quote.capacityExceeded) {
+    errorHost.textContent = `La ocupaci\u00f3n no cumple los l\u00edmites de este servicio (${totalGuests}/${calculatorService.max_occupancy}).`;
+    resultHost.innerHTML = "";
+    return;
+  }
+  if (quote.durationExceeded) {
+    errorHost.textContent = "La duraci\u00f3n no cumple los l\u00edmites de este servicio.";
     resultHost.innerHTML = "";
     return;
   }
 
   const commonLines = [
     calculatorService.name,
-    `Escenario: ${values.nights} noche(s)`,
+    `Escenario: ${values.units} ${rateUnitLabel(calculatorService, values.units !== 1)}`,
     `${values.adults} adulto(s), ${values.children} ni\u00f1o(s), ${values.infants} menor(es) de 3 a\u00f1os`,
-    `Ocupaci\u00f3n: ${totalGuests} de ${calculatorService.maxOccupancy}`,
+    `Ocupaci\u00f3n: ${totalGuests} de ${calculatorService.max_occupancy}`,
   ];
 
-  if (calculatorService.priceOnRequest) {
+  if (quote.manual) {
     resultHost.innerHTML = `
       <div class="calculator-result-head"><span>Resultado</span><strong>Cotizaci\u00f3n personalizada</strong></div>
       <p>La capacidad es v\u00e1lida, pero este servicio no tiene una f\u00f3rmula autom\u00e1tica.</p>`;
@@ -965,32 +1154,52 @@ function renderCalculator() {
     return;
   }
 
-  const extraAdults = Math.max(values.adults - calculatorService.includedGuests, 0);
-  const remainingIncluded = Math.max(calculatorService.includedGuests - values.adults, 0);
-  const extraChildren = Math.max(values.children - remainingIncluded, 0);
-  const baseTotal = calculatorService.basePriceCents * values.nights;
-  const adultTotal = extraAdults * calculatorService.adultExtraCents * values.nights;
-  const childTotal = extraChildren * calculatorService.childExtraCents * values.nights;
-  const total = baseTotal + adultTotal + childTotal;
+  if (quote.perPerson) {
+    const rows = [
+      values.adults ? `<div><span>${values.adults} adulto(s) × ${values.units}</span><strong>${formatMoney(quote.adultTotal)}</strong></div>` : "",
+      values.children ? `<div><span>${values.children} niño(s) × ${values.units}</span><strong>${formatMoney(quote.childTotal)}</strong></div>` : "",
+      values.infants ? `<div><span>${values.infants} menor(es) de 3 años × ${values.units}</span><strong>${formatMoney(quote.infantTotal)}</strong></div>` : "",
+    ].filter(Boolean);
+    resultHost.innerHTML = `
+      <div class="calculator-result-head"><span>Ocupación</span><strong>${totalGuests} de ${calculatorService.max_occupancy}</strong></div>
+      <div class="request-quote-rows">${rows.join("")}
+        <div class="total"><span>Total estimado</span><strong>${formatMoney(quote.total)}</strong></div>
+      </div>
+      <small>Estimación sujeta a disponibilidad y confirmación.</small>`;
+    calculatorCopyText = [
+      ...commonLines,
+      ...(values.adults ? [`Adultos: ${formatMoney(quote.adultTotal)}`] : []),
+      ...(values.children ? [`Niños: ${formatMoney(quote.childTotal)}`] : []),
+      ...(values.infants ? [`Menores de 3 años: ${formatMoney(quote.infantTotal)}`] : []),
+      `Total estimado: ${formatMoney(quote.total)}`,
+      "Sujeto a disponibilidad y confirmación.",
+    ].join("\n");
+    return;
+  }
+
+  const unit = rateUnitLabel(calculatorService);
+  const adultTotal = (quote.extraAdults || 0) * calculatorService.adult_extra_cents * (quote.supplementUnits || 1);
+  const childTotal = (quote.extraChildren || 0) * calculatorService.child_extra_cents * (quote.supplementUnits || 1);
+  const infantTotal = (quote.extraInfants || 0) * calculatorService.infant_extra_cents * (quote.supplementUnits || 1);
   const rows = [
-    `<div><span>${values.nights} \u00d7 base por noche</span><strong>${formatMoney(baseTotal)}</strong></div>`,
-    extraAdults ? `<div><span>${extraAdults} adulto(s) extra \u00d7 ${values.nights}</span><strong>${formatMoney(adultTotal)}</strong></div>` : "",
-    extraChildren ? `<div><span>${extraChildren} ni\u00f1o(s) extra \u00d7 ${values.nights}</span><strong>${formatMoney(childTotal)}</strong></div>` : "",
-    values.infants ? `<div><span>${values.infants} menor(es) de 3 a\u00f1os</span><strong>${formatMoney(0)}</strong></div>` : "",
+    `<div><span>${values.units} \u00d7 ${quote.fixed ? "precio fijo" : "precio base"} por ${unit}</span><strong>${formatMoney(quote.baseTotal)}</strong></div>`,
+    quote.extraAdults ? `<div><span>${quote.extraAdults} adulto(s) adicional(es)</span><strong>${formatMoney(adultTotal)}</strong></div>` : "",
+    quote.extraChildren ? `<div><span>${quote.extraChildren} ni\u00f1o(s) adicional(es)</span><strong>${formatMoney(childTotal)}</strong></div>` : "",
+    quote.extraInfants ? `<div><span>${quote.extraInfants} menor(es) de 3 a\u00f1os</span><strong>${formatMoney(infantTotal)}</strong></div>` : "",
   ].filter(Boolean);
   resultHost.innerHTML = `
-    <div class="calculator-result-head"><span>Ocupaci\u00f3n</span><strong>${totalGuests} de ${calculatorService.maxOccupancy}</strong></div>
+    <div class="calculator-result-head"><span>Ocupaci\u00f3n</span><strong>${totalGuests} de ${calculatorService.max_occupancy}</strong></div>
     <div class="request-quote-rows">${rows.join("")}
-      <div class="total"><span>Total estimado</span><strong>${formatMoney(total)}</strong></div>
+      <div class="total"><span>Total estimado</span><strong>${formatMoney(quote.total)}</strong></div>
     </div>
     <small>Estimaci\u00f3n sujeta a disponibilidad y confirmaci\u00f3n.</small>`;
   calculatorCopyText = [
     ...commonLines,
-    `Base: ${formatMoney(baseTotal)}`,
-    ...(extraAdults ? [`Adultos adicionales: ${formatMoney(adultTotal)}`] : []),
-    ...(extraChildren ? [`Ni\u00f1os adicionales: ${formatMoney(childTotal)}`] : []),
-    ...(values.infants ? ["Menores de 3 a\u00f1os: sin costo"] : []),
-    `Total estimado: ${formatMoney(total)}`,
+    `Base: ${formatMoney(quote.baseTotal)}`,
+    ...(quote.extraAdults ? [`Adultos adicionales: ${formatMoney(adultTotal)}`] : []),
+    ...(quote.extraChildren ? [`Ni\u00f1os adicionales: ${formatMoney(childTotal)}`] : []),
+    ...(quote.extraInfants ? [`Menores de 3 a\u00f1os: ${formatMoney(infantTotal)}`] : []),
+    `Total estimado: ${formatMoney(quote.total)}`,
     "Sujeto a disponibilidad y confirmaci\u00f3n.",
   ].join("\n");
 }
@@ -999,7 +1208,10 @@ function openCalculator(service, initialValues = null) {
   calculatorService = service;
   if (!service) return;
   $("#calculator-title").textContent = `Calculadora \u00b7 ${service.name}`;
-  $("#calculator-version").textContent = `Versi\u00f3n ${service.versionNumber || "\u2014"} \u00b7 capacidad m\u00e1xima ${service.maxOccupancy}`;
+  $("#calculator-version").textContent = `Tarifa v${service.versionNumber || "\u2014"} \u00b7 capacidad m\u00e1xima ${service.max_occupancy}`;
+  $("#calculator-unit-label").textContent = rateUnitLabel(service, true);
+  $("#calculator-nights").max = service.max_units || 365;
+  $("#calculator-nights").min = service.min_units || 1;
   $("#calculator-nights").value = initialValues?.nights || 1;
   $("#calculator-adults").value = initialValues?.adults ?? 2;
   $("#calculator-children").value = initialValues?.children ?? 0;
@@ -1230,16 +1442,70 @@ serviceForm.addEventListener("submit", async (event) => {
   submit.disabled = true;
   $("#service-form-error").textContent = "";
   const id = $("#service-id").value;
-  const priceOnRequest = $("#service-price-on-request").checked;
+  const pricingModel = $("#service-pricing-model").value;
+  const priceOnRequest = pricingModel === "manual_quote";
   const includedGuests = Number($("#service-included-guests").value);
+  const minGuests = Number($("#service-min-guests").value);
   const maxOccupancy = Number($("#service-max-occupancy").value);
-  if (!priceOnRequest && includedGuests > maxOccupancy) {
+  const availabilityModel = $("#service-availability-model").value;
+  const availableDates = datesFromTextarea("#service-available-dates");
+  if (pricingModel === "base_plus_guests" && includedGuests > maxOccupancy) {
     submit.disabled = false;
     $("#service-form-error").textContent = "Los hu\u00e9spedes incluidos no pueden exceder la capacidad f\u00edsica m\u00e1xima.";
     $("#service-included-guests").focus();
     return;
   }
+  if (minGuests > maxOccupancy) {
+    submit.disabled = false;
+    $("#service-form-error").textContent = "El mínimo de huéspedes no puede exceder la capacidad máxima.";
+    $("#service-min-guests").focus();
+    return;
+  }
+  const categoryLimits = [
+    { selector: "#service-max-adults", label: "adultos" },
+    { selector: "#service-max-children", label: "niños" },
+    { selector: "#service-max-infants", label: "menores de 3 años" },
+  ];
+  const invalidCategoryLimit = categoryLimits.find(({ selector }) => (
+    $(selector).value !== "" && Number($(selector).value) > maxOccupancy
+  ));
+  if (invalidCategoryLimit) {
+    submit.disabled = false;
+    $("#service-form-error").textContent = `El máximo de ${invalidCategoryLimit.label} no puede exceder la capacidad física máxima (${maxOccupancy}).`;
+    $(invalidCategoryLimit.selector).focus();
+    return;
+  }
+  if (pricingModel === "per_person"
+    && ["#service-person-price", "#service-adult-price", "#service-child-price", "#service-infant-price"]
+      .every((selector) => $(selector).value === "")) {
+    submit.disabled = false;
+    $("#service-form-error").textContent = "Define al menos un precio por persona o por tipo de huésped.";
+    $("#service-person-price").focus();
+    return;
+  }
+  if (availabilityModel === "specific_dates"
+    && (!availableDates.length || availableDates.some((value) => !/^\d{4}-\d{2}-\d{2}$/.test(value)))) {
+    submit.disabled = false;
+    $("#service-form-error").textContent = "Agrega al menos una fecha válida con formato AAAA-MM-DD.";
+    $("#service-available-dates").focus();
+    return;
+  }
+  if ($("#service-booking-time-model").value === "fixed_window"
+    && $("#service-window-start").value >= $("#service-window-end").value) {
+    submit.disabled = false;
+    $("#service-form-error").textContent = "La hora final debe ser posterior a la hora inicial.";
+    $("#service-window-start").focus();
+    return;
+  }
+  const currentService = services.find((service) => service.id === id);
+  const existingPlan = currentService?.rate_plans?.find((plan) => plan.rate_code === "standard");
+  const integerOrNull = (selector) => $(selector).value === "" ? null : Number($(selector).value);
+  const fixedWindow = $("#service-booking-time-model").value === "fixed_window";
   const commonArgs = {
+    p_service_id: id || null,
+    p_expected_service_version_id: currentService?.current_version_id || null,
+    p_expected_rate_plan_version_id: existingPlan?.current_version_id || null,
+    p_service_code: id ? null : slugify($("#service-name-en").value.trim()),
     p_category_code: $("#service-category").value,
     p_is_active: $("#service-active").checked,
     p_display_order: Number($("#service-display-order").value),
@@ -1247,26 +1513,37 @@ serviceForm.addEventListener("submit", async (event) => {
     p_name_en: $("#service-name-en").value.trim(),
     p_description_es: $("#service-description-es").value.trim(),
     p_description_en: $("#service-description-en").value.trim(),
-    p_pricing_unit: $("#service-pricing-unit").value,
-    p_price_on_request: priceOnRequest,
-    p_base_price_cents: priceOnRequest ? 0 : centsFromInput("#service-base-price"),
-    p_included_guests: priceOnRequest ? 0 : includedGuests,
-    p_max_occupancy: maxOccupancy,
-    p_adult_extra_cents: priceOnRequest ? 0 : centsFromInput("#service-adult-extra"),
-    p_child_extra_cents: priceOnRequest ? 0 : centsFromInput("#service-child-extra"),
     p_amenities_es: linesFromTextarea("#service-amenities-es"),
     p_amenities_en: linesFromTextarea("#service-amenities-en"),
+    p_booking_time_model: $("#service-booking-time-model").value,
+    p_pricing_model: pricingModel,
+    p_base_price_cents: priceOnRequest ? 0 : centsFromInput("#service-base-price"),
+    p_included_guests: pricingModel === "base_plus_guests" ? includedGuests : 0,
+    p_min_guests: minGuests,
+    p_max_occupancy: maxOccupancy,
+    p_max_adults: integerOrNull("#service-max-adults"),
+    p_max_children: integerOrNull("#service-max-children"),
+    p_max_infants: integerOrNull("#service-max-infants"),
+    p_adult_extra_cents: pricingModel === "base_plus_guests" ? centsFromInput("#service-adult-extra") : 0,
+    p_child_extra_cents: pricingModel === "base_plus_guests" ? centsFromInput("#service-child-extra") : 0,
+    p_infant_extra_cents: pricingModel === "base_plus_guests" ? centsFromInput("#service-infant-extra") : 0,
+    p_supplement_basis: $("#service-supplement-basis").value,
+    p_min_units: Number($("#service-min-units").value),
+    p_max_units: integerOrNull("#service-max-units"),
+    p_window_start: fixedWindow ? $("#service-window-start").value : null,
+    p_window_end: fixedWindow ? $("#service-window-end").value : null,
+    p_buffer_before_minutes: 0,
+    p_buffer_after_minutes: 0,
+    p_restrictions_es: $("#service-restrictions-es").value.trim(),
+    p_restrictions_en: $("#service-restrictions-en").value.trim(),
+    p_availability_model: availabilityModel,
+    p_available_dates: availabilityModel === "specific_dates" ? availableDates : [],
+    p_person_price_cents: pricingModel === "per_person" ? optionalCentsFromInput("#service-person-price") : null,
+    p_adult_price_cents: pricingModel === "per_person" ? optionalCentsFromInput("#service-adult-price") : null,
+    p_child_price_cents: pricingModel === "per_person" ? optionalCentsFromInput("#service-child-price") : null,
+    p_infant_price_cents: pricingModel === "per_person" ? optionalCentsFromInput("#service-infant-price") : null,
   };
-  const { error } = id
-    ? await supabase.rpc("create_service_version", {
-      p_service_id: id,
-      p_expected_current_version_id: services.find((service) => service.id === id)?.current_version_id,
-      ...commonArgs,
-    })
-    : await supabase.rpc("create_service", {
-      p_service_code: slugify(commonArgs.p_name_en),
-      ...commonArgs,
-    });
+  const { error } = await supabase.rpc("save_service_with_primary_rate_plan_v2", commonArgs);
   submit.disabled = false;
   if (error) return void ($("#service-form-error").textContent = friendlyError(error));
 
@@ -1431,7 +1708,7 @@ $("#request-contact-actions").addEventListener("click", (event) => {
   if (!service) return;
 
   openCalculator(service, {
-    nights: request.quote_snapshot?.stay?.nights || 1,
+    nights: request.quote_snapshot?.stay?.units ?? request.quote_snapshot?.stay?.nights ?? 1,
     adults:
       request.quote_snapshot?.occupancy?.adults ?? request.adults,
     children:
@@ -1482,10 +1759,11 @@ $("#copy-calculator-result").addEventListener("click", async (event) => {
   button.textContent = "Escenario copiado";
   window.setTimeout(() => { button.textContent = "Copiar escenario"; }, 1800);
 });
-$("#service-price-on-request").addEventListener("change", updatePricingFieldState);
-["#service-base-price", "#service-included-guests", "#service-max-occupancy", "#service-adult-extra", "#service-child-extra"].forEach((selector) => {
+["#service-pricing-model", "#service-booking-time-model", "#service-availability-model"].forEach((selector) => $(selector).addEventListener("change", updatePricingFieldState));
+["#service-base-price", "#service-included-guests", "#service-max-occupancy", "#service-adult-extra", "#service-child-extra", "#service-infant-extra", "#service-person-price", "#service-adult-price", "#service-child-price", "#service-infant-price"].forEach((selector) => {
   $(selector).addEventListener("input", updatePricingPreview);
 });
+$("#service-max-occupancy").addEventListener("input", syncCategoryCapacityLimits);
 $("#recipient-search").addEventListener("input", renderRecipients);
 $("#recipient-status-filter").addEventListener("change", renderRecipients);
 $("#service-search").addEventListener("input", renderServices);

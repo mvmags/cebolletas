@@ -1,11 +1,14 @@
 // Reserva validation and delivery actions.
 // Intentionally independent from the Version 4 navigation code.
+import config from "./config/environment.js";
+import { calculateQuote } from "./pricing-engine.mjs?v=10.4.0-3";
+
 (function initReservaActions() {
   "use strict";
 
   const SUPABASE = Object.freeze({
-    url: "https://myqaotknkriuhdssbzlz.supabase.co",
-    publishableKey: "sb_publishable_XuDt5xNF3EzE0K2TSE9QCg_hnDMWsVN"
+    url: config.supabaseUrl,
+    publishableKey: config.supabasePublishableKey
   });
 
   const limits = Object.freeze({
@@ -24,6 +27,7 @@
       pastCheckin: "La fecha de llegada no puede estar en el pasado.",
       requiredCheckout: "La fecha de salida es requerida.",
       invalidCheckout: "La fecha de salida debe ser posterior a la fecha de llegada.",
+      unavailableDate: "Selecciona una de las fechas disponibles para este servicio.",
       invalidAdults: "Adultos debe ser un n\u00famero entero entre 1 y 20.",
       invalidKids: "Ni\u00f1os debe ser un n\u00famero entero entre 0 y 20.",
       invalidInfants: "Menores de 3 a\u00f1os debe ser un n\u00famero entero entre 0 y 20.",
@@ -52,6 +56,7 @@
       pastCheckin: "Check-in cannot be in the past.",
       requiredCheckout: "Checkout is required.",
       invalidCheckout: "Checkout must be later than check-in.",
+      unavailableDate: "Select one of the dates available for this service.",
       invalidAdults: "Adults must be a whole number between 1 and 20.",
       invalidKids: "Kids must be a whole number between 0 and 20.",
       invalidInfants: "Children under 3 must be a whole number between 0 and 20.",
@@ -94,8 +99,8 @@
   }
 
   function selectedService(form) {
-    const id = form?.querySelector('input[name="service-id"]:checked')?.value;
-    return activeServices.find((service) => service.service_id === id) || null;
+    const id = form?.querySelector('select[name="service-id"]')?.value;
+    return activeServices.find((service) => service.rate_plan_id === id) || null;
   }
 
   function localized(service, field) {
@@ -108,55 +113,204 @@
     return element.innerHTML;
   }
 
-  function calculateQuote(service, stay, adults, children, infants) {
-    if (!service || !stay) return null;
-    const totalGuests = adults + children + infants;
-    if (![adults, children, infants].every(Number.isInteger) || totalGuests > service.max_occupancy) {
-      return { capacityExceeded: true, totalGuests };
+  function unitLabel(service, plural = false) {
+    const es = getLanguage() === "es";
+    if (service.booking_time_model === "fixed_window") return es ? "ventana" : "window";
+    if (service.booking_time_model === "calendar_day") return es ? (plural ? "días" : "día") : (plural ? "days" : "day");
+    return es ? (plural ? "noches" : "noche") : (plural ? "nights" : "night");
+  }
+
+  function priceLabel(service) {
+    if (service.pricing_model === "manual_quote") return getLanguage() === "es" ? "Precio estimado" : "Estimated price";
+    if (service.pricing_model === "per_person") {
+      const generic = service.person_price_cents;
+      const effective = ["adult", "child", "infant"].map((category) => service[`${category}_price_cents`] ?? generic ?? 0);
+      const positivePrices = effective.filter((price) => price > 0);
+      const differs = effective.some((item) => item !== effective[0]);
+      const price = differs
+        ? (positivePrices.length ? Math.min(...positivePrices) : 0)
+        : effective[0];
+      const prefix = differs ? (getLanguage() === "es" ? "Desde " : "From ") : "";
+      return `${prefix}${formatMoney(price)} / ${getLanguage() === "es" ? "persona" : "person"}`;
     }
-    if (service.price_on_request) {
-      return { manual: true, totalGuests, nights: stay.nights };
+    const prefix = service.pricing_model === "base_plus_guests" ? (getLanguage() === "es" ? "Desde " : "From ") : "";
+    return `${prefix}${formatMoney(service.base_price_cents)} / ${unitLabel(service)}`;
+  }
+
+  function detailList(value) {
+    const items = Array.isArray(value) ? value : String(value || "").split(/\r?\n/);
+    return items.map((item) => String(item).trim()).filter(Boolean);
+  }
+
+  function guestLabel(count, es) {
+    return `${count} ${es ? (count === 1 ? "persona" : "personas") : (count === 1 ? "person" : "people")}`;
+  }
+
+  function guestRange(service, es) {
+    if (service.min_guests === service.max_occupancy) return guestLabel(service.max_occupancy, es);
+    return `${service.min_guests}\u2013${service.max_occupancy} ${es ? "personas" : "people"}`;
+  }
+
+  function formatTime(value) {
+    const [hours, minutes] = String(value || "").slice(0, 5).split(":").map(Number);
+    if (!Number.isInteger(hours) || !Number.isInteger(minutes)) return "";
+    return new Intl.DateTimeFormat(getLanguage() === "es" ? "es-MX" : "en-US", {
+      hour: "numeric",
+      minute: "2-digit"
+    }).format(new Date(2000, 0, 1, hours, minutes));
+  }
+
+  function availableDates(service) {
+    return Array.isArray(service?.available_dates)
+      ? service.available_dates.filter((value) => value && value >= getLocalDate()).sort()
+      : [];
+  }
+
+  function formatServiceDate(value) {
+    const date = parseIsoDateUtc(value);
+    if (!date) return value;
+    return new Intl.DateTimeFormat(getLanguage() === "es" ? "es-MX" : "en-US", {
+      dateStyle: "long",
+      timeZone: "UTC"
+    }).format(date);
+  }
+
+  function addDaysToIsoDate(value, days) {
+    const date = parseIsoDateUtc(value);
+    if (!date) return "";
+    date.setUTCDate(date.getUTCDate() + days);
+    return date.toISOString().slice(0, 10);
+  }
+
+  function checkoutForSpecificDate(service, checkinValue) {
+    if (!checkinValue) return "";
+    const minimumUnits = Math.max(Number(service?.min_units) || 1, 1);
+    if (service?.booking_time_model === "overnight") {
+      return addDaysToIsoDate(checkinValue, minimumUnits);
     }
-    const extraAdults = Math.max(adults - service.included_guests, 0);
-    const remainingIncluded = Math.max(service.included_guests - adults, 0);
-    const extraChildren = Math.max(children - remainingIncluded, 0);
-    const nightlyTotal = service.base_price_cents
-      + (extraAdults * service.adult_extra_cents)
-      + (extraChildren * service.child_extra_cents);
-    return {
-      manual: false,
-      totalGuests,
-      nights: stay.nights,
-      extraAdults,
-      extraChildren,
-      nightlyTotal,
-      total: nightlyTotal * stay.nights
-    };
+    if (service?.booking_time_model === "calendar_day") {
+      return addDaysToIsoDate(checkinValue, minimumUnits - 1);
+    }
+    return checkinValue;
+  }
+
+  function serviceFacts(service, es) {
+    const facts = [];
+    if (service.pricing_model === "base_plus_guests" && service.included_guests > 0) {
+      facts.push({
+        label: es ? "Precio base incluye" : "Base price includes",
+        value: guestLabel(service.included_guests, es)
+      });
+    } else if (service.pricing_model === "fixed" && service.booking_time_model !== "fixed_window") {
+      facts.push({
+        label: es ? "Precio base incluye" : "Base price includes",
+        value: guestLabel(service.max_occupancy, es)
+      });
+    }
+
+    facts.push({
+      label: service.booking_time_model === "fixed_window"
+        ? (es ? "Capacidad" : "Capacity")
+        : (es ? "Capacidad m\u00e1xima" : "Maximum capacity"),
+      value: service.booking_time_model === "fixed_window"
+        ? guestRange(service, es)
+        : guestLabel(service.max_occupancy, es)
+    });
+
+    if (service.pricing_model === "per_person") {
+      const generic = service.person_price_cents;
+      const participantPrices = [
+        { label: es ? "Adulto" : "Adult", value: service.adult_price_cents ?? generic ?? 0 },
+        { label: es ? "Niño" : "Child", value: service.child_price_cents ?? generic ?? 0 },
+        { label: es ? "Menor de 3 años" : "Child under 3", value: service.infant_price_cents ?? generic ?? 0 }
+      ];
+      if (participantPrices.some((item) => item.value !== participantPrices[0].value)) {
+        facts.push(...participantPrices.map((item) => ({ ...item, value: formatMoney(item.value) })));
+      }
+    }
+
+    if (service.booking_time_model === "fixed_window") {
+      facts.push({
+        label: es ? "Duraci\u00f3n" : "Duration",
+        value: `${formatTime(service.window_start)}\u2013${formatTime(service.window_end)}`
+      });
+    }
+    if (service.availability_model === "specific_dates") {
+      const dates = availableDates(service);
+      facts.push({
+        label: dates.length === 1 ? (es ? "Fecha" : "Date") : (es ? "Fechas disponibles" : "Available dates"),
+        value: dates.map(formatServiceDate).join(" · ")
+      });
+    }
+    return facts;
+  }
+
+  function showServiceDetails(service) {
+    const es = getLanguage() === "es";
+    const amenities = detailList(service[`amenities_${getLanguage()}`]);
+    const restrictions = detailList(localized(service, "restrictions"));
+    const facts = serviceFacts(service, es);
+    let dialog = document.querySelector("#service-details-dialog");
+    if (!dialog) {
+      dialog = document.createElement("dialog");
+      dialog.id = "service-details-dialog";
+      dialog.className = "service-details-dialog";
+      document.body.append(dialog);
+      dialog.addEventListener("click", (event) => {
+        if (event.target === dialog || event.target.closest("[data-close-service-details]")) dialog.close();
+      });
+    }
+    dialog.setAttribute("aria-labelledby", "service-details-title");
+    dialog.setAttribute("aria-describedby", "service-details-description");
+    dialog.innerHTML = `<article>
+      <button class="service-details-close" data-close-service-details type="button" aria-label="${es ? "Cerrar" : "Close"}">×</button>
+      <p class="service-details-eyebrow">${escapeHtml(localized(service, "rate_name"))}</p>
+      <h3 id="service-details-title">${escapeHtml(localized(service, "name"))}</h3>
+      <strong class="service-details-price">${escapeHtml(priceLabel(service))}</strong>
+      <p class="service-details-description" id="service-details-description">${escapeHtml(localized(service, "description"))}</p>
+      <dl class="service-details-facts">${facts.map((fact) => `<div><dt>${escapeHtml(fact.label)}</dt><dd>${escapeHtml(fact.value)}</dd></div>`).join("")}</dl>
+      ${amenities.length ? `<section><h4>${es ? "Incluye" : "Includes"}</h4><ul>${amenities.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul></section>` : ""}
+      ${restrictions.length ? `<section><h4>${es ? "Restricciones" : "Restrictions"}</h4><ul>${restrictions.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul></section>` : ""}
+    </article>`;
+    dialog.showModal();
+    dialog.querySelector("[data-close-service-details]")?.focus();
   }
 
   function renderServices(form) {
     const host = form?.querySelector("#br-service-options");
     if (!host) return;
     const legend = host.querySelector("legend")?.outerHTML || "";
+    const previousSelection = host.querySelector('select[name="service-id"]')?.value;
     if (!activeServices.length) {
       host.innerHTML = `${legend}<p class="service-empty">${getLanguage() === "es"
         ? "No hay servicios activos disponibles por el momento."
         : "There are no active services available right now."}</p>`;
       return;
     }
-    host.innerHTML = `${legend}<div class="service-grid">${activeServices.map((service, index) => {
-      const amenities = service[`amenities_${getLanguage()}`] || [];
-      const price = service.price_on_request
-        ? (getLanguage() === "es" ? "Precio a consultar" : "Custom quotation")
-        : `${getLanguage() === "es" ? "Desde" : "From"} ${formatMoney(service.base_price_cents)} / ${getLanguage() === "es" ? "noche" : "night"}`;
-      return `<label class="service-card">
-        <input type="radio" name="service-id" value="${service.service_id}" ${index === 0 ? "checked" : ""}>
-        <strong>${escapeHtml(localized(service, "name"))}</strong>
-        <p>${escapeHtml(localized(service, "description"))}</p>
-        ${amenities.length ? `<ul>${amenities.slice(0, 4).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>` : ""}
-        <small>${price} \u00b7 ${getLanguage() === "es" ? "M\u00e1ximo" : "Up to"} ${service.max_occupancy}</small>
-      </label>`;
-    }).join("")}</div>`;
+    const selectedId = activeServices.some((service) => service.rate_plan_id === previousSelection)
+      ? previousSelection
+      : activeServices[0].rate_plan_id;
+    const selected = activeServices.find((service) => service.rate_plan_id === selectedId);
+    const detailsLabel = getLanguage() === "es" ? "Ver detalles de" : "View details for";
+    host.innerHTML = `${legend}<div class="service-select-row">
+      <div class="service-select-control">
+        <select class="service-select" id="br-service" name="service-id" required>${activeServices.map((service) => (
+          `<option value="${service.rate_plan_id}" ${service.rate_plan_id === selectedId ? "selected" : ""}>${escapeHtml(localized(service, "name"))}</option>`
+        )).join("")}</select>
+      </div>
+      <button class="service-info-button" data-service-info="${selectedId}" type="button" aria-haspopup="dialog" aria-label="${detailsLabel} ${escapeHtml(localized(selected, "name"))}">?</button>
+    </div>`;
+  }
+
+  function syncServiceInfoButton(form) {
+    const service = selectedService(form);
+    const button = form?.querySelector("[data-service-info]");
+    if (!button || !service) return;
+    button.dataset.serviceInfo = service.rate_plan_id;
+    button.setAttribute(
+      "aria-label",
+      `${getLanguage() === "es" ? "Ver detalles de" : "View details for"} ${localized(service, "name")}`
+    );
   }
 
   function updateQuoteSummary(form) {
@@ -190,19 +344,41 @@
       host.innerHTML = `<p class="quote-capacity-error">${messages[getLanguage()].capacityExceeded} (${quote.totalGuests}/${service.max_occupancy})</p>`;
       return quote;
     }
+    if (quote.durationExceeded) {
+      host.innerHTML = `<p class="quote-capacity-error">${isEs ? "La duración no cumple las reglas de este servicio." : "The duration does not meet this service's rules."}</p>`;
+      return quote;
+    }
     if (quote.manual) {
       host.innerHTML = `<h3>${escapeHtml(localized(service, "name"))}</h3>
-        <div class="quote-summary-row"><span>${stay.nights} ${isEs ? "noche(s)" : "night(s)"}</span><span>${quote.totalGuests}/${service.max_occupancy} ${isEs ? "hu\u00e9spedes" : "guests"}</span></div>
+        <div class="quote-summary-row"><span>${quote.units} ${unitLabel(service, quote.units !== 1)}</span><span>${quote.totalGuests}/${service.max_occupancy} ${isEs ? "hu\u00e9spedes" : "guests"}</span></div>
         <div class="quote-summary-row total"><span>${isEs ? "Cotizaci\u00f3n personalizada" : "Custom quotation"}</span><strong>${isEs ? "A consultar" : "Contact us"}</strong></div>
         <p class="quote-summary-note">${isEs ? "Revisaremos los detalles y confirmaremos el precio contigo." : "We will review the details and confirm the price with you."}</p>`;
       return quote;
     }
 
+    if (quote.fixed) {
+      host.innerHTML = `<h3>${escapeHtml(localized(service, "name"))}</h3>
+        <div class="quote-summary-row"><span>${quote.units} × ${isEs ? "precio fijo por" : "fixed price per"} ${unitLabel(service)}</span><strong>${formatMoney(quote.total)}</strong></div>
+        <div class="quote-summary-row total"><span>${isEs ? "Total estimado" : "Estimated total"}</span><strong>${formatMoney(quote.total)}</strong></div>
+        <p class="quote-summary-note">${isEs ? "Sujeto a confirmación de disponibilidad." : "Subject to availability confirmation."}</p>`;
+      return quote;
+    }
+
+    if (quote.perPerson) {
+      host.innerHTML = `<h3>${escapeHtml(localized(service, "name"))}</h3>
+        ${adults ? `<div class="quote-summary-row"><span>${adults} × ${isEs ? "adulto" : "adult"}${quote.units > 1 ? ` × ${quote.units}` : ""}</span><strong>${formatMoney(quote.adultTotal)}</strong></div>` : ""}
+        ${children ? `<div class="quote-summary-row"><span>${children} × ${isEs ? "niño" : "child"}${quote.units > 1 ? ` × ${quote.units}` : ""}</span><strong>${formatMoney(quote.childTotal)}</strong></div>` : ""}
+        ${infants ? `<div class="quote-summary-row"><span>${infants} × ${isEs ? "menor de 3 años" : "child under 3"}${quote.units > 1 ? ` × ${quote.units}` : ""}</span><strong>${formatMoney(quote.infantTotal)}</strong></div>` : ""}
+        <div class="quote-summary-row total"><span>${isEs ? "Total estimado" : "Estimated total"}</span><strong>${formatMoney(quote.total)}</strong></div>
+        <p class="quote-summary-note">${isEs ? "Sujeto a confirmación de disponibilidad." : "Subject to availability confirmation."}</p>`;
+      return quote;
+    }
+
     host.innerHTML = `<h3>${escapeHtml(localized(service, "name"))}</h3>
-      <div class="quote-summary-row"><span>${stay.nights} \u00d7 ${isEs ? "base por noche" : "nightly base"}</span><strong>${formatMoney(service.base_price_cents * stay.nights)}</strong></div>
-      ${quote.extraAdults ? `<div class="quote-summary-row"><span>${quote.extraAdults} \u00d7 ${isEs ? "adulto extra" : "extra adult"} \u00d7 ${stay.nights}</span><strong>${formatMoney(quote.extraAdults * service.adult_extra_cents * stay.nights)}</strong></div>` : ""}
-      ${quote.extraChildren ? `<div class="quote-summary-row"><span>${quote.extraChildren} \u00d7 ${isEs ? "ni\u00f1o extra" : "extra child"} \u00d7 ${stay.nights}</span><strong>${formatMoney(quote.extraChildren * service.child_extra_cents * stay.nights)}</strong></div>` : ""}
-      ${infants ? `<div class="quote-summary-row"><span>${infants} \u00d7 ${isEs ? "menor de 3 a\u00f1os" : "child under 3"}</span><strong>${formatMoney(0)}</strong></div>` : ""}
+      <div class="quote-summary-row"><span>${quote.units} × ${isEs ? "precio base" : "base price"}</span><strong>${formatMoney(quote.baseTotal)}</strong></div>
+      ${quote.extraAdults ? `<div class="quote-summary-row"><span>${quote.extraAdults} × ${isEs ? "adulto adicional" : "extra adult"}${quote.supplementUnits > 1 ? ` × ${quote.supplementUnits}` : ""}</span><strong>${formatMoney(quote.extraAdults * service.adult_extra_cents * quote.supplementUnits)}</strong></div>` : ""}
+      ${quote.extraChildren ? `<div class="quote-summary-row"><span>${quote.extraChildren} × ${isEs ? "niño adicional" : "extra child"}${quote.supplementUnits > 1 ? ` × ${quote.supplementUnits}` : ""}</span><strong>${formatMoney(quote.extraChildren * service.child_extra_cents * quote.supplementUnits)}</strong></div>` : ""}
+      ${quote.extraInfants ? `<div class="quote-summary-row"><span>${quote.extraInfants} × ${isEs ? "menor de 3 años" : "child under 3"}${quote.supplementUnits > 1 ? ` × ${quote.supplementUnits}` : ""}</span><strong>${formatMoney(quote.extraInfants * service.infant_extra_cents * quote.supplementUnits)}</strong></div>` : ""}
       <div class="quote-summary-row total"><span>${isEs ? "Total estimado" : "Estimated total"}</span><strong>${formatMoney(quote.total)}</strong></div>
       <p class="quote-summary-note">${isEs ? "Sujeto a confirmaci\u00f3n de disponibilidad." : "Subject to availability confirmation."}</p>`;
     return quote;
@@ -220,6 +396,7 @@
     if (!response.ok) throw new Error(`Catalog request failed with status ${response.status}`);
     activeServices = await response.json();
     renderServices(form);
+    configureServiceDates(form, true);
     updateQuoteSummary(form);
   }
 
@@ -245,10 +422,67 @@
     return date;
   }
 
+  function configureServiceDates(form, selectDefault = false) {
+    if (!form) return;
+    const service = selectedService(form);
+    const checkin = form.querySelector("#br-checkin");
+    const specificDate = form.querySelector("#br-specific-date");
+    const checkout = form.querySelector("#br-checkout");
+    const checkinLabel = form.querySelector("#br-checkin-label");
+    const checkoutField = form.querySelector("#br-checkout-field");
+    if (!checkin || !checkout || !specificDate || !checkoutField) return;
+
+    const today = getLocalDate();
+    const dates = availableDates(service);
+    checkin.readOnly = false;
+    checkout.readOnly = false;
+    checkin.min = today;
+    checkin.removeAttribute("max");
+    checkout.min = checkin.value || today;
+    checkout.removeAttribute("max");
+    checkout.readOnly = false;
+    checkoutField.hidden = false;
+    checkin.hidden = false;
+    specificDate.hidden = true;
+    specificDate.disabled = true;
+    specificDate.replaceChildren();
+    if (checkinLabel) checkinLabel.textContent = checkinLabel.dataset.openLabel;
+
+    if (service?.availability_model === "specific_dates" && dates.length) {
+      specificDate.replaceChildren(...dates.map((value) => {
+        const option = document.createElement("option");
+        option.value = value;
+        option.textContent = formatServiceDate(value);
+        return option;
+      }));
+      checkin.hidden = true;
+      specificDate.hidden = false;
+      specificDate.disabled = false;
+      checkoutField.hidden = true;
+      if (checkinLabel) checkinLabel.textContent = checkinLabel.dataset.specificLabel;
+      checkin.min = dates[0];
+      checkin.max = dates[dates.length - 1];
+      if (selectDefault || !dates.includes(checkin.value)) checkin.value = dates[0];
+      specificDate.value = checkin.value;
+      checkout.value = checkoutForSpecificDate(service, checkin.value);
+      checkout.min = checkout.value;
+      checkout.max = checkout.value;
+      checkout.readOnly = true;
+      return;
+    }
+
+    if (service?.booking_time_model === "fixed_window" && checkin.value) {
+      checkout.value = checkin.value;
+      checkout.min = checkin.value;
+      checkout.max = checkin.value;
+      checkout.readOnly = true;
+    }
+  }
+
   function calculateStay(checkinValue, checkoutValue) {
     const checkin = parseIsoDateUtc(checkinValue);
     const checkout = parseIsoDateUtc(checkoutValue);
-    if (!checkin || !checkout || checkout <= checkin) return null;
+    if (!checkin || !checkout || checkout < checkin) return null;
 
     const millisecondsPerDay = 24 * 60 * 60 * 1000;
     const nights = Math.round((checkout - checkin) / millisecondsPerDay);
@@ -279,8 +513,10 @@
     );
 
     if (!summary) return stay;
-    summary.hidden = !stay;
-    if (stay) {
+    const service = selectedService(form);
+    const showNightBreakdown = !service || service.booking_time_model === "overnight";
+    summary.hidden = !stay || !showNightBreakdown;
+    if (stay && showNightBreakdown) {
       summary.querySelector("#br-nights").textContent = String(stay.nights);
       summary.querySelector("#br-weekend-nights").textContent = String(
         stay.weekendNights
@@ -381,9 +617,16 @@
 
     if (!data.checkin) reject(fields.checkin, text.requiredCheckin);
     else if (data.checkin < today) reject(fields.checkin, text.pastCheckin);
+    else if (service?.availability_model === "specific_dates"
+      && !availableDates(service).includes(data.checkin)) {
+      reject(fields.checkin, text.unavailableDate);
+    }
 
     if (!data.checkout) reject(fields.checkout, text.requiredCheckout);
-    else if (data.checkin && (!data.stay || data.checkout <= data.checkin)) {
+    else if (data.checkin && (
+      !data.stay
+      || (service?.booking_time_model === "overnight" && data.checkout <= data.checkin)
+    )) {
       reject(fields.checkout, text.invalidCheckout);
     }
 
@@ -403,7 +646,7 @@
       reject(
         fields.service,
         text.requiredService,
-        fields.service.querySelector('input[name="service-id"]') || fields.service
+        fields.service.querySelector('select[name="service-id"]') || fields.service
       );
     } else if (
       Number.isInteger(data.adults) &&
@@ -523,6 +766,7 @@
     const today = getLocalDate();
     checkin.min = today;
     checkout.min = checkin.value || today;
+    configureServiceDates(form);
   }
 
   function clearForm(form) {
@@ -572,7 +816,7 @@
           p_adults: data.adults,
           p_children: data.kids,
           p_infants: data.infants,
-          p_service_id: data.service.service_id,
+          p_rate_plan_id: data.service.rate_plan_id,
           p_customer_message: data.otherDetails || null
         })
       }
@@ -596,21 +840,41 @@
     };
   }
 
-  document.addEventListener("reserva:rendered", () => {
+  let initializedReservaForm = null;
+
+  function initializeReservaForm() {
     const form = getForm();
+
+    if (!form || form === initializedReservaForm) return;
+
+    initializedReservaForm = form;
     configureDateLimits(form);
     updateStaySummary(form);
+
     loadActiveServices(form).catch((error) => {
       console.error(error);
-      const host = form?.querySelector("#br-service-options");
+
+      const host = form.querySelector("#br-service-options");
+
       if (host) {
         const legend = host.querySelector("legend")?.outerHTML || "";
-        host.innerHTML = `${legend}<p class="service-empty">${getLanguage() === "es"
-          ? "No fue posible cargar los servicios. Intenta nuevamente."
-          : "Services could not be loaded. Please try again."}</p>`;
+
+        host.innerHTML = `${legend}<p class="service-empty">${
+          getLanguage() === "es"
+            ? "No fue posible cargar los servicios. Intenta nuevamente."
+            : "Services could not be loaded. Please try again."
+        }</p>`;
       }
     });
-  });
+  }
+
+  document.addEventListener(
+    "reserva:rendered",
+    initializeReservaForm
+  );
+
+  // Reserva may already exist before this module executes.
+  initializeReservaForm();
 
   document.addEventListener("submit", (event) => {
     if (event.target.matches("#reserva-form")) event.preventDefault();
@@ -619,7 +883,7 @@
   document.addEventListener("focusin", (event) => {
     if (!event.target.closest("#reserva-form")) return;
     clearFieldError(event.target);
-    if (event.target.matches('input[name="service-id"]')) {
+    if (event.target.matches('select[name="service-id"]')) {
       clearFieldError(event.target.closest(".service-options"));
     }
   });
@@ -627,15 +891,31 @@
   function handleDateUpdate(event) {
     if (
       !event.target.matches(
-        "#reserva-form #br-checkin, #reserva-form #br-checkout"
+        "#reserva-form #br-checkin, #reserva-form #br-checkout, #reserva-form #br-specific-date"
       )
     ) {
       return;
     }
     const form = getForm();
-    if (event.target.matches("#br-checkin")) {
+    if (event.target.matches("#br-specific-date")) {
+      form.querySelector("#br-checkin").value = event.target.value;
+    }
+    if (event.target.matches("#br-checkin, #br-specific-date")) {
       const checkout = form.querySelector("#br-checkout");
-      checkout.min = event.target.value || getLocalDate();
+      const service = selectedService(form);
+      if (service?.availability_model === "specific_dates") {
+        const checkoutValue = checkoutForSpecificDate(service, form.querySelector("#br-checkin").value);
+        checkout.value = checkoutValue;
+        checkout.min = checkoutValue;
+        checkout.max = checkoutValue;
+      } else if (service?.booking_time_model === "fixed_window") {
+        const checkinValue = form.querySelector("#br-checkin").value;
+        checkout.value = checkinValue;
+        checkout.min = checkinValue || getLocalDate();
+        checkout.max = checkinValue || getLocalDate();
+      } else {
+        checkout.min = form.querySelector("#br-checkin").value || getLocalDate();
+      }
     }
     updateStaySummary(form);
     updateQuoteSummary(form);
@@ -649,14 +929,26 @@
     }
   });
   document.addEventListener("change", (event) => {
-    if (event.target.matches('input[name="service-id"]')) {
-      updateQuoteSummary(getForm());
+    if (event.target.matches('select[name="service-id"]')) {
+      const form = getForm();
+      clearFieldError(event.target.closest(".service-options"));
+      syncServiceInfoButton(form);
+      configureServiceDates(form, true);
+      updateStaySummary(form);
+      updateQuoteSummary(form);
     }
   });
 
   let pendingSubmission = null;
 
   document.addEventListener("click", async (event) => {
+    const infoButton = event.target.closest("[data-service-info]");
+    if (infoButton) {
+      event.preventDefault();
+      const service = activeServices.find((item) => item.rate_plan_id === infoButton.dataset.serviceInfo);
+      if (service) showServiceDetails(service);
+      return;
+    }
     const button = event.target.closest("#reserva-form #br-request-info");
     if (!button) return;
     const form = getForm();

@@ -6,8 +6,8 @@
     <meta name="robots" content="noindex, nofollow">
     <meta name="theme-color" content="#183f32">
     <title>Gestión | Cebolletas Copal</title>
-    <link rel="stylesheet" href="./manage.css">
-    <script type="module" src="./manage.js"></script>
+    <link rel="stylesheet" href="./manage.css?v=10.4.0-1">
+    <script type="module" src="./manage.js?v=10.4.0-5"></script>
   </head>
   <body>
     <main id="login-view" class="login-shell">
@@ -182,9 +182,6 @@
               </select>
               <select id="request-service-filter">
                 <option value="all">Todos los servicios</option>
-                <option value="copal">Cebolletas Copal</option>
-                <option value="camping">Camping</option>
-                <option value="events">Eventos</option>
               </select>
             </div>
             <div class="request-period-toolbar">
@@ -313,9 +310,11 @@
               <option value="events">Eventos</option>
             </select>
           </label>
-          <label>Unidad de precio
-            <select id="service-pricing-unit" required>
-              <option value="per_night">Por noche</option>
+          <label>Modelo de duración
+            <select id="service-booking-time-model" required>
+              <option value="overnight">Estancia nocturna</option>
+              <option value="calendar_day">Día calendario</option>
+              <option value="fixed_window">Ventana de tiempo fija</option>
             </select>
           </label>
           <label>Orden
@@ -344,18 +343,44 @@
             <span>2</span>
             <div>
               <h3>Modelo de precio</h3>
-              <p>La tarifa se calcula por cada noche ocupada. Los adultos consumen primero los espacios incluidos.</p>
+              <p>La duración y la fórmula de precio son independientes.</p>
             </div>
           </div>
 
-          <label class="checkbox-row price-on-request"><input id="service-price-on-request" type="checkbox"> Este servicio requiere cotización manual</label>
+          <div class="form-grid three-columns">
+            <label>Modelo de precio<select id="service-pricing-model" required>
+              <option value="base_plus_guests">Base + huéspedes adicionales</option>
+              <option value="per_person">Por persona / tipo de huésped</option>
+              <option value="fixed">Precio fijo</option>
+              <option value="manual_quote">Estimación / cotización manual</option>
+            </select></label>
+            <label>Unidades mínimas<input id="service-min-units" type="number" min="1" step="1" value="1" required></label>
+            <label>Unidades máximas<input id="service-max-units" type="number" min="1" step="1" placeholder="Sin máximo"></label>
+          </div>
+          <div id="service-window-fields" class="form-grid three-columns hidden">
+            <label>Inicio<input id="service-window-start" type="time"></label>
+            <label>Fin<input id="service-window-end" type="time"></label>
+            <label class="guest-supplement-field">Suplementos<select id="service-supplement-basis"><option value="per_unit">Por unidad</option><option value="per_reservation">Una vez por solicitud</option></select></label>
+          </div>
+          <div class="form-grid two-columns availability-definition">
+            <label>Disponibilidad
+              <select id="service-availability-model" required>
+                <option value="open_calendar">Calendario abierto</option>
+                <option value="specific_dates">Fechas específicas</option>
+              </select>
+            </label>
+            <label id="service-available-dates-field" class="hidden">Fechas disponibles, una por línea
+              <textarea id="service-available-dates" rows="4" placeholder="2027-08-12&#10;2027-08-13"></textarea>
+              <small class="field-help">Usa el formato AAAA-MM-DD. Las fechas pertenecen a esta versión de la tarifa.</small>
+            </label>
+          </div>
           <div class="pricing-definition">
             <div id="service-pricing-fields" class="form-grid pricing-grid">
-              <label>Precio base por noche (MXN)
+              <label class="base-price-field">Precio base o fijo (MXN)
                 <input id="service-base-price" type="number" min="0" step="0.01" required>
                 <small class="field-help">Se cobra por cada noche e incluye el número de huéspedes indicado.</small>
               </label>
-              <label>Huéspedes incluidos en la base
+              <label class="guest-supplement-field">Huéspedes incluidos en la base
                 <input id="service-included-guests" type="number" min="1" step="1" required>
                 <small class="field-help">Adultos primero; los espacios restantes se asignan a niños.</small>
               </label>
@@ -363,15 +388,33 @@
                 <input id="service-max-occupancy" type="number" min="1" step="1" required>
                 <small class="field-help">Incluye adultos, niños y menores de 3 años.</small>
               </label>
-              <label>Adulto adicional por noche (MXN)
+              <label>Mínimo de huéspedes<input id="service-min-guests" type="number" min="1" step="1" value="1" required></label>
+              <label>Máximo de adultos<input id="service-max-adults" type="number" min="1" step="1" placeholder="Capacidad total"></label>
+              <label>Máximo de niños<input id="service-max-children" type="number" min="0" step="1" placeholder="Capacidad total"></label>
+              <label>Máximo de menores de 3<input id="service-max-infants" type="number" min="0" step="1" placeholder="Capacidad total"></label>
+              <label class="guest-supplement-field">Adulto adicional por noche (MXN)
                 <input id="service-adult-extra" type="number" min="0" step="0.01" required>
               </label>
-              <label>Niño adicional por noche, 3–12 años (MXN)
+              <label class="guest-supplement-field">Niño adicional por noche, 3–12 años (MXN)
                 <input id="service-child-extra" type="number" min="0" step="0.01" required>
               </label>
-              <label>Menor de 3 años
-                <input value="$0 por noche; cuenta en capacidad" disabled>
+              <label class="guest-supplement-field">Menor de 3 años
+                <input id="service-infant-extra" type="number" min="0" step="0.01" value="0">
               </label>
+              <label class="participant-price-field hidden">Persona en general (MXN)
+                <input id="service-person-price" type="number" min="0" step="0.01" placeholder="Sin precio general">
+                <small class="field-help">Se usa para cualquier categoría que no tenga un precio específico.</small>
+              </label>
+              <label class="participant-price-field hidden">Adulto (MXN)
+                <input id="service-adult-price" type="number" min="0" step="0.01" placeholder="Hereda precio general / gratis">
+              </label>
+              <label class="participant-price-field hidden">Niño, 3–12 años (MXN)
+                <input id="service-child-price" type="number" min="0" step="0.01" placeholder="Hereda precio general / gratis">
+              </label>
+              <label class="participant-price-field hidden">Menor de 3 años (MXN)
+                <input id="service-infant-price" type="number" min="0" step="0.01" placeholder="Hereda precio general / gratis">
+              </label>
+              <small class="field-help participant-pricing-help participant-price-field hidden">Deja una categoría vacía para heredar el precio general. Si tampoco hay precio general, esa categoría no tiene costo.</small>
             </div>
 
             <aside id="pricing-preview" class="pricing-preview" aria-live="polite">
@@ -383,6 +426,10 @@
                 <b id="pricing-preview-total">—</b>
               </div>
             </aside>
+          </div>
+          <div class="language-grid">
+            <label>Restricciones visibles (ES)<textarea id="service-restrictions-es" maxlength="1200" rows="4"></textarea></label>
+            <label>Customer-facing restrictions (EN)<textarea id="service-restrictions-en" maxlength="1200" rows="4"></textarea></label>
           </div>
         </section>
 
@@ -454,7 +501,7 @@
         </div>
         <p id="calculator-version" class="muted"></p>
         <div class="calculator-grid">
-          <label>Noches
+          <label><span id="calculator-unit-label">Noches</span>
             <input id="calculator-nights" type="number" min="1" max="365" value="1">
           </label>
           <label>Adultos
