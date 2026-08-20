@@ -50,6 +50,31 @@ export function calculateQuoteForUnits(service, units, adults, children, infants
     return { manual: false, fixed: true, totalGuests, units, baseTotal, total: baseTotal };
   }
 
+  if (service.pricing_model === "per_person") {
+    const genericPrice = service.person_price_cents;
+    const adultPrice = service.adult_price_cents ?? genericPrice ?? 0;
+    const childPrice = service.child_price_cents ?? genericPrice ?? 0;
+    const infantPrice = service.infant_price_cents ?? genericPrice ?? 0;
+    const adultTotal = adults * adultPrice * units;
+    const childTotal = children * childPrice * units;
+    const infantTotal = infants * infantPrice * units;
+
+    return {
+      manual: false,
+      fixed: false,
+      perPerson: true,
+      totalGuests,
+      units,
+      adultPrice,
+      childPrice,
+      infantPrice,
+      adultTotal,
+      childTotal,
+      infantTotal,
+      total: adultTotal + childTotal + infantTotal
+    };
+  }
+
   const extraAdults = Math.max(adults - service.included_guests, 0);
   const remainingIncluded = Math.max(service.included_guests - adults, 0);
   const extraChildren = Math.max(children - remainingIncluded, 0);

@@ -1,7 +1,7 @@
 // Reserva validation and delivery actions.
 // Intentionally independent from the Version 4 navigation code.
 import config from "./config/environment.js";
-import { calculateQuote } from "./pricing-engine.mjs?v=10.4.0-2";
+import { calculateQuote } from "./pricing-engine.mjs?v=10.4.0-3";
 
 (function initReservaActions() {
   "use strict";
@@ -27,6 +27,7 @@ import { calculateQuote } from "./pricing-engine.mjs?v=10.4.0-2";
       pastCheckin: "La fecha de llegada no puede estar en el pasado.",
       requiredCheckout: "La fecha de salida es requerida.",
       invalidCheckout: "La fecha de salida debe ser posterior a la fecha de llegada.",
+      unavailableDate: "Selecciona una de las fechas disponibles para este servicio.",
       invalidAdults: "Adultos debe ser un n\u00famero entero entre 1 y 20.",
       invalidKids: "Ni\u00f1os debe ser un n\u00famero entero entre 0 y 20.",
       invalidInfants: "Menores de 3 a\u00f1os debe ser un n\u00famero entero entre 0 y 20.",
@@ -55,6 +56,7 @@ import { calculateQuote } from "./pricing-engine.mjs?v=10.4.0-2";
       pastCheckin: "Check-in cannot be in the past.",
       requiredCheckout: "Checkout is required.",
       invalidCheckout: "Checkout must be later than check-in.",
+      unavailableDate: "Select one of the dates available for this service.",
       invalidAdults: "Adults must be a whole number between 1 and 20.",
       invalidKids: "Kids must be a whole number between 0 and 20.",
       invalidInfants: "Children under 3 must be a whole number between 0 and 20.",
@@ -120,6 +122,17 @@ import { calculateQuote } from "./pricing-engine.mjs?v=10.4.0-2";
 
   function priceLabel(service) {
     if (service.pricing_model === "manual_quote") return getLanguage() === "es" ? "Precio estimado" : "Estimated price";
+    if (service.pricing_model === "per_person") {
+      const generic = service.person_price_cents;
+      const effective = ["adult", "child", "infant"].map((category) => service[`${category}_price_cents`] ?? generic ?? 0);
+      const positivePrices = effective.filter((price) => price > 0);
+      const differs = effective.some((item) => item !== effective[0]);
+      const price = differs
+        ? (positivePrices.length ? Math.min(...positivePrices) : 0)
+        : effective[0];
+      const prefix = differs ? (getLanguage() === "es" ? "Desde " : "From ") : "";
+      return `${prefix}${formatMoney(price)} / ${getLanguage() === "es" ? "persona" : "person"}`;
+    }
     const prefix = service.pricing_model === "base_plus_guests" ? (getLanguage() === "es" ? "Desde " : "From ") : "";
     return `${prefix}${formatMoney(service.base_price_cents)} / ${unitLabel(service)}`;
   }
@@ -147,6 +160,21 @@ import { calculateQuote } from "./pricing-engine.mjs?v=10.4.0-2";
     }).format(new Date(2000, 0, 1, hours, minutes));
   }
 
+  function availableDates(service) {
+    return Array.isArray(service?.available_dates)
+      ? service.available_dates.filter((value) => value && value >= getLocalDate()).sort()
+      : [];
+  }
+
+  function formatServiceDate(value) {
+    const date = parseIsoDateUtc(value);
+    if (!date) return value;
+    return new Intl.DateTimeFormat(getLanguage() === "es" ? "es-MX" : "en-US", {
+      dateStyle: "long",
+      timeZone: "UTC"
+    }).format(date);
+  }
+
   function serviceFacts(service, es) {
     const facts = [];
     if (service.pricing_model === "base_plus_guests" && service.included_guests > 0) {
@@ -170,10 +198,29 @@ import { calculateQuote } from "./pricing-engine.mjs?v=10.4.0-2";
         : guestLabel(service.max_occupancy, es)
     });
 
+    if (service.pricing_model === "per_person") {
+      const generic = service.person_price_cents;
+      const participantPrices = [
+        { label: es ? "Adulto" : "Adult", value: service.adult_price_cents ?? generic ?? 0 },
+        { label: es ? "Niño" : "Child", value: service.child_price_cents ?? generic ?? 0 },
+        { label: es ? "Menor de 3 años" : "Child under 3", value: service.infant_price_cents ?? generic ?? 0 }
+      ];
+      if (participantPrices.some((item) => item.value !== participantPrices[0].value)) {
+        facts.push(...participantPrices.map((item) => ({ ...item, value: formatMoney(item.value) })));
+      }
+    }
+
     if (service.booking_time_model === "fixed_window") {
       facts.push({
         label: es ? "Duraci\u00f3n" : "Duration",
         value: `${formatTime(service.window_start)}\u2013${formatTime(service.window_end)}`
+      });
+    }
+    if (service.availability_model === "specific_dates") {
+      const dates = availableDates(service);
+      facts.push({
+        label: dates.length === 1 ? (es ? "Fecha" : "Date") : (es ? "Fechas disponibles" : "Available dates"),
+        value: dates.map(formatServiceDate).join(" · ")
       });
     }
     return facts;
@@ -298,6 +345,16 @@ import { calculateQuote } from "./pricing-engine.mjs?v=10.4.0-2";
       return quote;
     }
 
+    if (quote.perPerson) {
+      host.innerHTML = `<h3>${escapeHtml(localized(service, "name"))}</h3>
+        ${adults ? `<div class="quote-summary-row"><span>${adults} × ${isEs ? "adulto" : "adult"}${quote.units > 1 ? ` × ${quote.units}` : ""}</span><strong>${formatMoney(quote.adultTotal)}</strong></div>` : ""}
+        ${children ? `<div class="quote-summary-row"><span>${children} × ${isEs ? "niño" : "child"}${quote.units > 1 ? ` × ${quote.units}` : ""}</span><strong>${formatMoney(quote.childTotal)}</strong></div>` : ""}
+        ${infants ? `<div class="quote-summary-row"><span>${infants} × ${isEs ? "menor de 3 años" : "child under 3"}${quote.units > 1 ? ` × ${quote.units}` : ""}</span><strong>${formatMoney(quote.infantTotal)}</strong></div>` : ""}
+        <div class="quote-summary-row total"><span>${isEs ? "Total estimado" : "Estimated total"}</span><strong>${formatMoney(quote.total)}</strong></div>
+        <p class="quote-summary-note">${isEs ? "Sujeto a confirmación de disponibilidad." : "Subject to availability confirmation."}</p>`;
+      return quote;
+    }
+
     host.innerHTML = `<h3>${escapeHtml(localized(service, "name"))}</h3>
       <div class="quote-summary-row"><span>${quote.units} × ${isEs ? "precio base" : "base price"}</span><strong>${formatMoney(quote.baseTotal)}</strong></div>
       ${quote.extraAdults ? `<div class="quote-summary-row"><span>${quote.extraAdults} × ${isEs ? "adulto adicional" : "extra adult"}${quote.supplementUnits > 1 ? ` × ${quote.supplementUnits}` : ""}</span><strong>${formatMoney(quote.extraAdults * service.adult_extra_cents * quote.supplementUnits)}</strong></div>` : ""}
@@ -320,6 +377,7 @@ import { calculateQuote } from "./pricing-engine.mjs?v=10.4.0-2";
     if (!response.ok) throw new Error(`Catalog request failed with status ${response.status}`);
     activeServices = await response.json();
     renderServices(form);
+    configureServiceDates(form, true);
     updateQuoteSummary(form);
   }
 
@@ -343,6 +401,51 @@ import { calculateQuote } from "./pricing-engine.mjs?v=10.4.0-2";
       return null;
     }
     return date;
+  }
+
+  function configureServiceDates(form, selectDefault = false) {
+    if (!form) return;
+    const service = selectedService(form);
+    const checkin = form.querySelector("#br-checkin");
+    const specificDate = form.querySelector("#br-specific-date");
+    const checkout = form.querySelector("#br-checkout");
+    if (!checkin || !checkout || !specificDate) return;
+
+    const today = getLocalDate();
+    const dates = availableDates(service);
+    checkin.readOnly = false;
+    checkout.readOnly = false;
+    checkin.min = today;
+    checkin.removeAttribute("max");
+    checkout.min = checkin.value || today;
+    checkout.removeAttribute("max");
+    checkin.classList.remove("hidden");
+    specificDate.classList.add("hidden");
+    specificDate.disabled = true;
+    specificDate.replaceChildren();
+
+    if (service?.availability_model === "specific_dates" && dates.length) {
+      specificDate.replaceChildren(...dates.map((value) => {
+        const option = document.createElement("option");
+        option.value = value;
+        option.textContent = formatServiceDate(value);
+        return option;
+      }));
+      checkin.classList.add("hidden");
+      specificDate.classList.remove("hidden");
+      specificDate.disabled = false;
+      checkin.min = dates[0];
+      checkin.max = dates[dates.length - 1];
+      if (selectDefault || !dates.includes(checkin.value)) checkin.value = dates[0];
+      specificDate.value = checkin.value;
+    }
+
+    if (service?.booking_time_model === "fixed_window" && checkin.value) {
+      checkout.value = checkin.value;
+      checkout.min = checkin.value;
+      checkout.max = checkin.value;
+      checkout.readOnly = true;
+    }
   }
 
   function calculateStay(checkinValue, checkoutValue) {
@@ -483,6 +586,10 @@ import { calculateQuote } from "./pricing-engine.mjs?v=10.4.0-2";
 
     if (!data.checkin) reject(fields.checkin, text.requiredCheckin);
     else if (data.checkin < today) reject(fields.checkin, text.pastCheckin);
+    else if (service?.availability_model === "specific_dates"
+      && !availableDates(service).includes(data.checkin)) {
+      reject(fields.checkin, text.unavailableDate);
+    }
 
     if (!data.checkout) reject(fields.checkout, text.requiredCheckout);
     else if (data.checkin && (
@@ -628,6 +735,7 @@ import { calculateQuote } from "./pricing-engine.mjs?v=10.4.0-2";
     const today = getLocalDate();
     checkin.min = today;
     checkout.min = checkin.value || today;
+    configureServiceDates(form);
   }
 
   function clearForm(form) {
@@ -752,15 +860,26 @@ import { calculateQuote } from "./pricing-engine.mjs?v=10.4.0-2";
   function handleDateUpdate(event) {
     if (
       !event.target.matches(
-        "#reserva-form #br-checkin, #reserva-form #br-checkout"
+        "#reserva-form #br-checkin, #reserva-form #br-checkout, #reserva-form #br-specific-date"
       )
     ) {
       return;
     }
     const form = getForm();
-    if (event.target.matches("#br-checkin")) {
+    if (event.target.matches("#br-specific-date")) {
+      form.querySelector("#br-checkin").value = event.target.value;
+    }
+    if (event.target.matches("#br-checkin, #br-specific-date")) {
       const checkout = form.querySelector("#br-checkout");
-      checkout.min = event.target.value || getLocalDate();
+      const service = selectedService(form);
+      if (service?.booking_time_model === "fixed_window") {
+        const checkinValue = form.querySelector("#br-checkin").value;
+        checkout.value = checkinValue;
+        checkout.min = checkinValue || getLocalDate();
+        checkout.max = checkinValue || getLocalDate();
+      } else {
+        checkout.min = form.querySelector("#br-checkin").value || getLocalDate();
+      }
     }
     updateStaySummary(form);
     updateQuoteSummary(form);
@@ -778,6 +897,7 @@ import { calculateQuote } from "./pricing-engine.mjs?v=10.4.0-2";
       const form = getForm();
       clearFieldError(event.target.closest(".service-options"));
       syncServiceInfoButton(form);
+      configureServiceDates(form, true);
       updateStaySummary(form);
       updateQuoteSummary(form);
     }

@@ -60,6 +60,43 @@ assert.equal(
 );
 
 assert.deepEqual(
+  calculateQuote({
+    ...baseService,
+    pricing_model: "per_person",
+    person_price_cents: 25000,
+    adult_price_cents: null,
+    child_price_cents: 15000,
+    infant_price_cents: 0
+  }, { nights: 1 }, 2, 1, 1),
+  {
+    manual: false,
+    fixed: false,
+    perPerson: true,
+    totalGuests: 4,
+    units: 1,
+    adultPrice: 25000,
+    childPrice: 15000,
+    infantPrice: 0,
+    adultTotal: 50000,
+    childTotal: 15000,
+    infantTotal: 0,
+    total: 65000
+  }
+);
+
+assert.equal(
+  calculateQuote({
+    ...baseService,
+    pricing_model: "per_person",
+    person_price_cents: null,
+    adult_price_cents: 30000,
+    child_price_cents: null,
+    infant_price_cents: null
+  }, twoNights, 2, 1, 1).total,
+  120000
+);
+
+assert.deepEqual(
   calculateQuote({ ...baseService, pricing_model: "manual_quote" }, twoNights, 2, 0, 0),
   { manual: true, totalGuests: 2, units: 2 }
 );

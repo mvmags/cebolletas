@@ -267,7 +267,7 @@ function booking(t) {
         <legend>${t.requestedInfo}</legend>
         <p class="service-loading">${t.servicesLoading}</p>
       </fieldset>
-      <label><span>${t.fields.checkin}</span><input id="br-checkin" name="checkin" type="date" required></label>
+      <label><span>${t.fields.checkin}</span><input id="br-checkin" name="checkin" type="date" required><select id="br-specific-date" class="hidden" aria-label="${t.fields.checkin}" disabled></select></label>
       <label><span>${t.fields.checkout}</span><input id="br-checkout" name="checkout" type="date" required></label>
       <div class="stay-summary full-field" id="br-stay-summary" aria-live="polite" hidden>
         <div><span>${t.fields.nights}</span><strong id="br-nights">0</strong></div>
