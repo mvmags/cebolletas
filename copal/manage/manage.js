@@ -153,6 +153,10 @@ function friendlyError(error) {
   if (error?.message?.includes("Checkout date must have passed")) return "La solicitud solo puede cerrarse despu\u00e9s de la fecha de salida.";
   if (error?.message?.includes("not-converted reason")) return "Selecciona el motivo por el que no se convirti\u00f3.";
   if (error?.message?.includes("Information request not found")) return "La solicitud ya no existe.";
+  if (error?.message?.includes("Maximum adults cannot exceed")) return "El máximo de adultos no puede exceder la capacidad física máxima.";
+  if (error?.message?.includes("Maximum children cannot exceed")) return "El máximo de niños no puede exceder la capacidad física máxima.";
+  if (error?.message?.includes("Maximum infants cannot exceed")) return "El máximo de menores de 3 años no puede exceder la capacidad física máxima.";
+  if (error?.message?.includes("rate_plan_versions_category_limits")) return "Los máximos por tipo de huésped no pueden exceder la capacidad física máxima.";
   return error?.message || "No fue posible completar la operaci\u00f3n.";
 }
 
@@ -778,6 +782,15 @@ function updatePricingFieldState() {
   updatePricingPreview();
 }
 
+function syncCategoryCapacityLimits() {
+  const capacity = Number($("#service-max-occupancy").value || 0);
+  ["#service-max-adults", "#service-max-children", "#service-max-infants"].forEach((selector) => {
+    const input = $(selector);
+    if (capacity > 0) input.max = String(capacity);
+    else input.removeAttribute("max");
+  });
+}
+
 function updatePricingPreview() {
   const model = $("#service-pricing-model").value;
   const manual = model === "manual_quote";
@@ -861,6 +874,7 @@ function openServiceModal(service = null) {
   $("#service-active").checked = service?.is_active ?? true;
   $("#service-modal-title").textContent = service ? `Nueva versi\u00f3n de ${version.name_es}` : "Agregar servicio";
   $("#service-form-error").textContent = "";
+  syncCategoryCapacityLimits();
   updatePricingFieldState();
   serviceModal.classList.remove("hidden");
   $("#service-name-es").focus();
@@ -1428,6 +1442,20 @@ serviceForm.addEventListener("submit", async (event) => {
     $("#service-min-guests").focus();
     return;
   }
+  const categoryLimits = [
+    { selector: "#service-max-adults", label: "adultos" },
+    { selector: "#service-max-children", label: "niños" },
+    { selector: "#service-max-infants", label: "menores de 3 años" },
+  ];
+  const invalidCategoryLimit = categoryLimits.find(({ selector }) => (
+    $(selector).value !== "" && Number($(selector).value) > maxOccupancy
+  ));
+  if (invalidCategoryLimit) {
+    submit.disabled = false;
+    $("#service-form-error").textContent = `El máximo de ${invalidCategoryLimit.label} no puede exceder la capacidad física máxima (${maxOccupancy}).`;
+    $(invalidCategoryLimit.selector).focus();
+    return;
+  }
   if (pricingModel === "per_person"
     && ["#service-person-price", "#service-adult-price", "#service-child-price", "#service-infant-price"]
       .every((selector) => $(selector).value === "")) {
@@ -1716,6 +1744,7 @@ $("#copy-calculator-result").addEventListener("click", async (event) => {
 ["#service-base-price", "#service-included-guests", "#service-max-occupancy", "#service-adult-extra", "#service-child-extra", "#service-infant-extra", "#service-person-price", "#service-adult-price", "#service-child-price", "#service-infant-price"].forEach((selector) => {
   $(selector).addEventListener("input", updatePricingPreview);
 });
+$("#service-max-occupancy").addEventListener("input", syncCategoryCapacityLimits);
 $("#recipient-search").addEventListener("input", renderRecipients);
 $("#recipient-status-filter").addEventListener("change", renderRecipients);
 $("#service-search").addEventListener("input", renderServices);

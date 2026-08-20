@@ -49,6 +49,18 @@ begin
   update public.rate_plans set current_version_id = v_rate_version_id where id = v_rate_plan_id;
   set constraints all immediate;
 
+  begin
+    update public.rate_plan_versions
+    set max_adults = max_occupancy + 1
+    where id = v_rate_version_id;
+    raise exception 'Invalid adult maximum was accepted';
+  exception
+    when others then
+      if sqlerrm not like '%Maximum adults cannot exceed total capacity%' then
+        raise;
+      end if;
+  end;
+
   insert into public.rate_plan_available_dates (rate_plan_version_id, available_date)
   values (v_rate_version_id, v_event_date);
 
