@@ -101,7 +101,12 @@ const nav = document.querySelector("nav");
 const menuButton = document.querySelector(".menu-button");
 
 function sectionImage(name, alt = "") {
-  return `<div class="feature-media"><img src="./images/${name}" alt="${alt}"></div>`;
+  return `<div class="feature-media"><img class="section-photo" src="./images/${name}" alt="${alt}">${imageBrandLogo()}</div>`;
+}
+
+function imageBrandLogo(modifier = "") {
+  const classes = ["image-brand-logo", modifier].filter(Boolean).join(" ");
+  return `<img class="${classes}" src="./images/Logo_white.png" alt="" aria-hidden="true">`;
 }
 
 function renderNav() {
@@ -126,9 +131,10 @@ function render() {
   renderNav();
   region.innerHTML = `
     <section class="hero" id="intro" aria-labelledby="hero-title">
-      <img src="./images/bg-1920x1080.webp" alt="Paisaje natural de Cebolletas">
+      <img class="section-photo" src="./images/bg-1920x1080.webp" alt="Paisaje natural de Cebolletas">
       <div class="hero-copy"><p class="eyebrow">${t.heroEyebrow}</p><h1 id="hero-title">${t.heroTitle}</h1><p>${t.heroText}</p></div>
       <a class="scroll-cue" href="#horario">${t.explore}</a>
+      ${imageBrandLogo("hero-image-brand-logo")}
     </section>
     <section class="feature" id="horario">
       <div class="feature-copy"><p class="eyebrow">${t.scheduleEyebrow}</p><h2>${t.scheduleTitle}</h2><p class="lead">${t.scheduleText}</p><div class="stat"><strong>${t.scheduleHours}</strong><span>${t.scheduleDays}</span></div></div>
@@ -176,7 +182,7 @@ function render() {
       </div>
     </section>
     <section class="microsite-section" id="micrositios">
-      <div class="microsite-media"><img src="./images/cebolletas-copal-construction.jpeg" alt="Cebolletas Copal"></div>
+      <div class="microsite-media"><img class="section-photo" src="./images/cebolletas-copal-construction.jpeg" alt="Cebolletas Copal">${imageBrandLogo()}</div>
       <div class="microsite-copy"><p class="eyebrow">${t.micrositesEyebrow}</p><h2>${t.micrositesTitle}</h2><p class="lead">${t.micrositesText}</p><a class="primary-link" href="./copal/">${t.micrositesAction}</a><img class="microsite-logo" src="./copal/assets/logo-xanadu.png" alt="Cebolletas Copal"></div>
     </section>
     <section class="contact-section" id="contacto">
