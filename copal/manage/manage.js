@@ -241,6 +241,24 @@ function requestServicesLabel(request) {
     .join(", ");
 }
 
+function renderRequestServiceFilter() {
+  const select = $("#request-service-filter");
+  const selectedServiceId = select.value;
+  const options = [new Option("Todos los servicios", "all")];
+
+  services
+    .filter((service) => service.is_active)
+    .forEach((service) => {
+      const version = currentVersion(service);
+      if (version?.name_es) options.push(new Option(version.name_es, service.id));
+    });
+
+  select.replaceChildren(...options);
+  select.value = options.some((option) => option.value === selectedServiceId)
+    ? selectedServiceId
+    : "all";
+}
+
 function filteredInformationRequests() {
   if (!calendarMonth) calendarMonth = monthStart(mexicoCityDate());
   const query = $("#request-search").value.trim().toLocaleLowerCase("es-MX");
@@ -263,7 +281,7 @@ function filteredInformationRequests() {
     ].join(" ").toLocaleLowerCase("es-MX");
     return (!query || haystack.includes(query))
       && (status === "all" || request.status === status)
-      && (service === "all" || request.requested_services.includes(service))
+      && (service === "all" || request.selected_service_id === service)
       && request.checkin_date <= monthEndKey
       && request.checkout_date >= monthStartKey;
   });
@@ -630,6 +648,7 @@ async function loadServices() {
     service.rate_plans?.forEach((plan) => plan.rate_plan_versions?.sort((a, b) => b.version_number - a.version_number));
   });
   renderServices();
+  renderRequestServiceFilter();
 }
 
 async function loadRecipients() {
