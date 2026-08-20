@@ -3,6 +3,7 @@ const copy = {
     eyebrow: "Glamping en Calvillo \u00b7 Aguascalientes, M\u00e9xico",
     title: "Descansa entre<br>\u00e1rboles,<br>senderos y cielo<br>abierto.",
     nav: { home: "Inicio", place: "El lugar", gallery: "Galer\u00eda", booking: "Reserva" },
+    mainSiteLink: "Volver a Cebolletas.mx",
     parent: "",
     menu: "Abrir men\u00fa",
     placeEyebrow: "El lugar",
@@ -47,6 +48,7 @@ const copy = {
     eyebrow: "Glamping in Calvillo \u00b7 Aguascalientes, Mexico",
     title: "Rest among<br>trees,<br>trails and open<br>skies.",
     nav: { home: "Home", place: "The place", gallery: "Gallery", booking: "Book" },
+    mainSiteLink: "Back to Cebolletas.mx",
     parent: "Part of the private Cebolletas development.",
     menu: "Open menu",
     placeEyebrow: "The place", placeTitle: "Everything you need to enjoy nature.",
@@ -203,6 +205,7 @@ function home(t) {
     <img src="./assets/copal-hero.webp" alt="Cebolletas Copal y su entorno natural">
     <div class="hero-overlay"></div>
     <div class="hero-copy"><p>${t.eyebrow}</p><h1 id="hero-title">${t.title}</h1></div>
+    ${mainSiteLink(t, "main-site-link--light hero-return-link")}
     <div class="hero-identity"><img src="./assets/Both_logos_white_650w.png" alt="Cebolletas Copal"><p>${t.parent}</p></div>
   </section></div>`;
 }
@@ -211,13 +214,18 @@ function sectionLogo() {
   return '<img class="section-brand-logo" src="./assets/logo-xanadu.png" alt="" aria-hidden="true">';
 }
 
+function mainSiteLink(t, modifier = "") {
+  const classes = ["main-site-link", modifier].filter(Boolean).join(" ");
+  return `<a class="${classes}" href="/"><span aria-hidden="true">\u2190</span>${t.mainSiteLink}</a>`;
+}
+
 function place(t) {
   const groups = t.amenityGroups.map((group, i) => `<article class="amenity-group">
     <div class="group-heading"><span>0${i + 1}</span><h3>${group[0]}</h3></div>
     <ul>${group.slice(1).map(item => `<li>${item}</li>`).join("")}</ul>
   </article>`).join("");
   return `<section class="place-section" id="place" aria-labelledby="place-title">
-    <div class="place-intro"><p class="section-label">${t.placeEyebrow}</p><h2 id="place-title">${t.placeTitle}</h2><p class="place-description">${t.placeIntro}</p>${sectionLogo()}</div>
+    <div class="place-intro"><p class="section-label">${t.placeEyebrow}</p><h2 id="place-title">${t.placeTitle}</h2><p class="place-description">${t.placeIntro}</p>${mainSiteLink(t)}${sectionLogo()}</div>
     <div class="amenity-groups">${groups}</div>
   </section>`;
 }
@@ -229,7 +237,7 @@ function gallery(t) {
   const section = gallerySections[activePhoto];
   const sectionLabel = section.labels[lang];
   return `<section class="gallery-section" id="gallery" aria-labelledby="gallery-title">
-    <div class="gallery-heading"><div><p class="section-label">${t.galleryEyebrow}</p><h2 id="gallery-title">${t.galleryTitle}</h2><div class="gallery-intro"><p>${t.galleryIntro}</p></div></div><div class="gallery-intro">${sectionLogo()}</div></div>
+    <div class="gallery-heading"><div><p class="section-label">${t.galleryEyebrow}</p><h2 id="gallery-title">${t.galleryTitle}</h2><div class="gallery-intro"><p>${t.galleryIntro}</p>${mainSiteLink(t)}</div></div><div class="gallery-intro">${sectionLogo()}</div></div>
     <div class="gallery-section-links" aria-label="${t.galleryEyebrow}">${sectionLinks}</div>
     <div class="gallery-feature"><div class="feature-caption"><p>${gallerySectionCounter()}</p><h3>${sectionLabel}</h3><span>${t.albumSize(section.images.length)}</span></div>
     <figure><button class="gallery-feature-button" type="button" data-open-gallery aria-label="${t.openAlbum}: ${sectionLabel}"><img src="${galleryImagePath(section, 0)}" alt="${sectionLabel}"></button></figure></div>
@@ -263,7 +271,7 @@ function galleryLightbox(t) {
 
 function booking(t) {
   return `<section class="booking-section" id="booking" aria-labelledby="booking-title">
-    <div class="booking-intro"><p class="section-label">${t.bookingEyebrow}</p><h2 id="booking-title">${t.bookingTitle}</h2><p>${t.bookingText}</p>${sectionLogo()}</div>
+    <div class="booking-intro"><p class="section-label">${t.bookingEyebrow}</p><h2 id="booking-title">${t.bookingTitle}</h2><p>${t.bookingText}</p>${mainSiteLink(t)}${sectionLogo()}</div>
     <form class="booking-form" id="reserva-form" novalidate>
       <fieldset class="service-options full-field" id="br-service-options">
         <legend>${t.requestedInfo}</legend>
