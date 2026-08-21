@@ -1,6 +1,17 @@
-# Cebolletas Copal — Version 7
+# Cebolletas Copal
 
 Static browser-only microsite for `https://cebolletas.mx/copal/`.
+
+The public gallery uses Supabase for its photo catalog and Storage for new
+uploads. Existing repository images are seeded into that catalog and remain
+available as bundled assets. The rest of the microsite renders independently
+while the gallery loads. If the catalog is temporarily unavailable, gallery
+content is hidden so that photographs removed in `/manage` cannot reappear.
+
+Administrators can add, remove, reorder, and reclassify gallery photos from
+`/copal/manage/`. The mobile picker accepts JPEG, PNG, WebP, HEIC, and HEIF and
+converts new uploads to optimized WebP files. See `manage/README.md` for the
+workflow and required database migration.
 
 This variant preserves the Version 4 layout and adds the complete bilingual
 Reserva form:
@@ -45,8 +56,11 @@ The final structure must be:
 - `public_html/copal/index.html`
 - `public_html/copal/styles.css`
 - `public_html/copal/script.js`
+- `public_html/copal/gallery-loader.js`
 - `public_html/copal/reserva-actions.css`
 - `public_html/copal/reserva-actions.js`
 - `public_html/copal/assets/...`
 
-No Node.js, npm, build process, framework, database, or server runtime is required.
+No Node.js, npm, build process, framework, or custom server runtime is required.
+The configured Supabase project is required for managed gallery content and the
+existing Reserva and management features.

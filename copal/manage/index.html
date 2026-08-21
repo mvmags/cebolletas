@@ -6,8 +6,8 @@
     <meta name="robots" content="noindex, nofollow">
     <meta name="theme-color" content="#183f32">
     <title>Gestión | Cebolletas Copal</title>
-    <link rel="stylesheet" href="./manage.css?v=10.4.0-1">
-    <script type="module" src="./manage.js?v=10.4.0-5"></script>
+    <link rel="stylesheet" href="./manage.css?v=10.5.0-2">
+    <script type="module" src="./manage.js?v=10.5.0-3"></script>
   </head>
   <body>
     <main id="login-view" class="login-shell">
@@ -62,6 +62,7 @@
               <button class="nav-item active" data-view="overview" type="button"><span>⌂</span>Resumen</button>
               <button class="nav-item" data-view="whatsapp" type="button"><span>◉</span>WhatsApp</button>
               <button class="nav-item" data-view="services" type="button"><span>◇</span>Servicios</button>
+              <button class="nav-item" data-view="gallery" type="button"><span>▧</span>Galería</button>
               <button class="nav-item" data-view="requests" type="button"><span>✉</span>Solicitudes</button>
               <button class="nav-item" data-view="bookings" type="button"><span>▤</span>Reservaciones</button>
               <button class="nav-item" data-view="send" type="button"><span>➤</span>Enviar información</button>
@@ -97,6 +98,7 @@
                 <div class="quick-grid">
                   <button data-go="whatsapp" type="button"><span>◉</span><strong>WhatsApp</strong><small>Contactos y número principal</small></button>
                   <button data-go="services" type="button"><span>◇</span><strong>Servicios</strong><small>Catálogo y precios</small></button>
+                  <button data-go="gallery" type="button"><span>▧</span><strong>Galería</strong><small>Fotografías y secciones</small></button>
                   <button data-go="requests" type="button"><span>✉</span><strong>Solicitudes</strong><small>Consultas y seguimiento</small></button>
                   <button data-go="bookings" type="button"><span>▤</span><strong>Reservaciones</strong><small>Estadías y precios acordados</small></button>
                   <button data-go="send" type="button"><span>➤</span><strong>Enviar información</strong><small>WhatsApp y correo</small></button>
@@ -160,6 +162,43 @@
               <div id="service-empty" class="empty-state hidden"><span>◇</span><h2>No hay servicios registrados</h2><p>Agrega el primer servicio para comenzar el catálogo.</p></div>
             </article>
             <p class="catalog-note">Los descuentos porcentuales, descuentos fijos y totales acordados se aplicarán a cada reservación sin alterar estas versiones del catálogo.</p>
+          </section>
+
+          <section class="view" data-page="gallery">
+            <div class="page-heading">
+              <div><p class="eyebrow">Contenido público</p><h1>Galería</h1><p class="muted">Agrega, elimina y organiza las fotografías que aparecen en Cebolletas Copal.</p></div>
+            </div>
+            <form id="gallery-upload-form" class="panel gallery-upload-panel">
+              <div class="gallery-upload-intro">
+                <p class="eyebrow">Agregar fotografías</p>
+                <h2>Agregar desde Fotos</h2>
+                <p>Selecciona una o varias fotografías, revisa la sección y publícalas cuando estén listas.</p>
+              </div>
+              <label class="gallery-default-section">Sección inicial
+                <select id="gallery-upload-section" required>
+                  <option value="terrace">Terraza</option>
+                  <option value="landscape">El paisaje</option>
+                  <option value="interior">Interior</option>
+                  <option value="bathroom">Baño</option>
+                  <option value="bedroom">Recámara</option>
+                  <option value="fire-pit">Fogata</option>
+                </select>
+              </label>
+              <div class="gallery-picker-field">
+                <span>Fotografías</span>
+                <input id="gallery-upload-files" class="visually-hidden-file" type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.jpg,.jpeg,.png,.webp,.heic,.heif" multiple>
+                <label id="gallery-picker-button" class="gallery-picker-button" for="gallery-upload-files"><span aria-hidden="true">＋</span> Agregar desde Fotos</label>
+              </div>
+              <small class="gallery-upload-help">JPEG, PNG, WebP, HEIC y HEIF · máximo 50 MB por archivo. Las fotografías se convierten a WebP antes de subirlas.</small>
+              <div id="gallery-upload-queue" class="gallery-upload-queue"></div>
+              <div id="gallery-upload-actions" class="gallery-upload-actions hidden">
+                <button id="gallery-clear-button" type="button">Limpiar lista</button>
+                <button id="gallery-upload-button" class="primary-action" type="submit">Publicar fotografías</button>
+              </div>
+            </form>
+            <p id="gallery-message" class="message" role="status" aria-live="polite"></p>
+            <div id="gallery-admin-sections" class="gallery-admin-sections"></div>
+            <div id="gallery-admin-empty" class="panel empty-state hidden"><span>▧</span><h2>No hay fotografías publicadas</h2><p>Sube la primera imagen y asígnala a una sección.</p></div>
           </section>
 
           <section class="view" data-page="requests">

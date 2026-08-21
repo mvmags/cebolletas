@@ -94,6 +94,8 @@ footer > p { display: block; margin: 0; font-size: 10px; font-weight: 700; lette
 .gallery-feature-button::after { content: "\2315  Haz clic para ampliar"; position: absolute; right: 16px; bottom: 16px; z-index: 1; display: inline-flex; align-items: center; min-height: 34px; padding: 8px 12px; border: 1px solid rgba(255,255,255,.55); border-radius: 999px; background: rgba(20,24,17,.78); color: #fff; box-shadow: 0 3px 12px rgba(0,0,0,.25); font-size: 10px; font-weight: 800; letter-spacing: .04em; line-height: 1; pointer-events: none; }
 html[lang="en"] .gallery-feature-button::after { content: "\2315  Click to enlarge"; }
 .gallery-feature-button:focus-visible { outline: 3px solid var(--wine); outline-offset: -3px; }
+.gallery-empty-state { min-height: 320px; display: grid; place-items: center; border: 1px solid rgba(48,56,38,.16); padding: 42px; color: var(--muted); background: var(--cream); text-align: center; }
+.gallery-empty-state p { max-width: 520px; margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: clamp(25px, 3vw, 38px); line-height: 1.25; }
 body.gallery-open { overflow: hidden; }
 .gallery-lightbox[hidden] { display: none; }
 .gallery-lightbox { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; padding: clamp(12px, 3vw, 38px); }

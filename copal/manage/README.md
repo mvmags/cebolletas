@@ -771,7 +771,60 @@ join auth.users u
 where lower(u.email) = lower('user@example.com');
 ```
 
+## Gallery administration
+
+The **Galería** view manages the photographs shown on the public Copal
+microsite. Gallery metadata is stored in `public.gallery_photos`; newly uploaded
+files are stored in the public `copal-gallery` Supabase Storage bucket.
+
+Only an active profile with the `admin` role can add, move, reorder, or delete
+gallery photos. A `viewer` can inspect the gallery but the editing controls are
+disabled, and Row Level Security independently rejects write attempts.
+
+### Add photographs
+
+1. Open `/copal/manage/` and sign in with an active administrator account.
+2. Select **Galería**.
+3. Choose the initial destination section.
+4. Select **Agregar desde Fotos** and choose one or more JPEG, PNG, WebP, HEIC,
+   or HEIF photographs.
+5. Review the optimized previews and change individual sections if needed.
+6. Select **Publicar fotografías**.
+
+The browser converts uploads to WebP, limits the longest edge to 2,200 pixels,
+and uploads each file separately. HEIC and HEIF files use native decoding when
+the browser supports it and the bundled converter otherwise. The original file
+on the administrator's phone or computer is not changed.
+
+The preview queue reports preparation and upload errors per photograph. A
+failed upload can be retried without repeating successful uploads. HEIC/HEIF
+conversion is limited to 25 MB per source file to protect mobile devices from
+running out of memory; the general upload selection limit remains 50 MB.
+
+### Organize or remove photographs
+
+- Use **Antes** and **Después** to change the order within a section. Each swap
+  is saved atomically so a partial update cannot leave duplicate positions.
+- Change the **Sección** dropdown to move a photo to another section.
+- Use **Eliminar** to remove a photo from the public gallery.
+
+Photos marked **Supabase** are deleted from both the metadata table and Storage.
+Photos marked **Sitio** are the original repository images: deleting one hides
+it from the Supabase-backed gallery but does not delete its source file from the
+Git repository.
+
+### Required database migration
+
+The gallery depends on these migrations, applied in order:
+
+1. `20260826_v10_5_0_gallery_management.sql`
+2. `20260827_v10_5_0_atomic_gallery_reorder.sql`
+
+Apply both to each target Supabase project before deploying the corresponding
+website files. They create the metadata table, access policies, public Storage
+bucket, initial records for the existing bundled photographs, and the atomic
+reordering function.
+
 ---
 
-Document baseline: Cebolletas Copal `v9.2.1`.
-
+Document baseline: Cebolletas Copal `v10.5.0`.

@@ -16,6 +16,9 @@ const copy = {
     ],
     galleryEyebrow: "Galer\u00eda", galleryTitle: "Conoce cada rinc\u00f3n.",
     galleryIntro: "Explora los espacios, detalles y paisajes que forman parte de la experiencia Cebolletas Copal.",
+    galleryLoading: "Estamos preparando la galer\u00eda\u2026",
+    galleryUnavailable: "La galer\u00eda no est\u00e1 disponible temporalmente. Intenta nuevamente en unos minutos.",
+    galleryEmpty: "Pronto compartiremos nuevas fotograf\u00edas de Cebolletas Copal.",
     temporary: "Fotograf\u00eda temporal",
     openAlbum: "Abrir galer\u00eda",
     closeAlbum: "Cerrar galer\u00eda",
@@ -60,6 +63,9 @@ const copy = {
     ],
     galleryEyebrow: "Gallery", galleryTitle: "Explore every corner.",
     galleryIntro: "Explore the spaces, details and landscapes that make up the Cebolletas Copal experience.",
+    galleryLoading: "We are preparing the gallery\u2026",
+    galleryUnavailable: "The gallery is temporarily unavailable. Please try again in a few minutes.",
+    galleryEmpty: "We will be sharing new Cebolletas Copal photographs soon.",
     temporary: "Temporary photograph",
     openAlbum: "Open gallery",
     closeAlbum: "Close gallery",
@@ -117,18 +123,8 @@ const gallerySectionDefinitions = [
     }
 ];
 
-const gallerySections = gallerySectionDefinitions.map(section => ({
-  ...section,
-  images: window.galleryImageManifest?.[section.folder] || []
-})).filter(section => section.images.length > 0);
-
-const galleryImages = gallerySections.flatMap((section, sectionIndex) =>
-  section.images.map((_, imageIndex) => ({
-    section,
-    sectionIndex,
-    imageIndex
-  }))
-);
+let gallerySections = [];
+let galleryImages = [];
 
 let lang = "es";
 let activeView = "home";
@@ -140,6 +136,31 @@ let galleryTouchStartX = null;
 const region = document.querySelector(".content-region");
 const nav = document.querySelector("nav");
 const menuButton = document.querySelector(".menu-button");
+
+function refreshGalleryCollections() {
+  const activeFolder = gallerySections[activePhoto]?.folder;
+  gallerySections = gallerySectionDefinitions.map(section => ({
+    ...section,
+    images: window.galleryImageManifest?.[section.folder] || []
+  })).filter(section => section.images.length > 0);
+  galleryImages = gallerySections.flatMap((section, sectionIndex) =>
+    section.images.map((_, imageIndex) => ({ section, sectionIndex, imageIndex }))
+  );
+  const preservedIndex = gallerySections.findIndex(section => section.folder === activeFolder);
+  activePhoto = preservedIndex >= 0
+    ? preservedIndex
+    : Math.min(activePhoto, Math.max(0, gallerySections.length - 1));
+  activeGalleryImage = 0;
+}
+
+function refreshGallerySection() {
+  const current = region.querySelector("#gallery");
+  if (!current) return;
+  document.body.classList.remove("gallery-open");
+  galleryReturnFocus = null;
+  current.outerHTML = gallery(copy[lang]);
+  observeSections();
+}
 
 function renderNav() {
   const t = copy[lang];
@@ -231,22 +252,43 @@ function place(t) {
 }
 
 function gallery(t) {
+  const section = gallerySections[activePhoto];
   const sectionLinks = gallerySections.map((section, i) => `<button type="button" data-photo="${i}" class="${i === activePhoto ? "active" : ""}" aria-pressed="${i === activePhoto}">
     <span aria-hidden="true">${String(i + 1).padStart(2, "0")}</span>${section.labels[lang]}
   </button>`).join("");
-  const section = gallerySections[activePhoto];
+  if (!section) {
+    const source = document.documentElement.dataset.gallerySource;
+    const emptyMessage = source === "unavailable"
+      ? t.galleryUnavailable
+      : source === "supabase"
+        ? t.galleryEmpty
+        : t.galleryLoading;
+    return `<section class="gallery-section" id="gallery" aria-labelledby="gallery-title">
+      <div class="gallery-heading"><div><p class="section-label">${t.galleryEyebrow}</p><h2 id="gallery-title">${t.galleryTitle}</h2><div class="gallery-intro"><p>${t.galleryIntro}</p>${mainSiteLink(t)}</div></div><div class="gallery-intro">${sectionLogo()}</div></div>
+      <div class="gallery-empty-state"><p>${emptyMessage}</p></div>
+    </section>`;
+  }
   const sectionLabel = section.labels[lang];
   return `<section class="gallery-section" id="gallery" aria-labelledby="gallery-title">
     <div class="gallery-heading"><div><p class="section-label">${t.galleryEyebrow}</p><h2 id="gallery-title">${t.galleryTitle}</h2><div class="gallery-intro"><p>${t.galleryIntro}</p>${mainSiteLink(t)}</div></div><div class="gallery-intro">${sectionLogo()}</div></div>
     <div class="gallery-section-links" aria-label="${t.galleryEyebrow}">${sectionLinks}</div>
     <div class="gallery-feature"><div class="feature-caption"><p>${gallerySectionCounter()}</p><h3>${sectionLabel}</h3><span>${t.albumSize(section.images.length)}</span></div>
-    <figure><button class="gallery-feature-button" type="button" data-open-gallery aria-label="${t.openAlbum}: ${sectionLabel}"><img src="${galleryImagePath(section, 0)}" alt="${sectionLabel}"></button></figure></div>
+    <figure><button class="gallery-feature-button" type="button" data-open-gallery aria-label="${t.openAlbum}: ${sectionLabel}"><img src="${galleryImagePath(section, 0)}" alt="${galleryImageAlt(section, 0)}"></button></figure></div>
     ${galleryLightbox(t)}
   </section>`;
 }
 
 function galleryImagePath(section, imageIndex) {
-  return `./assets/gallery/${section.folder}/${section.images[imageIndex]}`;
+  const image = section.images[imageIndex];
+  return typeof image === "string"
+    ? `./assets/gallery/${section.folder}/${image}`
+    : image?.src || "";
+}
+
+function galleryImageAlt(section, imageIndex) {
+  const image = section.images[imageIndex];
+  if (typeof image !== "string" && image?.alt?.[lang]) return image.alt[lang];
+  return `${section.labels[lang]} \u2014 ${imageIndex + 1}`;
 }
 
 function gallerySectionCounter() {
@@ -262,7 +304,7 @@ function galleryLightbox(t) {
       <header class="gallery-lightbox-header"><div><h2 id="gallery-lightbox-title">${label}</h2><p data-gallery-count>01 / ${String(galleryImages.length).padStart(2, "0")}</p></div><button type="button" data-close-gallery aria-label="${t.closeAlbum}">×</button></header>
       <div class="gallery-lightbox-stage">
         <button class="gallery-lightbox-nav previous" type="button" data-gallery-previous aria-label="${t.previousPhoto}">‹</button>
-        <figure><img data-gallery-image src="${galleryImagePath(section, 0)}" alt="${label}"></figure>
+        <figure><img data-gallery-image src="${galleryImagePath(section, 0)}" alt="${galleryImageAlt(section, 0)}"></figure>
         <button class="gallery-lightbox-nav next" type="button" data-gallery-next aria-label="${t.nextPhoto}">›</button>
       </div>
     </div>
@@ -316,6 +358,7 @@ function render() {
 
 function updateGallery() {
   const section = gallerySections[activePhoto];
+  if (!section) return;
   const sectionLabel = section.labels[lang];
   region.querySelectorAll("[data-photo]").forEach((button, index) => {
     const active = index === activePhoto;
@@ -335,7 +378,7 @@ function updateGallery() {
   if (lightboxTitle) lightboxTitle.textContent = sectionLabel;
   if (image) {
     image.src = galleryImagePath(section, 0);
-    image.alt = sectionLabel;
+    image.alt = galleryImageAlt(section, 0);
   }
 }
 
@@ -378,7 +421,7 @@ function updateLightbox() {
   if (title) title.textContent = section.labels[lang];
   if (image) {
     image.src = galleryImagePath(section, imageIndex);
-    image.alt = `${section.labels[lang]} — ${imageIndex + 1}`;
+    image.alt = galleryImageAlt(section, imageIndex);
   }
   if (counter) counter.textContent = `${String(activeGalleryImage + 1).padStart(2, "0")} / ${String(galleryImages.length).padStart(2, "0")}`;
   region.querySelectorAll("[data-gallery-previous], [data-gallery-next]").forEach(button => {
@@ -464,6 +507,12 @@ window.addEventListener("hashchange", () => {
   scrollToSection(nextView);
 });
 
+window.addEventListener("gallery:manifest-loaded", () => {
+  refreshGalleryCollections();
+  refreshGallerySection();
+});
+
+refreshGalleryCollections();
 render();
 
 if (document.readyState === "loading") {
