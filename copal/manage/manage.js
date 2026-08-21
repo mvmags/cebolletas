@@ -24,6 +24,8 @@ const requestDetailModal = $("#request-detail-modal");
 const requestDetailMessage = $("#request-detail-message");
 const calculatorModal = $("#calculator-modal");
 const requestMessage = $("#request-message");
+const galleryUploadForm = $("#gallery-upload-form");
+const galleryMessage = $("#gallery-message");
 const refreshButton = $("#refresh-button");
 const refreshStatus = $("#refresh-status");
 let recipients = [];
@@ -35,6 +37,26 @@ let detailRequestId = null;
 let calculatorService = null;
 let calculatorCopyText = "";
 let calendarMonth = null;
+let galleryPhotos = [];
+let managementProfile = null;
+let galleryUploadQueue = [];
+let galleryUploadBusy = false;
+let heicConverterPromise = null;
+let galleryPreparationChain = Promise.resolve();
+
+const GALLERY_BUCKET = "copal-gallery";
+const GALLERY_MAX_FILE_SIZE = 50 * 1024 * 1024;
+const GALLERY_MAX_HEIC_FILE_SIZE = 25 * 1024 * 1024;
+const GALLERY_MAX_EDGE = 2200;
+const GALLERY_OUTPUT_QUALITY = 0.84;
+const GALLERY_SECTIONS = [
+  { slug: "terrace", label: "Terraza" },
+  { slug: "landscape", label: "El paisaje" },
+  { slug: "interior", label: "Interior" },
+  { slug: "bathroom", label: "Baño" },
+  { slug: "bedroom", label: "Recámara" },
+  { slug: "fire-pit", label: "Fogata" },
+];
 
 const CATEGORY_LABELS = {
   copal: "Cebolletas Copal",
@@ -157,7 +179,521 @@ function friendlyError(error) {
   if (error?.message?.includes("Maximum children cannot exceed")) return "El máximo de niños no puede exceder la capacidad física máxima.";
   if (error?.message?.includes("Maximum infants cannot exceed")) return "El máximo de menores de 3 años no puede exceder la capacidad física máxima.";
   if (error?.message?.includes("rate_plan_versions_category_limits")) return "Los máximos por tipo de huésped no pueden exceder la capacidad física máxima.";
+  if (error?.message?.includes("maximum allowed size") || error?.statusCode === "413") return "La fotografía excede el tamaño máximo permitido.";
+  if (error?.message?.includes("row-level security") || error?.code === "42501") return "Tu cuenta no tiene permiso para modificar la galería.";
+  if (/HEIC decoding failed|Failed to initialize HEIC decoder|Failed to render and encode image/i.test(error?.message || "")) {
+    return "No fue posible convertir esta fotografía HEIC/HEIF. Intenta exportarla como JPEG o selecciónala nuevamente desde Fotos.";
+  }
   return error?.message || "No fue posible completar la operaci\u00f3n.";
+}
+
+function setGalleryMessage(text = "", type = "") {
+  galleryMessage.textContent = text;
+  galleryMessage.className = `message ${type}`.trim();
+}
+
+function canEditGallery() {
+  return managementProfile?.active && managementProfile.role === "admin";
+}
+
+function gallerySectionLabel(slug) {
+  return GALLERY_SECTIONS.find((section) => section.slug === slug)?.label || slug;
+}
+
+function galleryPhotoUrl(photo) {
+  if (photo.storage_path) {
+    return supabase.storage.from(GALLERY_BUCKET).getPublicUrl(photo.storage_path).data.publicUrl;
+  }
+  return `../${photo.legacy_path}`;
+}
+
+function galleryPhotosInSection(sectionSlug) {
+  return galleryPhotos
+    .filter((photo) => photo.section_slug === sectionSlug)
+    .sort((a, b) => a.display_order - b.display_order || a.created_at.localeCompare(b.created_at));
+}
+
+function syncGalleryEditorState() {
+  const editable = canEditGallery();
+  ["#gallery-upload-section", "#gallery-upload-files", "#gallery-upload-button", "#gallery-clear-button"].forEach((selector) => {
+    $(selector).disabled = !editable || galleryUploadBusy;
+  });
+  $("#gallery-picker-button").setAttribute("aria-disabled", String(!editable || galleryUploadBusy));
+  if (!editable && managementProfile) {
+    setGalleryMessage("Tu perfil tiene acceso de consulta. Solo un administrador puede modificar la galería.");
+  }
+}
+
+function renderGalleryPhotos() {
+  const container = $("#gallery-admin-sections");
+  container.replaceChildren();
+  $("#gallery-admin-empty").classList.toggle("hidden", galleryPhotos.length !== 0);
+  syncGalleryEditorState();
+  if (!galleryPhotos.length) return;
+
+  GALLERY_SECTIONS.forEach((section) => {
+    const photos = galleryPhotosInSection(section.slug);
+    const sectionCard = document.createElement("section");
+    sectionCard.className = "panel gallery-admin-section";
+
+    const heading = document.createElement("header");
+    heading.className = "gallery-admin-section-head";
+    const title = document.createElement("h2");
+    title.textContent = section.label;
+    const count = document.createElement("span");
+    count.textContent = `${photos.length} ${photos.length === 1 ? "fotografía" : "fotografías"}`;
+    heading.append(title, count);
+
+    const grid = document.createElement("div");
+    grid.className = "gallery-photo-grid";
+    if (!photos.length) {
+      const empty = document.createElement("p");
+      empty.className = "muted";
+      empty.textContent = "Esta sección no tiene fotografías.";
+      grid.append(empty);
+    }
+
+    photos.forEach((photo, index) => {
+      const card = document.createElement("article");
+      card.className = "gallery-photo-card";
+
+      const image = document.createElement("img");
+      image.src = galleryPhotoUrl(photo);
+      image.alt = photo.alt_es || `${section.label} ${index + 1}`;
+      image.loading = "lazy";
+
+      const body = document.createElement("div");
+      body.className = "gallery-photo-card-body";
+      const sectionLabel = document.createElement("label");
+      sectionLabel.textContent = "Sección";
+      const sectionSelect = document.createElement("select");
+      sectionSelect.dataset.gallerySection = photo.id;
+      sectionSelect.disabled = !canEditGallery();
+      GALLERY_SECTIONS.forEach((optionSection) => {
+        const option = document.createElement("option");
+        option.value = optionSection.slug;
+        option.textContent = optionSection.label;
+        option.selected = optionSection.slug === photo.section_slug;
+        sectionSelect.append(option);
+      });
+      sectionLabel.append(sectionSelect);
+
+      const meta = document.createElement("div");
+      meta.className = "gallery-photo-meta";
+      const order = document.createElement("span");
+      order.textContent = `Posición ${index + 1}`;
+      const source = document.createElement("span");
+      source.className = "gallery-photo-source";
+      source.textContent = photo.storage_path ? "Supabase" : "Sitio";
+      meta.append(order, source);
+
+      const actions = document.createElement("div");
+      actions.className = "gallery-photo-actions";
+      const previous = document.createElement("button");
+      previous.type = "button";
+      previous.dataset.galleryMove = "-1";
+      previous.dataset.id = photo.id;
+      previous.textContent = "← Antes";
+      previous.disabled = !canEditGallery() || index === 0;
+      const next = document.createElement("button");
+      next.type = "button";
+      next.dataset.galleryMove = "1";
+      next.dataset.id = photo.id;
+      next.textContent = "Después →";
+      next.disabled = !canEditGallery() || index === photos.length - 1;
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.className = "danger";
+      remove.dataset.galleryDelete = photo.id;
+      remove.textContent = "Eliminar";
+      remove.disabled = !canEditGallery();
+      actions.append(previous, next, remove);
+
+      body.append(sectionLabel, meta, actions);
+      card.append(image, body);
+      grid.append(card);
+    });
+
+    sectionCard.append(heading, grid);
+    container.append(sectionCard);
+  });
+}
+
+async function loadGalleryPhotos() {
+  const { data, error } = await supabase
+    .from("gallery_photos")
+    .select("id, section_slug, storage_path, legacy_path, display_order, alt_es, alt_en, width_px, height_px, file_size_bytes, created_at, updated_at")
+    .order("section_slug")
+    .order("display_order")
+    .order("created_at");
+
+  if (error) {
+    galleryPhotos = [];
+    renderGalleryPhotos();
+    setGalleryMessage("La galería administrable aún no está habilitada en esta base de datos.", "error");
+    return;
+  }
+  galleryPhotos = data || [];
+  renderGalleryPhotos();
+}
+
+function formatGalleryFileSize(bytes) {
+  if (!Number.isFinite(bytes) || bytes <= 0) return "—";
+  if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(bytes >= 10 * 1024 * 1024 ? 0 : 1)} MB`;
+  return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+}
+
+function galleryFileExtension(file) {
+  return (file.name || "").split(".").pop()?.toLowerCase() || "";
+}
+
+function isHeicGalleryFile(file) {
+  return /image\/(heic|heif)/i.test(file.type) || ["heic", "heif"].includes(galleryFileExtension(file));
+}
+
+function isSupportedGalleryFile(file) {
+  return /^image\/(jpeg|png|webp|heic|heif)$/i.test(file.type)
+    || ["jpg", "jpeg", "png", "webp", "heic", "heif"].includes(galleryFileExtension(file));
+}
+
+function createGalleryQueueId() {
+  if (crypto.randomUUID) return crypto.randomUUID();
+  return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function galleryQueueStatus(item) {
+  if (item.status === "preparing") return `Preparando ${Math.round(item.progress || 0)}%`;
+  if (item.status === "ready") return "Lista para publicar";
+  if (item.status === "uploading") return "Subiendo…";
+  if (item.status === "success") return "Publicada";
+  if (item.status === "error") return "Revisar fotografía";
+  return "En espera";
+}
+
+function galleryQueueSectionOptions(selectedSlug) {
+  return GALLERY_SECTIONS.map((section) =>
+    `<option value="${section.slug}" ${section.slug === selectedSlug ? "selected" : ""}>${section.label}</option>`
+  ).join("");
+}
+
+function renderGalleryUploadQueue() {
+  const container = $("#gallery-upload-queue");
+  const actions = $("#gallery-upload-actions");
+  const editable = canEditGallery();
+  container.innerHTML = galleryUploadQueue.map((item) => {
+    const isLocked = galleryUploadBusy || ["queued", "preparing", "uploading", "success"].includes(item.status);
+    const statusClass = item.status === "error" ? "error" : item.status === "success" ? "success" : "";
+    const preview = item.previewUrl
+      ? `<img src="${item.previewUrl}" alt="Vista previa de ${escapeHtml(item.name)}">`
+      : `<div class="gallery-queue-preview-placeholder"><span aria-hidden="true">▧</span><small>${isHeicGalleryFile(item.sourceFile || { name: item.name, type: item.originalType }) ? "Fotografía HEIC/HEIF" : "Preparando vista previa"}</small></div>`;
+    const retry = item.status === "error"
+      ? `<button type="button" data-gallery-queue-retry="${item.id}" ${galleryUploadBusy ? "disabled" : ""}>Reintentar</button>`
+      : "";
+    return `<article class="gallery-queue-card" data-gallery-queue-item="${item.id}">
+      <div class="gallery-queue-preview">${preview}<span class="gallery-queue-status ${statusClass}">${galleryQueueStatus(item)}</span></div>
+      <div class="gallery-queue-body">
+        <div class="gallery-queue-name"><strong title="${escapeHtml(item.name)}">${escapeHtml(item.name)}</strong><span>${formatGalleryFileSize(item.outputSize || item.originalSize)}</span></div>
+        <label>Sección<select data-gallery-queue-section="${item.id}" ${!editable || isLocked ? "disabled" : ""}>${galleryQueueSectionOptions(item.sectionSlug)}</select></label>
+        ${item.error ? `<p class="gallery-queue-error">${escapeHtml(item.error)}</p>` : ""}
+        <div class="gallery-queue-controls">${retry}<button class="danger" type="button" data-gallery-queue-remove="${item.id}" ${item.status === "uploading" ? "disabled" : ""}>${item.status === "success" ? "Cerrar" : "Quitar"}</button></div>
+      </div>
+    </article>`;
+  }).join("");
+
+  actions.classList.toggle("hidden", galleryUploadQueue.length === 0);
+  const publishable = galleryUploadQueue.filter((item) => item.status === "ready").length;
+  const uploadButton = $("#gallery-upload-button");
+  uploadButton.textContent = publishable === 1 ? "Publicar 1 fotografía" : `Publicar ${publishable} fotografías`;
+  uploadButton.disabled = !editable || galleryUploadBusy || publishable === 0;
+  $("#gallery-clear-button").disabled = !editable || galleryUploadBusy;
+  $("#gallery-upload-section").disabled = !editable || galleryUploadBusy;
+  $("#gallery-upload-files").disabled = !editable || galleryUploadBusy;
+  $("#gallery-picker-button").setAttribute("aria-disabled", String(!editable || galleryUploadBusy));
+}
+
+function releaseGalleryQueueItem(item) {
+  item.cancelled = true;
+  if (item.previewUrl) URL.revokeObjectURL(item.previewUrl);
+  item.previewUrl = "";
+  item.optimizedBlob = null;
+  item.sourceFile = null;
+}
+
+function clearGalleryUploadQueue() {
+  galleryUploadQueue.forEach(releaseGalleryQueueItem);
+  galleryUploadQueue = [];
+  $("#gallery-upload-files").value = "";
+  renderGalleryUploadQueue();
+  setGalleryMessage();
+}
+
+async function loadHeicConverter() {
+  heicConverterPromise ||= import("./vendor/heic-converter/index.mjs");
+  try {
+    return await heicConverterPromise;
+  } catch (error) {
+    heicConverterPromise = null;
+    throw error;
+  }
+}
+
+async function decodeGalleryImage(blob) {
+  let bitmapError;
+  if ("createImageBitmap" in window) {
+    try {
+      return await createImageBitmap(blob, { imageOrientation: "from-image" });
+    } catch (error) {
+      bitmapError = error;
+    }
+  }
+
+  const url = URL.createObjectURL(blob);
+  try {
+    const image = new Image();
+    image.src = url;
+    await image.decode();
+    return image;
+  } catch (error) {
+    throw bitmapError || error;
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+async function decodeGallerySource(file, onProgress) {
+  try {
+    return await decodeGalleryImage(file);
+  } catch (nativeError) {
+    if (!isHeicGalleryFile(file)) throw nativeError;
+  }
+
+  if (file.size > GALLERY_MAX_HEIC_FILE_SIZE) {
+    throw new Error(`${file.name}: para convertir HEIC/HEIF en el teléfono, usa un archivo menor de 25 MB.`);
+  }
+  const { convertHeic } = await loadHeicConverter();
+  let lastProgress = 0;
+  const converted = await convertHeic(file, {
+    to: "webp",
+    quality: 0.92,
+    onProgress: (progress) => {
+      if (progress >= 100 || progress - lastProgress >= 8) {
+        lastProgress = progress;
+        onProgress?.(Math.min(70, Math.max(8, progress * 0.7)));
+      }
+    },
+  });
+  return decodeGalleryImage(converted);
+}
+
+async function optimizeGalleryImage(file, onProgress) {
+  if (!isSupportedGalleryFile(file)) {
+    throw new Error(`${file.name}: usa una fotografía JPEG, PNG, WebP, HEIC o HEIF.`);
+  }
+  if (file.size > GALLERY_MAX_FILE_SIZE) {
+    throw new Error(`${file.name}: el archivo excede 50 MB.`);
+  }
+
+  onProgress?.(5);
+  const source = await decodeGallerySource(file, onProgress);
+  const sourceWidth = source.width || source.naturalWidth;
+  const sourceHeight = source.height || source.naturalHeight;
+  if (!sourceWidth || !sourceHeight) {
+    source.close?.();
+    throw new Error(`${file.name}: no fue posible leer las dimensiones de la fotografía.`);
+  }
+  const scale = Math.min(1, GALLERY_MAX_EDGE / Math.max(sourceWidth, sourceHeight));
+  const width = Math.max(1, Math.round(sourceWidth * scale));
+  const height = Math.max(1, Math.round(sourceHeight * scale));
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const context = canvas.getContext("2d", { alpha: false });
+  if (!context) {
+    source.close?.();
+    throw new Error(`${file.name}: el navegador no pudo preparar la fotografía.`);
+  }
+  context.fillStyle = "#ffffff";
+  context.fillRect(0, 0, width, height);
+  context.drawImage(source, 0, 0, width, height);
+  source.close?.();
+  onProgress?.(85);
+
+  const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/webp", GALLERY_OUTPUT_QUALITY));
+  canvas.width = 1;
+  canvas.height = 1;
+  if (!blob) throw new Error(`${file.name}: no fue posible convertir la fotografía a WebP.`);
+  onProgress?.(100);
+  return { blob, width, height };
+}
+
+async function prepareGalleryQueueItem(item) {
+  if (item.cancelled) return;
+  item.status = "preparing";
+  item.progress = 0;
+  item.error = "";
+  renderGalleryUploadQueue();
+  try {
+    const optimized = await optimizeGalleryImage(item.sourceFile, (progress) => {
+      if (item.cancelled) return;
+      item.progress = progress;
+      renderGalleryUploadQueue();
+    });
+    if (item.cancelled || !galleryUploadQueue.includes(item)) return;
+    item.optimizedBlob = optimized.blob;
+    item.width = optimized.width;
+    item.height = optimized.height;
+    item.outputSize = optimized.blob.size;
+    item.previewUrl = URL.createObjectURL(optimized.blob);
+    item.status = "ready";
+    item.progress = 100;
+    item.sourceFile = null;
+  } catch (error) {
+    if (item.cancelled) return;
+    item.status = "error";
+    item.error = friendlyError(error);
+  }
+  renderGalleryUploadQueue();
+}
+
+function addGalleryFiles(files) {
+  const sectionSlug = $("#gallery-upload-section").value;
+  const items = files.map((file) => ({
+    id: createGalleryQueueId(),
+    sourceFile: file,
+    name: file.name || "Fotografía",
+    originalType: file.type || "",
+    originalSize: file.size,
+    sectionSlug,
+    status: "queued",
+    progress: 0,
+    error: "",
+    previewUrl: "",
+    optimizedBlob: null,
+    cancelled: false,
+  }));
+  galleryUploadQueue.push(...items);
+  $("#gallery-upload-files").value = "";
+  renderGalleryUploadQueue();
+  setGalleryMessage(`${items.length} ${items.length === 1 ? "fotografía seleccionada" : "fotografías seleccionadas"}. Preparando vistas previas…`);
+
+  galleryPreparationChain = galleryPreparationChain.then(async () => {
+    for (const item of items) await prepareGalleryQueueItem(item);
+    const failed = items.filter((item) => item.status === "error").length;
+    const ready = items.filter((item) => item.status === "ready").length;
+    if (failed) setGalleryMessage(`${ready} listas y ${failed} con problemas. Revisa las fotografías marcadas.`, "error");
+    else if (ready) setGalleryMessage(`${ready} ${ready === 1 ? "fotografía lista" : "fotografías listas"} para publicar.`, "success");
+  });
+}
+
+function nextGalleryOrder(sectionSlug) {
+  return galleryPhotosInSection(sectionSlug).reduce((maximum, photo) => Math.max(maximum, photo.display_order), 0) + 1;
+}
+
+async function uploadGalleryPhotos(event) {
+  event.preventDefault();
+  if (!canEditGallery() || galleryUploadBusy) return;
+  const items = galleryUploadQueue.filter((item) => item.status === "ready" && item.optimizedBlob);
+  if (!items.length) return setGalleryMessage("Agrega y prepara al menos una fotografía.", "error");
+
+  galleryUploadBusy = true;
+  renderGalleryUploadQueue();
+  const nextOrders = new Map(GALLERY_SECTIONS.map((section) => [section.slug, nextGalleryOrder(section.slug)]));
+  let uploadedCount = 0;
+  let failedCount = 0;
+  for (const [index, item] of items.entries()) {
+    item.status = "uploading";
+    item.error = "";
+    renderGalleryUploadQueue();
+    setGalleryMessage(`Publicando ${index + 1} de ${items.length}: ${item.name}`);
+    const objectId = createGalleryQueueId();
+    const storagePath = `${item.sectionSlug}/${objectId}.webp`;
+    try {
+      const { error: uploadError } = await supabase.storage
+        .from(GALLERY_BUCKET)
+        .upload(storagePath, item.optimizedBlob, {
+          cacheControl: "31536000",
+          contentType: "image/webp",
+          upsert: false,
+        });
+      if (uploadError) throw uploadError;
+
+      const { error: insertError } = await supabase.from("gallery_photos").insert({
+        section_slug: item.sectionSlug,
+        storage_path: storagePath,
+        display_order: nextOrders.get(item.sectionSlug),
+        width_px: item.width,
+        height_px: item.height,
+        file_size_bytes: item.optimizedBlob.size,
+      });
+      if (insertError) {
+        await supabase.storage.from(GALLERY_BUCKET).remove([storagePath]);
+        throw insertError;
+      }
+      nextOrders.set(item.sectionSlug, nextOrders.get(item.sectionSlug) + 1);
+      uploadedCount += 1;
+      item.status = "success";
+      item.optimizedBlob = null;
+    } catch (error) {
+      failedCount += 1;
+      item.status = "error";
+      item.error = friendlyError(error);
+    }
+    renderGalleryUploadQueue();
+  }
+  galleryUploadBusy = false;
+  if (uploadedCount) await loadGalleryPhotos();
+  renderGalleryUploadQueue();
+  if (failedCount) {
+    setGalleryMessage(`${uploadedCount} publicadas y ${failedCount} con error. Puedes reintentar las fotografías marcadas.`, "error");
+  } else {
+    setGalleryMessage(`${uploadedCount} ${uploadedCount === 1 ? "fotografía publicada" : "fotografías publicadas"}.`, "success");
+  }
+}
+
+async function changeGalleryPhotoSection(photo, nextSection) {
+  if (!canEditGallery() || photo.section_slug === nextSection) return;
+  setGalleryMessage("Moviendo fotografía…");
+  const { error } = await supabase
+    .from("gallery_photos")
+    .update({ section_slug: nextSection, display_order: nextGalleryOrder(nextSection) })
+    .eq("id", photo.id);
+  if (error) throw error;
+  await loadGalleryPhotos();
+  setGalleryMessage(`Fotografía movida a ${gallerySectionLabel(nextSection)}.`, "success");
+}
+
+async function reorderGalleryPhoto(photo, direction) {
+  if (!canEditGallery()) return;
+  const sectionPhotos = galleryPhotosInSection(photo.section_slug);
+  const currentIndex = sectionPhotos.findIndex((item) => item.id === photo.id);
+  const target = sectionPhotos[currentIndex + direction];
+  if (!target) return;
+  setGalleryMessage("Actualizando el orden…");
+  const [currentResult, targetResult] = await Promise.all([
+    supabase.from("gallery_photos").update({ display_order: target.display_order }).eq("id", photo.id),
+    supabase.from("gallery_photos").update({ display_order: photo.display_order }).eq("id", target.id),
+  ]);
+  if (currentResult.error) throw currentResult.error;
+  if (targetResult.error) throw targetResult.error;
+  await loadGalleryPhotos();
+  setGalleryMessage("Orden actualizado.", "success");
+}
+
+async function removeGalleryPhoto(photo) {
+  if (!canEditGallery()) return;
+  const confirmed = window.confirm("¿Eliminar esta fotografía de la galería pública?");
+  if (!confirmed) return;
+  setGalleryMessage("Eliminando fotografía…");
+  const { error: deleteError } = await supabase.from("gallery_photos").delete().eq("id", photo.id);
+  if (deleteError) throw deleteError;
+
+  let storageWarning = "";
+  if (photo.storage_path) {
+    const { error: storageError } = await supabase.storage.from(GALLERY_BUCKET).remove([photo.storage_path]);
+    if (storageError) storageWarning = " El archivo quedó pendiente de limpieza en Storage.";
+  }
+  await loadGalleryPhotos();
+  setGalleryMessage(`Fotografía eliminada.${storageWarning}`, storageWarning ? "error" : "success");
 }
 
 function filteredRecipients() {
@@ -666,7 +1202,9 @@ async function loadRecipients() {
 async function loadProfile(userId) {
   const { data, error } = await supabase.from("admin_profiles").select("display_name, role, active").eq("user_id", userId).single();
   if (error || !data?.active) throw new Error("Esta cuenta no tiene acceso administrativo activo.");
+  managementProfile = data;
   $("#account-name").textContent = `${data.display_name} \u00b7 ${data.role}`;
+  syncGalleryEditorState();
 }
 
 async function refreshManagementData({ announce = true } = {}) {
@@ -682,6 +1220,7 @@ async function refreshManagementData({ announce = true } = {}) {
       loadRecipients(),
       loadServices(),
       loadInformationRequests(),
+      loadGalleryPhotos(),
     ]);
 
     if (openRequestId) {
@@ -1720,8 +2259,85 @@ $("#request-contact-actions").addEventListener("click", (event) => {
   });
 });
 
+galleryUploadForm.addEventListener("submit", uploadGalleryPhotos);
+
+$("#gallery-upload-files").addEventListener("change", (event) => {
+  const files = [...event.target.files];
+  if (files.length) addGalleryFiles(files);
+});
+
+$("#gallery-clear-button").addEventListener("click", clearGalleryUploadQueue);
+
+$("#gallery-upload-queue").addEventListener("change", (event) => {
+  const select = event.target.closest("select[data-gallery-queue-section]");
+  if (!select || galleryUploadBusy) return;
+  const item = galleryUploadQueue.find((candidate) => candidate.id === select.dataset.galleryQueueSection);
+  if (item && item.status !== "success") item.sectionSlug = select.value;
+});
+
+$("#gallery-upload-queue").addEventListener("click", (event) => {
+  const removeButton = event.target.closest("button[data-gallery-queue-remove]");
+  const retryButton = event.target.closest("button[data-gallery-queue-retry]");
+  const id = removeButton?.dataset.galleryQueueRemove || retryButton?.dataset.galleryQueueRetry;
+  if (!id || galleryUploadBusy) return;
+  const item = galleryUploadQueue.find((candidate) => candidate.id === id);
+  if (!item) return;
+
+  if (removeButton) {
+    releaseGalleryQueueItem(item);
+    galleryUploadQueue = galleryUploadQueue.filter((candidate) => candidate !== item);
+    renderGalleryUploadQueue();
+    if (!galleryUploadQueue.length) setGalleryMessage();
+    return;
+  }
+
+  if (item.optimizedBlob) {
+    item.status = "ready";
+    item.error = "";
+    renderGalleryUploadQueue();
+    setGalleryMessage("La fotografía está lista para volver a publicarse.");
+    return;
+  }
+  if (item.sourceFile) {
+    galleryPreparationChain = galleryPreparationChain.then(() => prepareGalleryQueueItem(item));
+  }
+});
+
+$("#gallery-admin-sections").addEventListener("change", async (event) => {
+  const select = event.target.closest("select[data-gallery-section]");
+  if (!select) return;
+  const photo = galleryPhotos.find((item) => item.id === select.dataset.gallerySection);
+  if (!photo) return;
+  try {
+    await changeGalleryPhotoSection(photo, select.value);
+  } catch (error) {
+    select.value = photo.section_slug;
+    setGalleryMessage(friendlyError(error), "error");
+  }
+});
+
+$("#gallery-admin-sections").addEventListener("click", async (event) => {
+  const moveButton = event.target.closest("button[data-gallery-move]");
+  const deleteButton = event.target.closest("button[data-gallery-delete]");
+  const id = moveButton?.dataset.id || deleteButton?.dataset.galleryDelete;
+  const photo = galleryPhotos.find((item) => item.id === id);
+  if (!photo) return;
+  const button = moveButton || deleteButton;
+  button.disabled = true;
+  try {
+    if (moveButton) await reorderGalleryPhoto(photo, Number(moveButton.dataset.galleryMove));
+    else await removeGalleryPhoto(photo);
+  } catch (error) {
+    setGalleryMessage(friendlyError(error), "error");
+  } finally {
+    if (button.isConnected) button.disabled = !canEditGallery();
+  }
+});
+
 $("#logout-button").addEventListener("click", async () => {
   await supabase.auth.signOut();
+  clearGalleryUploadQueue();
+  managementProfile = null;
   loginForm.reset();
   openView("overview");
   showApp(false);
