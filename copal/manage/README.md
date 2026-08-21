@@ -803,7 +803,8 @@ running out of memory; the general upload selection limit remains 50 MB.
 
 ### Organize or remove photographs
 
-- Use **Antes** and **Después** to change the order within a section.
+- Use **Antes** and **Después** to change the order within a section. Each swap
+  is saved atomically so a partial update cannot leave duplicate positions.
 - Change the **Sección** dropdown to move a photo to another section.
 - Use **Eliminar** to remove a photo from the public gallery.
 
@@ -814,11 +815,15 @@ Git repository.
 
 ### Required database migration
 
-The gallery depends on migration
-`20260826_v10_5_0_gallery_management.sql`. Apply it to each target Supabase
-project before deploying the corresponding website files. The migration creates
-the metadata table, access policies, public Storage bucket, and the initial
-records for the existing bundled photographs.
+The gallery depends on these migrations, applied in order:
+
+1. `20260826_v10_5_0_gallery_management.sql`
+2. `20260827_v10_5_0_atomic_gallery_reorder.sql`
+
+Apply both to each target Supabase project before deploying the corresponding
+website files. They create the metadata table, access policies, public Storage
+bucket, initial records for the existing bundled photographs, and the atomic
+reordering function.
 
 ---
 

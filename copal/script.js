@@ -16,6 +16,8 @@ const copy = {
     ],
     galleryEyebrow: "Galer\u00eda", galleryTitle: "Conoce cada rinc\u00f3n.",
     galleryIntro: "Explora los espacios, detalles y paisajes que forman parte de la experiencia Cebolletas Copal.",
+    galleryLoading: "Estamos preparando la galer\u00eda\u2026",
+    galleryUnavailable: "La galer\u00eda no est\u00e1 disponible temporalmente. Intenta nuevamente en unos minutos.",
     galleryEmpty: "Pronto compartiremos nuevas fotograf\u00edas de Cebolletas Copal.",
     temporary: "Fotograf\u00eda temporal",
     openAlbum: "Abrir galer\u00eda",
@@ -61,6 +63,8 @@ const copy = {
     ],
     galleryEyebrow: "Gallery", galleryTitle: "Explore every corner.",
     galleryIntro: "Explore the spaces, details and landscapes that make up the Cebolletas Copal experience.",
+    galleryLoading: "We are preparing the gallery\u2026",
+    galleryUnavailable: "The gallery is temporarily unavailable. Please try again in a few minutes.",
     galleryEmpty: "We will be sharing new Cebolletas Copal photographs soon.",
     temporary: "Temporary photograph",
     openAlbum: "Open gallery",
@@ -119,18 +123,8 @@ const gallerySectionDefinitions = [
     }
 ];
 
-const gallerySections = gallerySectionDefinitions.map(section => ({
-  ...section,
-  images: window.galleryImageManifest?.[section.folder] || []
-})).filter(section => section.images.length > 0);
-
-const galleryImages = gallerySections.flatMap((section, sectionIndex) =>
-  section.images.map((_, imageIndex) => ({
-    section,
-    sectionIndex,
-    imageIndex
-  }))
-);
+let gallerySections = [];
+let galleryImages = [];
 
 let lang = "es";
 let activeView = "home";
@@ -142,6 +136,31 @@ let galleryTouchStartX = null;
 const region = document.querySelector(".content-region");
 const nav = document.querySelector("nav");
 const menuButton = document.querySelector(".menu-button");
+
+function refreshGalleryCollections() {
+  const activeFolder = gallerySections[activePhoto]?.folder;
+  gallerySections = gallerySectionDefinitions.map(section => ({
+    ...section,
+    images: window.galleryImageManifest?.[section.folder] || []
+  })).filter(section => section.images.length > 0);
+  galleryImages = gallerySections.flatMap((section, sectionIndex) =>
+    section.images.map((_, imageIndex) => ({ section, sectionIndex, imageIndex }))
+  );
+  const preservedIndex = gallerySections.findIndex(section => section.folder === activeFolder);
+  activePhoto = preservedIndex >= 0
+    ? preservedIndex
+    : Math.min(activePhoto, Math.max(0, gallerySections.length - 1));
+  activeGalleryImage = 0;
+}
+
+function refreshGallerySection() {
+  const current = region.querySelector("#gallery");
+  if (!current) return;
+  document.body.classList.remove("gallery-open");
+  galleryReturnFocus = null;
+  current.outerHTML = gallery(copy[lang]);
+  observeSections();
+}
 
 function renderNav() {
   const t = copy[lang];
@@ -238,9 +257,15 @@ function gallery(t) {
     <span aria-hidden="true">${String(i + 1).padStart(2, "0")}</span>${section.labels[lang]}
   </button>`).join("");
   if (!section) {
+    const source = document.documentElement.dataset.gallerySource;
+    const emptyMessage = source === "unavailable"
+      ? t.galleryUnavailable
+      : source === "supabase"
+        ? t.galleryEmpty
+        : t.galleryLoading;
     return `<section class="gallery-section" id="gallery" aria-labelledby="gallery-title">
       <div class="gallery-heading"><div><p class="section-label">${t.galleryEyebrow}</p><h2 id="gallery-title">${t.galleryTitle}</h2><div class="gallery-intro"><p>${t.galleryIntro}</p>${mainSiteLink(t)}</div></div><div class="gallery-intro">${sectionLogo()}</div></div>
-      <div class="gallery-empty-state"><p>${t.galleryEmpty}</p></div>
+      <div class="gallery-empty-state"><p>${emptyMessage}</p></div>
     </section>`;
   }
   const sectionLabel = section.labels[lang];
@@ -482,6 +507,12 @@ window.addEventListener("hashchange", () => {
   scrollToSection(nextView);
 });
 
+window.addEventListener("gallery:manifest-loaded", () => {
+  refreshGalleryCollections();
+  refreshGallerySection();
+});
+
+refreshGalleryCollections();
 render();
 
 if (document.readyState === "loading") {

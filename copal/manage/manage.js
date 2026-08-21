@@ -179,6 +179,7 @@ function friendlyError(error) {
   if (error?.message?.includes("Maximum children cannot exceed")) return "El máximo de niños no puede exceder la capacidad física máxima.";
   if (error?.message?.includes("Maximum infants cannot exceed")) return "El máximo de menores de 3 años no puede exceder la capacidad física máxima.";
   if (error?.message?.includes("rate_plan_versions_category_limits")) return "Los máximos por tipo de huésped no pueden exceder la capacidad física máxima.";
+  if (error?.message?.includes("Gallery order conflict")) return "El orden de la galería cambió en otra sesión. Actualiza la galería e intenta nuevamente.";
   if (error?.message?.includes("maximum allowed size") || error?.statusCode === "413") return "La fotografía excede el tamaño máximo permitido.";
   if (error?.message?.includes("row-level security") || error?.code === "42501") return "Tu cuenta no tiene permiso para modificar la galería.";
   if (/HEIC decoding failed|Failed to initialize HEIC decoder|Failed to render and encode image/i.test(error?.message || "")) {
@@ -669,12 +670,13 @@ async function reorderGalleryPhoto(photo, direction) {
   const target = sectionPhotos[currentIndex + direction];
   if (!target) return;
   setGalleryMessage("Actualizando el orden…");
-  const [currentResult, targetResult] = await Promise.all([
-    supabase.from("gallery_photos").update({ display_order: target.display_order }).eq("id", photo.id),
-    supabase.from("gallery_photos").update({ display_order: photo.display_order }).eq("id", target.id),
-  ]);
-  if (currentResult.error) throw currentResult.error;
-  if (targetResult.error) throw targetResult.error;
+  const { error } = await supabase.rpc("swap_gallery_photo_order", {
+    p_photo_id: photo.id,
+    p_target_id: target.id,
+    p_photo_order: photo.display_order,
+    p_target_order: target.display_order,
+  });
+  if (error) throw error;
   await loadGalleryPhotos();
   setGalleryMessage("Orden actualizado.", "success");
 }
