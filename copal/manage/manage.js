@@ -47,8 +47,27 @@ let galleryPreparationChain = Promise.resolve();
 const GALLERY_BUCKET = "copal-gallery";
 const GALLERY_MAX_FILE_SIZE = 50 * 1024 * 1024;
 const GALLERY_MAX_HEIC_FILE_SIZE = 25 * 1024 * 1024;
-const GALLERY_MAX_EDGE = 2200;
-const GALLERY_OUTPUT_QUALITY = 0.84;
+const GALLERY_FULL_VARIANT = {
+  maxEdge: 1800,
+  minEdge: 1200,
+  quality: 0.8,
+  minQuality: 0.62,
+  maxBytes: 500_000,
+};
+const GALLERY_THUMBNAIL_VARIANT = {
+  maxEdge: 720,
+  minEdge: 480,
+  quality: 0.72,
+  minQuality: 0.6,
+  maxBytes: 100_000,
+};
+const GALLERY_TILE_VARIANT = {
+  maxEdge: 480,
+  minEdge: 320,
+  quality: 0.68,
+  minQuality: 0.56,
+  maxBytes: 40_000,
+};
 const GALLERY_SECTIONS = [
   { slug: "terrace", label: "Terraza" },
   { slug: "landscape", label: "El paisaje" },
@@ -201,9 +220,16 @@ function gallerySectionLabel(slug) {
   return GALLERY_SECTIONS.find((section) => section.slug === slug)?.label || slug;
 }
 
-function galleryPhotoUrl(photo) {
-  if (photo.storage_path) {
-    return supabase.storage.from(GALLERY_BUCKET).getPublicUrl(photo.storage_path).data.publicUrl;
+function galleryPhotoUrl(photo, { thumbnail = false } = {}) {
+  const storagePath = thumbnail && photo.thumbnail_storage_path
+    ? photo.thumbnail_storage_path
+    : photo.storage_path;
+  if (storagePath) {
+    const publicUrl = supabase.storage.from(GALLERY_BUCKET).getPublicUrl(storagePath).data.publicUrl;
+    if (!photo.updated_at) return publicUrl;
+    const versionedUrl = new URL(publicUrl);
+    versionedUrl.searchParams.set("v", photo.updated_at);
+    return versionedUrl.href;
   }
   return `../${photo.legacy_path}`;
 }
@@ -259,7 +285,7 @@ function renderGalleryPhotos() {
       card.className = "gallery-photo-card";
 
       const image = document.createElement("img");
-      image.src = galleryPhotoUrl(photo);
+      image.src = galleryPhotoUrl(photo, { thumbnail: true });
       image.alt = photo.alt_es || `${section.label} ${index + 1}`;
       image.loading = "lazy";
 
@@ -323,7 +349,7 @@ function renderGalleryPhotos() {
 async function loadGalleryPhotos() {
   const { data, error } = await supabase
     .from("gallery_photos")
-    .select("id, section_slug, storage_path, legacy_path, display_order, alt_es, alt_en, width_px, height_px, file_size_bytes, created_at, updated_at")
+    .select("id, section_slug, storage_path, thumbnail_storage_path, tile_storage_path, legacy_path, display_order, alt_es, alt_en, width_px, height_px, file_size_bytes, thumbnail_width_px, thumbnail_height_px, thumbnail_file_size_bytes, tile_width_px, tile_height_px, tile_file_size_bytes, created_at, updated_at")
     .order("section_slug")
     .order("display_order")
     .order("created_at");
@@ -417,6 +443,8 @@ function releaseGalleryQueueItem(item) {
   if (item.previewUrl) URL.revokeObjectURL(item.previewUrl);
   item.previewUrl = "";
   item.optimizedBlob = null;
+  item.thumbnailBlob = null;
+  item.tileBlob = null;
   item.sourceFile = null;
 }
 
@@ -486,6 +514,38 @@ async function decodeGallerySource(file, onProgress) {
   return decodeGalleryImage(converted);
 }
 
+async function renderGalleryVariant(source, sourceWidth, sourceHeight, options) {
+  let edge = Math.min(options.maxEdge, Math.max(sourceWidth, sourceHeight));
+  let quality = options.quality;
+  for (let attempt = 0; attempt < 12; attempt += 1) {
+    const scale = Math.min(1, edge / Math.max(sourceWidth, sourceHeight));
+    const width = Math.max(1, Math.round(sourceWidth * scale));
+    const height = Math.max(1, Math.round(sourceHeight * scale));
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext("2d", { alpha: false });
+    if (!context) throw new Error("El navegador no pudo preparar la fotografía.");
+    context.fillStyle = "#ffffff";
+    context.fillRect(0, 0, width, height);
+    context.drawImage(source, 0, 0, width, height);
+    const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/webp", quality));
+    canvas.width = 1;
+    canvas.height = 1;
+    if (!blob) throw new Error("No fue posible convertir la fotografía a WebP.");
+    if (blob.size <= options.maxBytes) return { blob, width, height };
+
+    if (quality - 0.06 >= options.minQuality) {
+      quality = Number((quality - 0.06).toFixed(2));
+      continue;
+    }
+    if (edge <= options.minEdge) break;
+    edge = Math.max(options.minEdge, Math.round(edge * 0.84));
+    quality = Math.max(options.minQuality, options.quality - 0.04);
+  }
+  throw new Error(`no fue posible reducir la fotografía a menos de ${Math.round(options.maxBytes / 1000)} KB.`);
+}
+
 async function optimizeGalleryImage(file, onProgress) {
   if (!isSupportedGalleryFile(file)) {
     throw new Error(`${file.name}: usa una fotografía JPEG, PNG, WebP, HEIC o HEIF.`);
@@ -502,29 +562,34 @@ async function optimizeGalleryImage(file, onProgress) {
     source.close?.();
     throw new Error(`${file.name}: no fue posible leer las dimensiones de la fotografía.`);
   }
-  const scale = Math.min(1, GALLERY_MAX_EDGE / Math.max(sourceWidth, sourceHeight));
-  const width = Math.max(1, Math.round(sourceWidth * scale));
-  const height = Math.max(1, Math.round(sourceHeight * scale));
-  const canvas = document.createElement("canvas");
-  canvas.width = width;
-  canvas.height = height;
-  const context = canvas.getContext("2d", { alpha: false });
-  if (!context) {
+  try {
+    const full = await renderGalleryVariant(
+      source,
+      sourceWidth,
+      sourceHeight,
+      GALLERY_FULL_VARIANT
+    );
+    onProgress?.(76);
+    const thumbnail = await renderGalleryVariant(
+      source,
+      sourceWidth,
+      sourceHeight,
+      GALLERY_THUMBNAIL_VARIANT
+    );
+    onProgress?.(90);
+    const tile = await renderGalleryVariant(
+      source,
+      sourceWidth,
+      sourceHeight,
+      GALLERY_TILE_VARIANT
+    );
+    onProgress?.(100);
+    return { full, thumbnail, tile };
+  } catch (error) {
+    throw new Error(`${file.name}: ${error.message}`);
+  } finally {
     source.close?.();
-    throw new Error(`${file.name}: el navegador no pudo preparar la fotografía.`);
   }
-  context.fillStyle = "#ffffff";
-  context.fillRect(0, 0, width, height);
-  context.drawImage(source, 0, 0, width, height);
-  source.close?.();
-  onProgress?.(85);
-
-  const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/webp", GALLERY_OUTPUT_QUALITY));
-  canvas.width = 1;
-  canvas.height = 1;
-  if (!blob) throw new Error(`${file.name}: no fue posible convertir la fotografía a WebP.`);
-  onProgress?.(100);
-  return { blob, width, height };
 }
 
 async function prepareGalleryQueueItem(item) {
@@ -540,11 +605,17 @@ async function prepareGalleryQueueItem(item) {
       renderGalleryUploadQueue();
     });
     if (item.cancelled || !galleryUploadQueue.includes(item)) return;
-    item.optimizedBlob = optimized.blob;
-    item.width = optimized.width;
-    item.height = optimized.height;
-    item.outputSize = optimized.blob.size;
-    item.previewUrl = URL.createObjectURL(optimized.blob);
+    item.optimizedBlob = optimized.full.blob;
+    item.thumbnailBlob = optimized.thumbnail.blob;
+    item.tileBlob = optimized.tile.blob;
+    item.width = optimized.full.width;
+    item.height = optimized.full.height;
+    item.thumbnailWidth = optimized.thumbnail.width;
+    item.thumbnailHeight = optimized.thumbnail.height;
+    item.tileWidth = optimized.tile.width;
+    item.tileHeight = optimized.tile.height;
+    item.outputSize = optimized.full.blob.size + optimized.thumbnail.blob.size + optimized.tile.blob.size;
+    item.previewUrl = URL.createObjectURL(optimized.thumbnail.blob);
     item.status = "ready";
     item.progress = 100;
     item.sourceFile = null;
@@ -570,6 +641,8 @@ function addGalleryFiles(files) {
     error: "",
     previewUrl: "",
     optimizedBlob: null,
+    thumbnailBlob: null,
+    tileBlob: null,
     cancelled: false,
   }));
   galleryUploadQueue.push(...items);
@@ -593,7 +666,7 @@ function nextGalleryOrder(sectionSlug) {
 async function uploadGalleryPhotos(event) {
   event.preventDefault();
   if (!canEditGallery() || galleryUploadBusy) return;
-  const items = galleryUploadQueue.filter((item) => item.status === "ready" && item.optimizedBlob);
+  const items = galleryUploadQueue.filter((item) => item.status === "ready" && item.optimizedBlob && item.thumbnailBlob && item.tileBlob);
   if (!items.length) return setGalleryMessage("Agrega y prepara al menos una fotografía.", "error");
 
   galleryUploadBusy = true;
@@ -607,7 +680,10 @@ async function uploadGalleryPhotos(event) {
     renderGalleryUploadQueue();
     setGalleryMessage(`Publicando ${index + 1} de ${items.length}: ${item.name}`);
     const objectId = createGalleryQueueId();
-    const storagePath = `${item.sectionSlug}/${objectId}.webp`;
+    const storagePath = `full/${item.sectionSlug}/${objectId}.webp`;
+    const thumbnailStoragePath = `thumbnail/${item.sectionSlug}/${objectId}.webp`;
+    const tileStoragePath = `tile/${item.sectionSlug}/${objectId}.webp`;
+    const uploadedPaths = [];
     try {
       const { error: uploadError } = await supabase.storage
         .from(GALLERY_BUCKET)
@@ -617,24 +693,55 @@ async function uploadGalleryPhotos(event) {
           upsert: false,
         });
       if (uploadError) throw uploadError;
+      uploadedPaths.push(storagePath);
+
+      const { error: thumbnailUploadError } = await supabase.storage
+        .from(GALLERY_BUCKET)
+        .upload(thumbnailStoragePath, item.thumbnailBlob, {
+          cacheControl: "31536000",
+          contentType: "image/webp",
+          upsert: false,
+        });
+      if (thumbnailUploadError) throw thumbnailUploadError;
+      uploadedPaths.push(thumbnailStoragePath);
+
+      const { error: tileUploadError } = await supabase.storage
+        .from(GALLERY_BUCKET)
+        .upload(tileStoragePath, item.tileBlob, {
+          cacheControl: "31536000",
+          contentType: "image/webp",
+          upsert: false,
+        });
+      if (tileUploadError) throw tileUploadError;
+      uploadedPaths.push(tileStoragePath);
 
       const { error: insertError } = await supabase.from("gallery_photos").insert({
         section_slug: item.sectionSlug,
         storage_path: storagePath,
+        thumbnail_storage_path: thumbnailStoragePath,
+        tile_storage_path: tileStoragePath,
         display_order: nextOrders.get(item.sectionSlug),
         width_px: item.width,
         height_px: item.height,
         file_size_bytes: item.optimizedBlob.size,
+        thumbnail_width_px: item.thumbnailWidth,
+        thumbnail_height_px: item.thumbnailHeight,
+        thumbnail_file_size_bytes: item.thumbnailBlob.size,
+        tile_width_px: item.tileWidth,
+        tile_height_px: item.tileHeight,
+        tile_file_size_bytes: item.tileBlob.size,
       });
       if (insertError) {
-        await supabase.storage.from(GALLERY_BUCKET).remove([storagePath]);
         throw insertError;
       }
       nextOrders.set(item.sectionSlug, nextOrders.get(item.sectionSlug) + 1);
       uploadedCount += 1;
       item.status = "success";
       item.optimizedBlob = null;
+      item.thumbnailBlob = null;
+      item.tileBlob = null;
     } catch (error) {
+      if (uploadedPaths.length) await supabase.storage.from(GALLERY_BUCKET).remove(uploadedPaths);
       failedCount += 1;
       item.status = "error";
       item.error = friendlyError(error);
@@ -690,8 +797,9 @@ async function removeGalleryPhoto(photo) {
   if (deleteError) throw deleteError;
 
   let storageWarning = "";
-  if (photo.storage_path) {
-    const { error: storageError } = await supabase.storage.from(GALLERY_BUCKET).remove([photo.storage_path]);
+  const storagePaths = [photo.storage_path, photo.thumbnail_storage_path, photo.tile_storage_path].filter(Boolean);
+  if (storagePaths.length) {
+    const { error: storageError } = await supabase.storage.from(GALLERY_BUCKET).remove(storagePaths);
     if (storageError) storageWarning = " El archivo quedó pendiente de limpieza en Storage.";
   }
   await loadGalleryPhotos();

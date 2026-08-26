@@ -791,10 +791,13 @@ disabled, and Row Level Security independently rejects write attempts.
 5. Review the optimized previews and change individual sections if needed.
 6. Select **Publicar fotografías**.
 
-The browser converts uploads to WebP, limits the longest edge to 2,200 pixels,
-and uploads each file separately. HEIC and HEIF files use native decoding when
-the browser supports it and the bundled converter otherwise. The original file
-on the administrator's phone or computer is not changed.
+The browser creates two WebP files for every upload: a preview no larger than
+720 pixels or 100 KB for the public gallery page, and an image no larger than
+1,800 pixels or 500 KB for the modal viewer. The encoder automatically lowers
+quality or dimensions when a detailed photograph exceeds its byte limit. HEIC
+and HEIF files use native decoding when the browser supports it and the bundled
+converter otherwise. The original file on the administrator's phone or
+computer is not changed.
 
 The preview queue reports preparation and upload errors per photograph. A
 failed upload can be retried without repeating successful uploads. HEIC/HEIF
@@ -819,12 +822,66 @@ The gallery depends on these migrations, applied in order:
 
 1. `20260826_v10_5_0_gallery_management.sql`
 2. `20260827_v10_5_0_atomic_gallery_reorder.sql`
+3. `20260828_v10_5_1_gallery_responsive_images.sql`
+4. `20260829_v10_5_1_gallery_file_size_limits.sql`
+5. `20260830_v10_5_1_gallery_decimal_file_size_limits.sql`
+6. `20260831_v10_5_1_gallery_tile_images.sql`
 
-Apply both to each target Supabase project before deploying the corresponding
-website files. They create the metadata table, access policies, public Storage
-bucket, initial records for the existing bundled photographs, and the atomic
-reordering function.
+Apply all six to each target Supabase project before deploying the
+corresponding website files. They create the metadata table, access policies,
+public Storage bucket, initial records for the existing bundled photographs,
+the atomic reordering function, and the responsive-image metadata.
+The final migrations also reject catalog records above the 500 KB modal,
+100 KB management-preview, and 40 KB gallery-tile limits.
+
+### Responsive-image backfill
+
+After applying the v10.5.1 migration, convert the existing gallery rows before
+deploying the v10.5.1 website code. From the repository root, first perform the
+local dry run:
+
+```bash
+node scripts/backfill-gallery-responsive-images.mjs
+```
+
+The dry run converts all 42 bundled photographs in a temporary directory,
+reports their expected sizes, and does not contact or modify Supabase.
+
+For the selected development or production project, enter its URL, read the
+service-role key without echoing it to the terminal, and explicitly add
+`--apply`:
+
+```bash
+read -s "CEBOLLETAS_SUPABASE_SECRET?Supabase service-role key: "
+echo
+SUPABASE_URL="https://PROJECT_REF.supabase.co" \
+SUPABASE_SERVICE_ROLE_KEY="$CEBOLLETAS_SUPABASE_SECRET" \
+node scripts/backfill-gallery-responsive-images.mjs --apply
+unset CEBOLLETAS_SUPABASE_SECRET
+```
+
+Use the service-role key only in the trusted local terminal. Never place it in
+the browser configuration, a committed file, a screenshot, or a pull request.
+
+The command uploads deterministic `full/`, `thumbnail/`, and `tile/` objects,
+then changes each catalog row only after all three files exist. It can be rerun after an
+interruption: already migrated rows are skipped. It also creates missing
+preview and tile files for Storage photos uploaded before v10.5.1. Repository
+sources are auto-oriented before encoding so camera EXIF rotation cannot be
+lost in the public modal.
+
+To recompress every Storage photo after changing the optimization targets, add
+`--refresh`:
+
+```bash
+SUPABASE_URL="https://PROJECT_REF.supabase.co" \
+SUPABASE_SERVICE_ROLE_KEY="$CEBOLLETAS_SUPABASE_SECRET" \
+node scripts/backfill-gallery-responsive-images.mjs --apply --refresh
+```
+
+Use `--oversize` instead of `--refresh` to recompress only rows that exceed the
+current 500,000-byte modal, 100,000-byte preview, or 40,000-byte tile limits.
 
 ---
 
-Document baseline: Cebolletas Copal `v10.5.0`.
+Document baseline: Cebolletas Copal `v10.5.1`.
