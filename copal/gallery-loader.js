@@ -14,37 +14,56 @@ function publishGalleryManifest(manifest, source) {
   window.dispatchEvent(new CustomEvent("gallery:manifest-loaded"));
 }
 
-function publicStorageUrl(supabase, storagePath) {
-  return supabase.storage.from("copal-gallery").getPublicUrl(storagePath).data.publicUrl;
+function publicStorageUrl(config, storagePath, updatedAt) {
+  const encodedPath = storagePath.split("/").map(encodeURIComponent).join("/");
+  const version = updatedAt ? `?v=${encodeURIComponent(updatedAt)}` : "";
+  return `${config.supabaseUrl}/storage/v1/object/public/copal-gallery/${encodedPath}${version}`;
 }
 
-async function loadGalleryManifest(supabase) {
+async function loadGalleryManifest(config) {
   const controller = new AbortController();
   const timeoutId = window.setTimeout(() => controller.abort(), GALLERY_LOAD_TIMEOUT_MS);
-  const query = supabase
-    .from("gallery_photos")
-    .select("id, section_slug, storage_path, legacy_path, display_order, alt_es, alt_en")
-    .order("section_slug")
-    .order("display_order")
-    .order("created_at")
-    .abortSignal(controller.signal);
-  let result;
+  const query = new URLSearchParams({
+    select: "id,section_slug,storage_path,thumbnail_storage_path,tile_storage_path,legacy_path,display_order,alt_es,alt_en,width_px,height_px,thumbnail_width_px,thumbnail_height_px,tile_width_px,tile_height_px,updated_at",
+    order: "section_slug.asc,display_order.asc,created_at.asc",
+  });
+  let response;
   try {
-    result = await query;
+    response = await fetch(`${config.supabaseUrl}/rest/v1/gallery_photos?${query}`, {
+      headers: {
+        apikey: config.supabasePublishableKey,
+        Authorization: `Bearer ${config.supabasePublishableKey}`,
+      },
+      signal: controller.signal,
+    });
   } finally {
     window.clearTimeout(timeoutId);
   }
-  const { data, error } = result;
-  if (error) throw error;
+  if (!response.ok) throw new Error(`Gallery catalog request failed (${response.status}).`);
+  const data = await response.json();
 
   const manifest = {};
   (data || []).forEach((photo) => {
     const source = photo.storage_path
-      ? publicStorageUrl(supabase, photo.storage_path)
+      ? publicStorageUrl(config, photo.storage_path, photo.updated_at)
       : `./${photo.legacy_path}`;
+    const thumbnailSource = photo.thumbnail_storage_path
+      ? publicStorageUrl(config, photo.thumbnail_storage_path, photo.updated_at)
+      : source;
+    const tileSource = photo.tile_storage_path
+      ? publicStorageUrl(config, photo.tile_storage_path, photo.updated_at)
+      : thumbnailSource;
     const image = {
       id: photo.id,
       src: source,
+      thumbnailSrc: thumbnailSource,
+      tileSrc: tileSource,
+      width: photo.width_px,
+      height: photo.height_px,
+      thumbnailWidth: photo.thumbnail_width_px || photo.width_px,
+      thumbnailHeight: photo.thumbnail_height_px || photo.height_px,
+      tileWidth: photo.tile_width_px || photo.thumbnail_width_px || photo.width_px,
+      tileHeight: photo.tile_height_px || photo.thumbnail_height_px || photo.height_px,
       alt: {
         es: photo.alt_es || "",
         en: photo.alt_en || "",
@@ -57,15 +76,11 @@ async function loadGalleryManifest(supabase) {
 
 document.documentElement.dataset.gallerySource = "loading";
 try {
-  const [{ createClient }, { default: config }] = await withTimeout(
-    Promise.all([
-      import("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm"),
-      import("./config/environment.js"),
-    ]),
+  const { default: config } = await withTimeout(
+    import("./config/environment.js"),
     "Gallery dependencies timed out."
   );
-  const supabase = createClient(config.supabaseUrl, config.supabasePublishableKey);
-  publishGalleryManifest(await loadGalleryManifest(supabase), "supabase");
+  publishGalleryManifest(await loadGalleryManifest(config), "supabase");
 } catch (error) {
   console.warn("Supabase gallery unavailable; gallery content is hidden.", error);
   publishGalleryManifest({}, "unavailable");

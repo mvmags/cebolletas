@@ -2,16 +2,22 @@
 
 Static browser-only microsite for `https://cebolletas.mx/copal/`.
 
-The public gallery uses Supabase for its photo catalog and Storage for new
-uploads. Existing repository images are seeded into that catalog and remain
-available as bundled assets. The rest of the microsite renders independently
-while the gallery loads. If the catalog is temporarily unavailable, gallery
-content is hidden so that photographs removed in `/manage` cannot reappear.
+The public gallery uses Supabase for its photo catalog and Storage. Each managed
+photo has a WebP tile no larger than 480 pixels or 40 KB for the gallery
+landing, a preview no larger than 720 pixels or 100 KB for `/manage`, and a
+modal WebP no larger than 1,800 pixels or 500 KB. The encoder lowers quality or
+dimensions only when required to stay within those byte limits. The
+catalog is read directly through the public
+REST endpoint, so the gallery does not download the full Supabase JavaScript
+client. The rest of the microsite renders independently while the gallery
+loads. If the catalog is temporarily unavailable, gallery content is hidden so
+that photographs removed in `/manage` cannot reappear.
 
 Administrators can add, remove, reorder, and reclassify gallery photos from
 `/copal/manage/`. The mobile picker accepts JPEG, PNG, WebP, HEIC, and HEIF and
-converts new uploads to optimized WebP files. See `manage/README.md` for the
-workflow and required database migration.
+creates all three size-limited WebP variants without changing the original file
+on the device. See `manage/README.md` for the workflow, migration, and legacy-photo
+backfill procedure.
 
 This variant preserves the Version 4 layout and adds the complete bilingual
 Reserva form:
@@ -63,4 +69,6 @@ The final structure must be:
 
 No Node.js, npm, build process, framework, or custom server runtime is required.
 The configured Supabase project is required for managed gallery content and the
-existing Reserva and management features.
+existing Reserva and management features. Apply the migrations through
+`20260831_v10_5_1_gallery_tile_images.sql` and complete the responsive
+image backfill before deploying the v10.5.1 website files.

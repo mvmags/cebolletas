@@ -253,9 +253,6 @@ function place(t) {
 
 function gallery(t) {
   const section = gallerySections[activePhoto];
-  const sectionLinks = gallerySections.map((section, i) => `<button type="button" data-photo="${i}" class="${i === activePhoto ? "active" : ""}" aria-pressed="${i === activePhoto}">
-    <span aria-hidden="true">${String(i + 1).padStart(2, "0")}</span>${section.labels[lang]}
-  </button>`).join("");
   if (!section) {
     const source = document.documentElement.dataset.gallerySource;
     const emptyMessage = source === "unavailable"
@@ -268,12 +265,18 @@ function gallery(t) {
       <div class="gallery-empty-state"><p>${emptyMessage}</p></div>
     </section>`;
   }
-  const sectionLabel = section.labels[lang];
+  const tiles = gallerySections.map((gallerySection, sectionIndex) => {
+    const sectionLabel = gallerySection.labels[lang];
+    return `<article class="gallery-tile">
+      <button type="button" data-open-section="${sectionIndex}" aria-label="${t.openAlbum}: ${sectionLabel}">
+        <span class="gallery-tile-image"><img src="${galleryTilePath(gallerySection, 0)}" alt="${galleryImageAlt(gallerySection, 0)}" ${galleryTileDimensionAttributes(gallerySection, 0)} loading="lazy" decoding="async"></span>
+        <span class="gallery-tile-caption"><strong>${sectionLabel}</strong><small>${t.albumSize(gallerySection.images.length)}</small></span>
+      </button>
+    </article>`;
+  }).join("");
   return `<section class="gallery-section" id="gallery" aria-labelledby="gallery-title">
     <div class="gallery-heading"><div><p class="section-label">${t.galleryEyebrow}</p><h2 id="gallery-title">${t.galleryTitle}</h2><div class="gallery-intro"><p>${t.galleryIntro}</p>${mainSiteLink(t)}</div></div><div class="gallery-intro">${sectionLogo()}</div></div>
-    <div class="gallery-section-links" aria-label="${t.galleryEyebrow}">${sectionLinks}</div>
-    <div class="gallery-feature"><div class="feature-caption"><p>${gallerySectionCounter()}</p><h3>${sectionLabel}</h3><span>${t.albumSize(section.images.length)}</span></div>
-    <figure><button class="gallery-feature-button" type="button" data-open-gallery aria-label="${t.openAlbum}: ${sectionLabel}"><img src="${galleryImagePath(section, 0)}" alt="${galleryImageAlt(section, 0)}"></button></figure></div>
+    <div class="gallery-tile-grid" aria-label="${t.galleryEyebrow}">${tiles}</div>
     ${galleryLightbox(t)}
   </section>`;
 }
@@ -285,14 +288,63 @@ function galleryImagePath(section, imageIndex) {
     : image?.src || "";
 }
 
+function galleryThumbnailPath(section, imageIndex) {
+  const image = section.images[imageIndex];
+  return typeof image === "string"
+    ? `./assets/gallery/${section.folder}/${image}`
+    : image?.thumbnailSrc || image?.src || "";
+}
+
+function galleryTilePath(section, imageIndex) {
+  const image = section.images[imageIndex];
+  return typeof image === "string"
+    ? `./assets/gallery/${section.folder}/${image}`
+    : image?.tileSrc || image?.thumbnailSrc || image?.src || "";
+}
+
+function galleryImageDimensions(section, imageIndex, thumbnail = false) {
+  const image = section.images[imageIndex];
+  if (!image || typeof image === "string") return null;
+  const width = Number(thumbnail ? image.thumbnailWidth : image.width);
+  const height = Number(thumbnail ? image.thumbnailHeight : image.height);
+  return width > 0 && height > 0 ? { width, height } : null;
+}
+
+function galleryImageDimensionAttributes(section, imageIndex, thumbnail = false) {
+  const dimensions = galleryImageDimensions(section, imageIndex, thumbnail);
+  return dimensions ? `width="${dimensions.width}" height="${dimensions.height}"` : "";
+}
+
+function galleryTileDimensionAttributes(section, imageIndex) {
+  const image = section.images[imageIndex];
+  if (!image || typeof image === "string") return "";
+  const width = Number(image.tileWidth || image.thumbnailWidth || image.width);
+  const height = Number(image.tileHeight || image.thumbnailHeight || image.height);
+  return width > 0 && height > 0 ? `width="${width}" height="${height}"` : "";
+}
+
+function applyGalleryImageDimensions(element, section, imageIndex, thumbnail = false) {
+  const dimensions = galleryImageDimensions(section, imageIndex, thumbnail);
+  if (!dimensions) {
+    element.removeAttribute("width");
+    element.removeAttribute("height");
+    return;
+  }
+  element.width = dimensions.width;
+  element.height = dimensions.height;
+}
+
+function preloadGallerySource(source) {
+  if (!source) return;
+  const preload = new Image();
+  preload.decoding = "async";
+  preload.src = source;
+}
+
 function galleryImageAlt(section, imageIndex) {
   const image = section.images[imageIndex];
   if (typeof image !== "string" && image?.alt?.[lang]) return image.alt[lang];
   return `${section.labels[lang]} \u2014 ${imageIndex + 1}`;
-}
-
-function gallerySectionCounter() {
-  return `${String(activePhoto + 1).padStart(2, "0")} / ${String(gallerySections.length).padStart(2, "0")}`;
 }
 
 function galleryLightbox(t) {
@@ -304,7 +356,7 @@ function galleryLightbox(t) {
       <header class="gallery-lightbox-header"><div><h2 id="gallery-lightbox-title">${label}</h2><p data-gallery-count>01 / ${String(galleryImages.length).padStart(2, "0")}</p></div><button type="button" data-close-gallery aria-label="${t.closeAlbum}">×</button></header>
       <div class="gallery-lightbox-stage">
         <button class="gallery-lightbox-nav previous" type="button" data-gallery-previous aria-label="${t.previousPhoto}">‹</button>
-        <figure><img data-gallery-image src="${galleryImagePath(section, 0)}" alt="${galleryImageAlt(section, 0)}"></figure>
+        <figure><img data-gallery-image alt="" decoding="async"></figure>
         <button class="gallery-lightbox-nav next" type="button" data-gallery-next aria-label="${t.nextPhoto}">›</button>
       </div>
     </div>
@@ -356,32 +408,6 @@ function render() {
   requestAnimationFrame(() => scrollToSection(requestedSection, "auto"));
 }
 
-function updateGallery() {
-  const section = gallerySections[activePhoto];
-  if (!section) return;
-  const sectionLabel = section.labels[lang];
-  region.querySelectorAll("[data-photo]").forEach((button, index) => {
-    const active = index === activePhoto;
-    button.classList.toggle("active", active);
-    button.setAttribute("aria-pressed", String(active));
-  });
-  const counter = region.querySelector(".feature-caption p");
-  const title = region.querySelector(".feature-caption h3");
-  const albumSize = region.querySelector(".feature-caption span");
-  const openButton = region.querySelector("[data-open-gallery]");
-  const lightboxTitle = region.querySelector("#gallery-lightbox-title");
-  const image = region.querySelector(".gallery-feature figure img");
-  if (counter) counter.textContent = gallerySectionCounter();
-  if (title) title.textContent = sectionLabel;
-  if (albumSize) albumSize.textContent = copy[lang].albumSize(section.images.length);
-  if (openButton) openButton.setAttribute("aria-label", `${copy[lang].openAlbum}: ${sectionLabel}`);
-  if (lightboxTitle) lightboxTitle.textContent = sectionLabel;
-  if (image) {
-    image.src = galleryImagePath(section, 0);
-    image.alt = galleryImageAlt(section, 0);
-  }
-}
-
 function openGallery(trigger) {
   const lightbox = region.querySelector("[data-gallery-lightbox]");
   if (!lightbox) return;
@@ -422,14 +448,27 @@ function updateLightbox() {
   if (image) {
     image.src = galleryImagePath(section, imageIndex);
     image.alt = galleryImageAlt(section, imageIndex);
+    applyGalleryImageDimensions(image, section, imageIndex);
   }
   if (counter) counter.textContent = `${String(activeGalleryImage + 1).padStart(2, "0")} / ${String(galleryImages.length).padStart(2, "0")}`;
   region.querySelectorAll("[data-gallery-previous], [data-gallery-next]").forEach(button => {
     button.hidden = !multiplePhotos;
   });
-  if (multiplePhotos) {
-    const next = galleryImages[(activeGalleryImage + 1) % galleryImages.length];
-    new Image().src = galleryImagePath(next.section, next.imageIndex);
+  if (multiplePhotos && image) {
+    const expectedIndex = activeGalleryImage;
+    const preloadNeighbors = () => {
+      if (activeGalleryImage !== expectedIndex) return;
+      const neighborIndexes = new Set([
+        (expectedIndex - 1 + galleryImages.length) % galleryImages.length,
+        (expectedIndex + 1) % galleryImages.length,
+      ]);
+      neighborIndexes.forEach((neighborIndex) => {
+        const neighbor = galleryImages[neighborIndex];
+        preloadGallerySource(galleryImagePath(neighbor.section, neighbor.imageIndex));
+      });
+    };
+    if (image.complete && image.naturalWidth > 0) preloadNeighbors();
+    else image.addEventListener("load", preloadNeighbors, { once: true });
   }
 }
 
@@ -462,16 +501,10 @@ document.querySelector(".language").addEventListener("click", event => {
 });
 
 region.addEventListener("click", event => {
-  const button = event.target.closest("[data-photo]");
-  if (button) {
-    activePhoto = Number(button.dataset.photo);
-    updateGallery();
-    return;
-  }
-
-  const openButton = event.target.closest("[data-open-gallery]");
-  if (openButton) {
-    openGallery(openButton);
+  const sectionButton = event.target.closest("[data-open-section]");
+  if (sectionButton) {
+    activePhoto = Number(sectionButton.dataset.openSection);
+    openGallery(sectionButton);
     return;
   }
 

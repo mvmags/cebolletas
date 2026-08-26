@@ -1,4 +1,4 @@
-const DEVELOPMENT_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
+const DEVELOPMENT_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]", "192.168.1.5"]);
 const isDevelopment = DEVELOPMENT_HOSTS.has(window.location.hostname);
 const modulePath = isDevelopment ? "./development.js" : "./production.js";
 
