@@ -791,10 +791,14 @@ disabled, and Row Level Security independently rejects write attempts.
 5. Review the optimized previews and change individual sections if needed.
 6. Select **Publicar fotografías**.
 
-The browser creates two WebP files for every upload: a preview no larger than
-720 pixels or 100 KB for the public gallery page, and an image no larger than
-1,800 pixels or 500 KB for the modal viewer. The encoder automatically lowers
-quality or dimensions when a detailed photograph exceeds its byte limit. HEIC
+The browser creates three optimized files for every upload: a tile no larger
+than 480 pixels or 40 KB, a management preview no larger than 720 pixels or
+100 KB, and an image no larger than 1,800 pixels or 500 KB for the modal
+viewer. WebP is used when the browser supports WebP canvas encoding. If the
+browser substitutes another format, as some Safari versions do, the encoder
+falls back to JPEG and stores the matching `.jpg` extension and `image/jpeg`
+content type. The encoder lowers quality at every candidate dimension before
+reducing dimensions when a detailed photograph exceeds its byte limit. HEIC
 and HEIF files use native decoding when the browser supports it and the bundled
 converter otherwise. The original file on the administrator's phone or
 computer is not changed.
@@ -884,4 +888,4 @@ current 500,000-byte modal, 100,000-byte preview, or 40,000-byte tile limits.
 
 ---
 
-Document baseline: Cebolletas Copal `v10.5.1`.
+Document baseline: Cebolletas Copal `v10.5.2`.
