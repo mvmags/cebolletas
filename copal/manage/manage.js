@@ -50,6 +50,7 @@ const GALLERY_MAX_HEIC_FILE_SIZE = 25 * 1024 * 1024;
 const GALLERY_FULL_VARIANT = {
   maxEdge: 1800,
   minEdge: 1200,
+  fallbackMinEdge: 320,
   quality: 0.8,
   minQuality: 0.62,
   maxBytes: 500_000,
@@ -57,6 +58,7 @@ const GALLERY_FULL_VARIANT = {
 const GALLERY_THUMBNAIL_VARIANT = {
   maxEdge: 720,
   minEdge: 480,
+  fallbackMinEdge: 160,
   quality: 0.72,
   minQuality: 0.6,
   maxBytes: 100_000,
@@ -64,6 +66,7 @@ const GALLERY_THUMBNAIL_VARIANT = {
 const GALLERY_TILE_VARIANT = {
   maxEdge: 480,
   minEdge: 320,
+  fallbackMinEdge: 96,
   quality: 0.68,
   minQuality: 0.56,
   maxBytes: 40_000,
@@ -516,8 +519,9 @@ async function decodeGallerySource(file, onProgress) {
 
 async function renderGalleryVariant(source, sourceWidth, sourceHeight, options) {
   let edge = Math.min(options.maxEdge, Math.max(sourceWidth, sourceHeight));
-  let quality = options.quality;
-  for (let attempt = 0; attempt < 12; attempt += 1) {
+  const fallbackMinEdge = Math.min(options.fallbackMinEdge, edge);
+  let lastBlobSize = 0;
+  while (true) {
     const scale = Math.min(1, edge / Math.max(sourceWidth, sourceHeight));
     const width = Math.max(1, Math.round(sourceWidth * scale));
     const height = Math.max(1, Math.round(sourceHeight * scale));
@@ -529,21 +533,45 @@ async function renderGalleryVariant(source, sourceWidth, sourceHeight, options) 
     context.fillStyle = "#ffffff";
     context.fillRect(0, 0, width, height);
     context.drawImage(source, 0, 0, width, height);
-    const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/webp", quality));
+
+    let quality = options.quality;
+    while (quality >= options.minQuality) {
+      let blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/webp", quality));
+      if (!blob) {
+        canvas.width = 1;
+        canvas.height = 1;
+        throw new Error("No fue posible convertir la fotografía.");
+      }
+      if (blob.type !== "image/webp") {
+        blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", quality));
+        if (!blob || blob.type !== "image/jpeg") {
+          canvas.width = 1;
+          canvas.height = 1;
+          throw new Error(`El navegador no pudo generar WebP ni JPEG (generó ${blob?.type || "un formato desconocido"}).`);
+        }
+      }
+      lastBlobSize = blob.size;
+      if (blob.size <= options.maxBytes) {
+        canvas.width = 1;
+        canvas.height = 1;
+        return {
+          blob,
+          width,
+          height,
+          extension: blob.type === "image/webp" ? "webp" : "jpg",
+          contentType: blob.type,
+        };
+      }
+      quality = Number((quality - 0.06).toFixed(2));
+    }
+
     canvas.width = 1;
     canvas.height = 1;
-    if (!blob) throw new Error("No fue posible convertir la fotografía a WebP.");
-    if (blob.size <= options.maxBytes) return { blob, width, height };
-
-    if (quality - 0.06 >= options.minQuality) {
-      quality = Number((quality - 0.06).toFixed(2));
-      continue;
-    }
-    if (edge <= options.minEdge) break;
-    edge = Math.max(options.minEdge, Math.round(edge * 0.84));
-    quality = Math.max(options.minQuality, options.quality - 0.04);
+    if (edge <= fallbackMinEdge) break;
+    const nextFloor = edge > options.minEdge ? options.minEdge : fallbackMinEdge;
+    edge = Math.max(nextFloor, Math.round(edge * 0.84));
   }
-  throw new Error(`no fue posible reducir la fotografía a menos de ${Math.round(options.maxBytes / 1000)} KB.`);
+  throw new Error(`no fue posible reducir la fotografía a menos de ${Math.round(options.maxBytes / 1000)} KB (último intento: ${Math.round(lastBlobSize / 1000)} KB).`);
 }
 
 async function optimizeGalleryImage(file, onProgress) {
@@ -608,6 +636,12 @@ async function prepareGalleryQueueItem(item) {
     item.optimizedBlob = optimized.full.blob;
     item.thumbnailBlob = optimized.thumbnail.blob;
     item.tileBlob = optimized.tile.blob;
+    item.optimizedExtension = optimized.full.extension;
+    item.thumbnailExtension = optimized.thumbnail.extension;
+    item.tileExtension = optimized.tile.extension;
+    item.optimizedContentType = optimized.full.contentType;
+    item.thumbnailContentType = optimized.thumbnail.contentType;
+    item.tileContentType = optimized.tile.contentType;
     item.width = optimized.full.width;
     item.height = optimized.full.height;
     item.thumbnailWidth = optimized.thumbnail.width;
@@ -680,16 +714,16 @@ async function uploadGalleryPhotos(event) {
     renderGalleryUploadQueue();
     setGalleryMessage(`Publicando ${index + 1} de ${items.length}: ${item.name}`);
     const objectId = createGalleryQueueId();
-    const storagePath = `full/${item.sectionSlug}/${objectId}.webp`;
-    const thumbnailStoragePath = `thumbnail/${item.sectionSlug}/${objectId}.webp`;
-    const tileStoragePath = `tile/${item.sectionSlug}/${objectId}.webp`;
+    const storagePath = `full/${item.sectionSlug}/${objectId}.${item.optimizedExtension}`;
+    const thumbnailStoragePath = `thumbnail/${item.sectionSlug}/${objectId}.${item.thumbnailExtension}`;
+    const tileStoragePath = `tile/${item.sectionSlug}/${objectId}.${item.tileExtension}`;
     const uploadedPaths = [];
     try {
       const { error: uploadError } = await supabase.storage
         .from(GALLERY_BUCKET)
         .upload(storagePath, item.optimizedBlob, {
           cacheControl: "31536000",
-          contentType: "image/webp",
+          contentType: item.optimizedContentType,
           upsert: false,
         });
       if (uploadError) throw uploadError;
@@ -699,7 +733,7 @@ async function uploadGalleryPhotos(event) {
         .from(GALLERY_BUCKET)
         .upload(thumbnailStoragePath, item.thumbnailBlob, {
           cacheControl: "31536000",
-          contentType: "image/webp",
+          contentType: item.thumbnailContentType,
           upsert: false,
         });
       if (thumbnailUploadError) throw thumbnailUploadError;
@@ -709,7 +743,7 @@ async function uploadGalleryPhotos(event) {
         .from(GALLERY_BUCKET)
         .upload(tileStoragePath, item.tileBlob, {
           cacheControl: "31536000",
-          contentType: "image/webp",
+          contentType: item.tileContentType,
           upsert: false,
         });
       if (tileUploadError) throw tileUploadError;

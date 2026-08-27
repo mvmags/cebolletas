@@ -1,4 +1,4 @@
-# Cebolletas Copal — Supabase User Administration
+# Cebolletas Copal â€” Supabase User Administration
 
 This document describes how to administer users who can access the Cebolletas
 Copal management application at `/copal/manage/`.
@@ -29,7 +29,7 @@ Access to `/copal/manage/` has two independent layers:
    authenticated user may use the management application and what role they
    have.
 
-Creating a record under **Authentication → Users** is not sufficient to grant
+Creating a record under **Authentication â†’ Users** is not sufficient to grant
 management access. The Auth user's UUID must also exist in
 `public.admin_profiles`, and the profile must be active.
 
@@ -105,8 +105,8 @@ testing access.
 ### Step 1: Create the Supabase Auth account
 
 1. Open the Supabase Dashboard for the Cebolletas project.
-2. Go to **Authentication → Users**.
-3. Select **Add user → Create new user**.
+2. Go to **Authentication â†’ Users**.
+3. Select **Add user â†’ Create new user**.
 4. Enter the user's verified email address.
 5. Assign a strong temporary password.
 6. Enable **Auto Confirm User** only when you have verified the email and will
@@ -155,7 +155,7 @@ The `on conflict` clause makes the operation safe to repeat for the same user:
 it updates the existing authorization record instead of creating a duplicate.
 
 If the query returns no row, the email was not found in `auth.users`. Check the
-email under **Authentication → Users** and try again. Do not manually invent a
+email under **Authentication â†’ Users** and try again. Do not manually invent a
 UUID.
 
 ### Create two users in one statement
@@ -172,7 +172,7 @@ with requested_users(email, display_name, role) as (
     ),
     (
       lower('maria@example.com'),
-      'María',
+      'MarÃ­a',
       'admin'::public.admin_role
     )
 )
@@ -373,7 +373,7 @@ Delete a Supabase Auth user only when permanent removal is intended.
 2. Confirm that the target email and UUID are correct.
 3. Confirm that the person no longer requires access.
 4. Revoke active sessions.
-5. In **Authentication → Users**, select the exact account and delete it.
+5. In **Authentication â†’ Users**, select the exact account and delete it.
 
 Because `admin_profiles.user_id` uses a cascading foreign key, deleting the Auth
 user also deletes the related `admin_profiles` record.
@@ -578,7 +578,7 @@ order by c.relname;
 
 ## 16. Troubleshooting
 
-### User receives “invalid login credentials”
+### User receives â€œinvalid login credentialsâ€
 
 Check:
 
@@ -773,7 +773,7 @@ where lower(u.email) = lower('user@example.com');
 
 ## Gallery administration
 
-The **Galería** view manages the photographs shown on the public Copal
+The **GalerÃ­a** view manages the photographs shown on the public Copal
 microsite. Gallery metadata is stored in `public.gallery_photos`; newly uploaded
 files are stored in the public `copal-gallery` Supabase Storage bucket.
 
@@ -784,17 +784,18 @@ disabled, and Row Level Security independently rejects write attempts.
 ### Add photographs
 
 1. Open `/copal/manage/` and sign in with an active administrator account.
-2. Select **Galería**.
+2. Select **GalerÃ­a**.
 3. Choose the initial destination section.
 4. Select **Agregar desde Fotos** and choose one or more JPEG, PNG, WebP, HEIC,
    or HEIF photographs.
 5. Review the optimized previews and change individual sections if needed.
-6. Select **Publicar fotografías**.
+6. Select **Publicar fotografÃ­as**.
 
-The browser creates two WebP files for every upload: a preview no larger than
-720 pixels or 100 KB for the public gallery page, and an image no larger than
-1,800 pixels or 500 KB for the modal viewer. The encoder automatically lowers
-quality or dimensions when a detailed photograph exceeds its byte limit. HEIC
+The browser creates three WebP files for every upload: a tile no larger than
+480 pixels or 40 KB, a management preview no larger than 720 pixels or 100 KB,
+and an image no larger than 1,800 pixels or 500 KB for the modal viewer. The
+encoder automatically lowers quality at every candidate dimension before
+reducing dimensions when a detailed photograph exceeds its byte limit. HEIC
 and HEIF files use native decoding when the browser supports it and the bundled
 converter otherwise. The original file on the administrator's phone or
 computer is not changed.
@@ -806,9 +807,9 @@ running out of memory; the general upload selection limit remains 50 MB.
 
 ### Organize or remove photographs
 
-- Use **Antes** and **Después** to change the order within a section. Each swap
+- Use **Antes** and **DespuÃ©s** to change the order within a section. Each swap
   is saved atomically so a partial update cannot leave duplicate positions.
-- Change the **Sección** dropdown to move a photo to another section.
+- Change the **SecciÃ³n** dropdown to move a photo to another section.
 - Use **Eliminar** to remove a photo from the public gallery.
 
 Photos marked **Supabase** are deleted from both the metadata table and Storage.
