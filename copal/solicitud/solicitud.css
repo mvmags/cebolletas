@@ -1,0 +1,94 @@
+:root {
+  --forest: #183f32;
+  --forest-deep: #103128;
+  --wine: #7e2424;
+  --cream: #f4eed7;
+  --paper: #fffefa;
+  --ink: #20251f;
+  --muted: #686d65;
+  --line: #dcded7;
+  --whatsapp: #176b45;
+}
+
+* { box-sizing: border-box; }
+html { min-width: 320px; background: var(--cream); }
+body { min-width: 320px; min-height: 100vh; margin: 0; overflow-x: hidden; color: var(--ink); background: linear-gradient(155deg, #f7f2e4 0%, #eee7d3 100%); font-family: Arial, Helvetica, sans-serif; }
+button, a { font: inherit; }
+a { overflow-wrap: anywhere; }
+.hidden { display: none !important; }
+
+.private-shell { width: min(760px, 100%); min-height: 100vh; margin: 0 auto; padding: max(22px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(28px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); }
+.brand-header { min-height: 84px; display: flex; align-items: center; justify-content: center; gap: 18px; margin-bottom: 14px; }
+.brand-header img { display: block; object-fit: contain; }
+.cebolletas-logo { width: 128px; height: 68px; }
+.copal-logo { width: 61px; height: 68px; }
+.brand-divider { width: 1px; height: 46px; background: rgba(24, 63, 50, .24); }
+
+.state-card, .request-card { border: 1px solid rgba(24, 63, 50, .16); border-radius: 18px; background: var(--paper); box-shadow: 0 18px 52px rgba(39, 43, 31, .10); }
+.state-card { min-height: 420px; display: grid; place-items: center; align-content: center; padding: 42px 24px; text-align: center; }
+.state-card h1 { margin: 20px 0 8px; font: 500 clamp(2rem, 8vw, 3rem) Georgia, "Times New Roman", serif; }
+.state-card h2 { margin: 0 0 8px; font: 500 1.5rem Georgia, "Times New Roman", serif; }
+.state-card p { max-width: 500px; margin: 0; color: var(--muted); line-height: 1.65; }
+.state-card hr { width: min(240px, 80%); margin: 28px 0; border: 0; border-top: 1px solid var(--line); }
+.english-help { margin-top: 12px !important; }
+.state-mark { width: 56px; height: 56px; display: grid; place-items: center; border: 1px solid var(--forest); border-radius: 50%; color: var(--forest); font: 500 2rem Georgia, serif; }
+.spinner { width: 46px; height: 46px; border: 3px solid rgba(24, 63, 50, .16); border-top-color: var(--forest); border-radius: 50%; animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.request-card { overflow: hidden; }
+.request-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; padding: clamp(26px, 6vw, 46px); color: #fff; background: var(--forest); }
+.eyebrow, .section-label { margin: 0 0 9px; font-size: .69rem; font-weight: 800; letter-spacing: .15em; text-transform: uppercase; }
+.eyebrow { color: #c9d9d1; }
+.request-heading h1 { margin: 0; font: 500 clamp(2.2rem, 8vw, 4rem) Georgia, "Times New Roman", serif; line-height: 1; }
+.request-identity { flex: 0 0 auto; display: grid; gap: 9px; text-align: right; }
+.request-identity span { font-weight: 850; letter-spacing: .04em; }
+.request-identity strong { border: 1px solid rgba(255,255,255,.36); border-radius: 999px; padding: 6px 9px; color: #e8f1ec; font-size: .69rem; }
+
+.contact-section, .summary-section, .amount-section, .actions-section { margin: 0 clamp(22px, 6vw, 46px); padding: 28px 0; border-bottom: 1px solid var(--line); }
+.section-label { color: var(--wine); }
+.contact-section h2 { max-width: 620px; margin: 0; font: 500 clamp(1.65rem, 6vw, 2.3rem) Georgia, "Times New Roman", serif; line-height: 1.14; overflow-wrap: anywhere; }
+.contact-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 19px; }
+.contact-grid p { min-width: 0; display: grid; gap: 6px; margin: 0; }
+.contact-grid span, .summary-item span { color: var(--muted); font-size: .68rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.contact-grid a { min-height: 28px; color: var(--forest); font-weight: 750; line-height: 1.45; text-decoration-thickness: 1px; text-underline-offset: 3px; }
+.secondary-contact { background: rgba(244, 238, 215, .42); margin-inline: 0; padding-inline: clamp(22px, 6vw, 46px); }
+.summary-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 11px; }
+.summary-item { min-width: 0; display: grid; gap: 9px; border: 1px solid var(--line); border-radius: 11px; padding: 15px; background: #faf8f2; }
+.summary-item.full { grid-column: 1 / -1; }
+.summary-item:not(.full) { grid-column: span 3; }
+.summary-item.guest-item { grid-column: span 2; }
+.summary-item strong { overflow-wrap: anywhere; line-height: 1.4; }
+.amount-section { display: flex; align-items: baseline; justify-content: space-between; gap: 18px; }
+.amount-section span { color: var(--muted); font-size: .9rem; }
+.amount-section strong { color: var(--forest); font: 700 clamp(1.8rem, 7vw, 2.7rem) Georgia, "Times New Roman", serif; text-align: right; }
+.actions-section { display: grid; gap: 11px; }
+.primary-action, .secondary-action { min-height: 52px; display: inline-flex; align-items: center; justify-content: center; border-radius: 12px; padding: 14px 20px; cursor: pointer; font-weight: 800; text-align: center; text-decoration: none; }
+.primary-action { border: 0; color: #fff; background: var(--forest); }
+.whatsapp-action { background: var(--whatsapp); }
+.primary-action:hover, .primary-action:focus-visible { filter: brightness(1.08); }
+.primary-action:focus-visible, .secondary-action:focus-visible, a:focus-visible { outline: 3px solid rgba(126, 36, 36, .38); outline-offset: 3px; }
+.primary-action:disabled { cursor: wait; opacity: .62; }
+.secondary-action { margin-top: 24px; border: 1px solid var(--forest); color: var(--forest); background: #fff; }
+.contact-unavailable, .action-message { margin: 0; color: var(--muted); font-size: .82rem; line-height: 1.5; text-align: center; }
+.action-message { min-height: 20px; }
+.request-footer { padding: 28px clamp(22px, 6vw, 46px) 32px; text-align: center; }
+.request-footer p { margin: 0; color: var(--ink); font-weight: 750; line-height: 1.55; }
+.request-footer small { display: block; margin-top: 15px; color: var(--muted); line-height: 1.5; }
+
+@media (max-width: 560px) {
+  .private-shell { padding-inline: 10px; }
+  .brand-header { min-height: 70px; gap: 12px; }
+  .cebolletas-logo { width: 108px; height: 56px; }
+  .copal-logo { width: 51px; height: 57px; }
+  .brand-divider { height: 38px; }
+  .request-heading { display: grid; gap: 22px; }
+  .request-identity { width: 100%; grid-template-columns: 1fr auto; align-items: center; text-align: left; }
+  .contact-grid { grid-template-columns: 1fr; gap: 12px; }
+  .summary-item:not(.full), .summary-item.guest-item { grid-column: 1 / -1; }
+  .amount-section { align-items: flex-start; flex-direction: column; }
+  .amount-section strong { text-align: left; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner { animation-duration: 1.8s; }
+}

@@ -6,8 +6,8 @@
     <meta name="robots" content="noindex, nofollow">
     <meta name="theme-color" content="#183f32">
     <title>Gestión | Cebolletas Copal</title>
-    <link rel="stylesheet" href="./manage.css?v=10.5.0-2">
-    <script type="module" src="./manage.js?v=10.5.2-3"></script>
+    <link rel="stylesheet" href="./manage.css?v=10.6.0">
+    <script type="module" src="./manage.js?v=10.6.0"></script>
   </head>
   <body>
     <main id="login-view" class="login-shell">
@@ -504,6 +504,63 @@
         <p id="request-detail-message" class="message" role="status" aria-live="polite"></p>
         <div id="request-contact-actions" class="request-contact-actions"></div>
         <div id="request-detail-content" class="request-detail-grid"></div>
+        <section class="request-private-panel" aria-labelledby="designated-contact-title">
+          <div class="request-private-heading">
+            <div>
+              <p class="eyebrow">Página privada</p>
+              <h3 id="designated-contact-title">Contacto designado</h3>
+            </div>
+            <p id="designated-contact-help" class="muted"></p>
+          </div>
+          <form id="designated-contact-form" class="designated-contact-form">
+            <label>Nombre completo
+              <input id="designated-contact-name" maxlength="100" autocomplete="name">
+            </label>
+            <label>Teléfono
+              <input id="designated-contact-phone" type="tel" maxlength="25" autocomplete="tel" placeholder="+52 449 123 4567">
+            </label>
+            <label>Correo electrónico
+              <input id="designated-contact-email" type="email" maxlength="254" autocomplete="email">
+            </label>
+            <button id="save-designated-contact" class="secondary-button" type="submit">Guardar contacto</button>
+          </form>
+        </section>
+        <section class="request-private-panel" aria-labelledby="private-access-title">
+          <div class="request-private-heading">
+            <div>
+              <p class="eyebrow">Acceso del cliente</p>
+              <h3 id="private-access-title">Enlace privado</h3>
+            </div>
+            <strong id="private-access-state" class="private-access-state">Consultando…</strong>
+          </div>
+          <div class="private-access-controls">
+            <label>Idioma de publicación
+              <select id="private-access-language">
+                <option value="es">Español</option>
+                <option value="en">English</option>
+              </select>
+            </label>
+            <button id="publish-private-access" class="primary-button" type="button">Generar enlace</button>
+            <button id="revoke-private-access" class="danger-button" type="button">Revocar acceso</button>
+          </div>
+          <p id="private-access-help" class="muted"></p>
+          <div id="generated-private-link" class="generated-private-link hidden">
+            <label>Enlace recién generado
+              <input id="generated-private-link-value" type="text" readonly spellcheck="false">
+            </label>
+            <button id="copy-private-link" class="secondary-button" type="button">Copiar enlace</button>
+            <small>Este enlace solo se muestra ahora. Si se pierde, regenera el acceso.</small>
+          </div>
+          <div class="staff-summary-controls">
+            <label>Idioma del PDF para gestión
+              <select id="staff-summary-language">
+                <option value="es">Español</option>
+                <option value="en">English</option>
+              </select>
+            </label>
+            <button id="download-staff-summary" class="secondary-button" type="button">Descargar resumen</button>
+          </div>
+        </section>
         <section class="request-status-panel">
           <div>
             <h3>Actualizar estado</h3>

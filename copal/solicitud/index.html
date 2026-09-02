@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
+    <meta name="referrer" content="no-referrer">
+    <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <meta name="theme-color" content="#183f32">
+    <title>Solicitud privada | Cebolletas Copal</title>
+    <link rel="stylesheet" href="./solicitud.css?v=10.6.0">
+    <script type="module" src="./solicitud.js?v=10.6.0"></script>
+  </head>
+  <body>
+    <main class="private-shell">
+      <header class="brand-header" aria-label="Cebolletas y Cebolletas Copal">
+        <img class="cebolletas-logo" src="/images/Logo_v6_290x65.png" alt="Cebolletas">
+        <span class="brand-divider" aria-hidden="true"></span>
+        <img class="copal-logo" src="/copal/assets/logo-copal-black.png" alt="Cebolletas Copal">
+      </header>
+
+      <section id="loading-state" class="state-card" aria-live="polite">
+        <span class="spinner" aria-hidden="true"></span>
+        <h1>Cargando solicitud</h1>
+        <p>Loading request...</p>
+      </section>
+
+      <section id="unavailable-state" class="state-card hidden" aria-live="assertive">
+        <span class="state-mark" aria-hidden="true">×</span>
+        <h1>Solicitud no disponible</h1>
+        <p>Esta página de solicitud no está disponible. Verifica el enlace o comunícate con Cebolletas.</p>
+        <hr>
+        <h2>Request unavailable</h2>
+        <p>This request page is unavailable. Verify the link or contact Cebolletas.</p>
+      </section>
+
+      <section id="network-state" class="state-card hidden" aria-live="assertive">
+        <span class="state-mark" aria-hidden="true">!</span>
+        <h1>No fue posible cargar la solicitud</h1>
+        <p>Revisa tu conexión e intenta nuevamente.</p>
+        <p class="english-help">We could not load the request. Check your connection and try again.</p>
+        <button id="retry-button" class="secondary-action" type="button">Intentar nuevamente / Try again</button>
+      </section>
+
+      <article id="request-view" class="request-card hidden" aria-labelledby="request-title">
+        <header class="request-heading">
+          <div>
+            <p id="request-eyebrow" class="eyebrow"></p>
+            <h1 id="request-title"></h1>
+          </div>
+          <div class="request-identity">
+            <span id="request-folio"></span>
+            <strong id="request-status"></strong>
+          </div>
+        </header>
+
+        <section class="contact-section" aria-labelledby="beneficiary-title">
+          <p id="beneficiary-title" class="section-label"></p>
+          <h2 id="beneficiary-name"></h2>
+          <div class="contact-grid">
+            <p><span id="beneficiary-phone-label"></span><a id="beneficiary-phone"></a></p>
+            <p><span id="beneficiary-email-label"></span><a id="beneficiary-email"></a></p>
+          </div>
+        </section>
+
+        <section id="request-contact-section" class="contact-section secondary-contact hidden" aria-labelledby="request-contact-title">
+          <p id="request-contact-title" class="section-label"></p>
+          <h2 id="request-contact-name"></h2>
+          <div class="contact-grid">
+            <p><span id="request-contact-phone-label"></span><a id="request-contact-phone"></a></p>
+            <p><span id="request-contact-email-label"></span><a id="request-contact-email"></a></p>
+          </div>
+        </section>
+
+        <section class="summary-section" aria-labelledby="details-title">
+          <p id="details-title" class="section-label"></p>
+          <div class="summary-grid">
+            <div class="summary-item full"><span id="service-label"></span><strong id="service-value"></strong></div>
+            <div class="summary-item"><span id="checkin-label"></span><strong id="checkin-value"></strong></div>
+            <div class="summary-item"><span id="checkout-label"></span><strong id="checkout-value"></strong></div>
+            <div class="summary-item guest-item"><span id="adults-label"></span><strong id="adults-value"></strong></div>
+            <div class="summary-item guest-item"><span id="children-label"></span><strong id="children-value"></strong></div>
+            <div class="summary-item guest-item"><span id="infants-label"></span><strong id="infants-value"></strong></div>
+          </div>
+        </section>
+
+        <section id="amount-section" class="amount-section hidden">
+          <span id="amount-label"></span>
+          <strong id="amount-value"></strong>
+        </section>
+
+        <section class="actions-section">
+          <a id="whatsapp-action" class="primary-action whatsapp-action hidden" target="_blank" rel="noopener noreferrer nofollow"></a>
+          <p id="whatsapp-unavailable" class="contact-unavailable hidden"></p>
+          <button id="pdf-action" class="primary-action pdf-action" type="button"></button>
+          <p id="pdf-message" class="action-message" role="status" aria-live="polite"></p>
+        </section>
+
+        <footer class="request-footer">
+          <p id="disclaimer"></p>
+          <small id="last-updated"></small>
+        </footer>
+      </article>
+    </main>
+  </body>
+</html>

@@ -43,6 +43,8 @@ let galleryUploadQueue = [];
 let galleryUploadBusy = false;
 let heicConverterPromise = null;
 let galleryPreparationChain = Promise.resolve();
+let requestAccessState = null;
+let generatedPrivateLink = "";
 
 const GALLERY_BUCKET = "copal-gallery";
 const GALLERY_MAX_FILE_SIZE = 50 * 1024 * 1024;
@@ -130,6 +132,7 @@ const REQUEST_REASON_LABELS = {
 };
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const PRIVATE_TOKEN_BYTES = 32;
 
 function showApp(show) {
   loginView.classList.toggle("hidden", show);
@@ -217,6 +220,35 @@ function setGalleryMessage(text = "", type = "") {
 
 function canEditGallery() {
   return managementProfile?.active && managementProfile.role === "admin";
+}
+
+function canEditPrivateRequest() {
+  return managementProfile?.active && managementProfile.role === "admin";
+}
+
+function activeDefaultRecipient() {
+  return recipients.find((recipient) => recipient.id === defaultRecipientId && recipient.is_active) || null;
+}
+
+function createPrivateBearerToken() {
+  const bytes = crypto.getRandomValues(new Uint8Array(PRIVATE_TOKEN_BYTES));
+  const binary = Array.from(bytes, (byte) => String.fromCharCode(byte)).join("");
+  return btoa(binary).replaceAll("+", "-").replaceAll("/", "_").replace(/=+$/g, "");
+}
+
+async function sha256Hex(value) {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+function privateRequestUrl(token) {
+  const local = ["localhost", "127.0.0.1", "[::1]"].includes(window.location.hostname)
+    || /^192\.168\./.test(window.location.hostname);
+  const url = local
+    ? new URL("../solicitud/", window.location.href)
+    : new URL("https://cebolletas.mx/copal/solicitud/");
+  url.hash = new URLSearchParams({ access: token }).toString();
+  return url.href;
 }
 
 function gallerySectionLabel(slug) {
@@ -1131,6 +1163,7 @@ async function loadInformationRequests() {
     .select(`
       id, request_number, submitted_at, updated_at, locale,
       customer_name, customer_email, customer_cellphone,
+      designated_contact_name, designated_contact_phone, designated_contact_email,
       checkin_date, checkout_date, adults, children, infants,
       requested_services, customer_message, status,
       status_reason, status_notes, status_changed_at,
@@ -1177,9 +1210,19 @@ function serviceShareText(service, version = currentVersion(service)) {
 }
 
 async function copyText(text, successMessage) {
+  let copied = false;
   try {
-    await navigator.clipboard.writeText(text);
+    if (!navigator.clipboard?.writeText) throw new Error("Clipboard API unavailable");
+    await Promise.race([
+      navigator.clipboard.writeText(text),
+      new Promise((_, reject) => window.setTimeout(() => reject(new Error("Clipboard timeout")), 500)),
+    ]);
+    copied = true;
   } catch {
+    copied = false;
+  }
+
+  if (!copied) {
     const textarea = document.createElement("textarea");
     textarea.value = text;
     textarea.setAttribute("readonly", "");
@@ -1371,7 +1414,10 @@ async function refreshManagementData({ announce = true } = {}) {
       const refreshedRequest = informationRequests.find((item) => item.id === openRequestId);
       if (refreshedRequest) {
         renderRequestDetail(refreshedRequest);
-        await loadRequestHistory(refreshedRequest.id);
+        await Promise.all([
+          loadRequestHistory(refreshedRequest.id),
+          loadRequestAccessState(refreshedRequest.id),
+        ]);
       } else {
         closeRequestDetail();
       }
@@ -1909,6 +1955,151 @@ function closeCalculator() {
   calculatorModal.classList.add("hidden");
 }
 
+function renderPrivateRequestPanel(request) {
+  const editable = canEditPrivateRequest();
+  const eligible = request.status === "new";
+  const defaultContact = activeDefaultRecipient();
+  const active = Boolean(requestAccessState?.has_active_access);
+
+  $("#designated-contact-name").value = request.designated_contact_name || "";
+  $("#designated-contact-phone").value = request.designated_contact_phone || "";
+  $("#designated-contact-email").value = request.designated_contact_email || "";
+  ["#designated-contact-name", "#designated-contact-phone", "#designated-contact-email", "#save-designated-contact"].forEach((selector) => {
+    $(selector).disabled = !editable || !eligible;
+  });
+  $("#designated-contact-help").textContent = !editable
+    ? "Tu perfil tiene acceso de consulta. Solo un administrador puede modificar este contacto."
+    : eligible
+      ? "Deja los tres campos vacíos para usar a la persona solicitante."
+      : "El contacto designado solo puede cambiarse mientras la solicitud es nueva.";
+
+  const state = $("#private-access-state");
+  state.textContent = requestAccessState === null
+    ? "Consultando…"
+    : active
+      ? `Acceso activo · ${requestAccessState.language === "en" ? "English" : "Español"}`
+      : "Sin acceso activo";
+  state.classList.toggle("active", active);
+
+  const language = requestAccessState?.language || request.locale || "es";
+  $("#private-access-language").value = language === "en" ? "en" : "es";
+  $("#staff-summary-language").value = language === "en" ? "en" : "es";
+  $("#private-access-language").disabled = !editable || !eligible;
+  $("#publish-private-access").textContent = active ? "Regenerar enlace" : "Generar enlace";
+  $("#publish-private-access").disabled = !editable || !eligible || !defaultContact;
+  $("#revoke-private-access").disabled = !editable || !active;
+  $("#download-staff-summary").disabled = !managementProfile?.active;
+
+  $("#private-access-help").textContent = !editable
+    ? "Tu perfil puede consultar y descargar el resumen, pero no publicar ni revocar enlaces."
+    : !eligible
+      ? "Solo las solicitudes nuevas pueden publicar o regenerar enlaces. Un acceso vigente todavía puede revocarse."
+      : !defaultContact
+        ? "Activa y selecciona primero un contacto predeterminado de WhatsApp."
+        : active
+          ? "El idioma actual no cambia. Regenerar revoca inmediatamente el enlace anterior y publica uno nuevo."
+          : "El enlace contiene un token que solo se muestra una vez y no se guarda en texto legible.";
+
+  $("#generated-private-link").classList.toggle("hidden", !generatedPrivateLink);
+  $("#generated-private-link-value").value = generatedPrivateLink;
+}
+
+async function loadRequestAccessState(requestId) {
+  const { data, error } = await supabase.rpc("get_information_request_access_state", {
+    p_request_id: requestId,
+  });
+  if (error) throw error;
+  requestAccessState = Array.isArray(data) ? data[0] || null : data;
+  const request = informationRequests.find((item) => item.id === requestId);
+  if (request) renderPrivateRequestPanel(request);
+}
+
+async function saveDesignatedContact() {
+  const request = informationRequests.find((item) => item.id === detailRequestId);
+  if (!request) return;
+  const name = $("#designated-contact-name").value.trim();
+  const phone = $("#designated-contact-phone").value.trim();
+  const email = $("#designated-contact-email").value.trim();
+  const values = [name, phone, email];
+  if (values.some(Boolean) && !values.every(Boolean)) {
+    throw new Error("Completa nombre, teléfono y correo; o deja los tres campos vacíos.");
+  }
+
+  const { error } = await supabase.rpc("update_information_request_designated_contact", {
+    p_request_id: request.id,
+    p_name: name || null,
+    p_phone: phone || null,
+    p_email: email || null,
+  });
+  if (error) throw error;
+  await loadInformationRequests();
+  const refreshed = informationRequests.find((item) => item.id === request.id);
+  if (refreshed) renderRequestDetail(refreshed);
+}
+
+async function publishPrivateAccess() {
+  const request = informationRequests.find((item) => item.id === detailRequestId);
+  if (!request) return;
+  const rawToken = createPrivateBearerToken();
+  const tokenHash = await sha256Hex(rawToken);
+  const language = $("#private-access-language").value === "en" ? "en" : "es";
+  const { error } = await supabase.rpc("publish_information_request_access", {
+    p_request_id: request.id,
+    p_token_hash: tokenHash,
+    p_language: language,
+  });
+  if (error) throw error;
+  generatedPrivateLink = privateRequestUrl(rawToken);
+  await loadRequestAccessState(request.id);
+}
+
+async function revokePrivateAccess() {
+  const request = informationRequests.find((item) => item.id === detailRequestId);
+  if (!request) return;
+  const { error } = await supabase.rpc("revoke_information_request_access", {
+    p_request_id: request.id,
+  });
+  if (error) throw error;
+  generatedPrivateLink = "";
+  await loadRequestAccessState(request.id);
+}
+
+async function downloadStaffSummary() {
+  const request = informationRequests.find((item) => item.id === detailRequestId);
+  if (!request) return;
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.access_token) throw new Error("Tu sesión terminó. Ingresa nuevamente.");
+  const response = await fetch(`${config.supabaseUrl}/functions/v1/request-summary`, {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${session.access_token}`,
+      "content-type": "application/json",
+    },
+    cache: "no-store",
+    referrerPolicy: "no-referrer",
+    body: JSON.stringify({
+      request_id: request.id,
+      language: $("#staff-summary-language").value === "en" ? "en" : "es",
+      format: "pdf",
+    }),
+  });
+  if (!response.ok || !response.headers.get("content-type")?.includes("application/pdf")) {
+    throw new Error("No fue posible generar el resumen.");
+  }
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const disposition = response.headers.get("content-disposition") || "";
+  const filename = disposition.match(/filename="([^"]+)"/)?.[1] || `Resumen_${formatRequestCode(request.request_number)}.pdf`;
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.rel = "noopener noreferrer";
+  document.body.append(anchor);
+  anchor.click();
+  anchor.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 30_000);
+}
+
 function renderRequestDetail(request) {
   detailRequestId = request.id;
   $("#request-detail-title").textContent = `${formatRequestCode(request.request_number)} \u00b7 ${request.customer_name}`;
@@ -1944,12 +2135,15 @@ function renderRequestDetail(request) {
     <article class="request-detail-item"><span>Recibida</span><strong>${formatDateTime(request.submitted_at)}</strong></article>
     <article class="request-detail-item"><span>Visitante</span><strong>${escapeHtml(request.customer_name)}</strong></article>
     <article class="request-detail-item"><span>Contacto</span><p>${escapeHtml(request.customer_email)}<br>${escapeHtml(request.customer_cellphone)}</p></article>
+    ${request.designated_contact_name ? `<article class="request-detail-item full"><span>Contacto designado</span><p><strong>${escapeHtml(request.designated_contact_name)}</strong><br>${escapeHtml(request.designated_contact_email)}<br>${escapeHtml(request.designated_contact_phone)}</p></article>` : ""}
     <article class="request-detail-item"><span>Estancia solicitada</span><p>${formatDate(request.checkin_date)} \u2013 ${formatDate(request.checkout_date)}</p></article>
     <article class="request-detail-item"><span>Hu\u00e9spedes</span><p>${request.adults} adulto${request.adults === 1 ? "" : "s"} \u00b7 ${request.children} ni\u00f1o${request.children === 1 ? "" : "s"}${request.infants ? ` \u00b7 ${request.infants} menor${request.infants === 1 ? "" : "es"} de 3` : ""}</p></article>
     <article class="request-detail-item full"><span>Servicio solicitado</span><p>${escapeHtml(requestServicesLabel(request))}</p></article>
     ${renderRequestQuote(request)}
     <article class="request-detail-item full"><span>Mensaje del visitante</span><p>${request.customer_message ? escapeHtml(request.customer_message).replaceAll("\n", "<br>") : "Sin mensaje adicional"}</p></article>
     ${request.status_reason ? `<article class="request-detail-item full"><span>Motivo del estado actual</span><p>${escapeHtml(REQUEST_REASON_LABELS[request.status_reason] || request.status_reason)}</p></article>` : ""}`;
+
+  renderPrivateRequestPanel(request);
 
   const actionHost = $("#request-status-actions");
   actionHost.innerHTML = requestStatusActions(request);
@@ -1989,11 +2183,16 @@ async function loadRequestHistory(requestId) {
 
 async function openRequestDetail(request) {
   syncRequestUrl(request.id);
+  requestAccessState = null;
+  generatedPrivateLink = "";
   renderRequestDetail(request);
   requestDetailModal.classList.remove("hidden");
   $("#request-history-list").innerHTML = '<p class="muted">Cargando historial\u2026</p>';
   try {
-    await loadRequestHistory(request.id);
+    await Promise.all([
+      loadRequestHistory(request.id),
+      loadRequestAccessState(request.id),
+    ]);
   } catch (error) {
     requestDetailMessage.textContent = friendlyError(error);
     requestDetailMessage.className = "message error";
@@ -2002,6 +2201,8 @@ async function openRequestDetail(request) {
 
 function closeRequestDetail() {
   detailRequestId = null;
+  requestAccessState = null;
+  generatedPrivateLink = "";
   requestDetailModal.classList.add("hidden");
   syncRequestUrl();
 }
@@ -2070,7 +2271,10 @@ async function changeRequestStatus(button) {
     const refreshed = informationRequests.find((item) => item.id === request.id);
     if (refreshed) {
       renderRequestDetail(refreshed);
-      await loadRequestHistory(refreshed.id);
+      await Promise.all([
+        loadRequestHistory(refreshed.id),
+        loadRequestAccessState(refreshed.id),
+      ]);
       requestDetailMessage.textContent = `Estado actualizado a ${REQUEST_STATUS_LABELS[nextStatus].toLowerCase()}.`;
       requestDetailMessage.className = "message success";
     }
@@ -2346,6 +2550,87 @@ $("#request-calendar-grid").addEventListener("click", (event) => {
 $("#request-status-actions").addEventListener("click", (event) => {
   const button = event.target.closest("button[data-next-status]");
   if (button && !button.disabled) changeRequestStatus(button);
+});
+
+$("#designated-contact-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const button = $("#save-designated-contact");
+  button.disabled = true;
+  requestDetailMessage.textContent = "Guardando contacto designado…";
+  requestDetailMessage.className = "message";
+  try {
+    await saveDesignatedContact();
+    requestDetailMessage.textContent = "Contacto designado actualizado.";
+    requestDetailMessage.className = "message success";
+  } catch (error) {
+    requestDetailMessage.textContent = friendlyError(error);
+    requestDetailMessage.className = "message error";
+    button.disabled = false;
+  }
+});
+
+$("#publish-private-access").addEventListener("click", async (event) => {
+  const button = event.currentTarget;
+  button.disabled = true;
+  requestDetailMessage.textContent = requestAccessState?.has_active_access
+    ? "Regenerando acceso privado…"
+    : "Generando acceso privado…";
+  requestDetailMessage.className = "message";
+  try {
+    await publishPrivateAccess();
+    requestDetailMessage.textContent = "Enlace privado generado. Cópialo ahora; no volverá a mostrarse.";
+    requestDetailMessage.className = "message success";
+    $("#generated-private-link-value").focus();
+    $("#generated-private-link-value").select();
+  } catch (error) {
+    requestDetailMessage.textContent = friendlyError(error);
+    requestDetailMessage.className = "message error";
+    button.disabled = false;
+  }
+});
+
+$("#revoke-private-access").addEventListener("click", async (event) => {
+  if (!window.confirm("¿Revocar inmediatamente el acceso privado de esta solicitud?")) return;
+  const button = event.currentTarget;
+  button.disabled = true;
+  requestDetailMessage.textContent = "Revocando acceso…";
+  requestDetailMessage.className = "message";
+  try {
+    await revokePrivateAccess();
+    requestDetailMessage.textContent = "El acceso privado fue revocado.";
+    requestDetailMessage.className = "message success";
+  } catch (error) {
+    requestDetailMessage.textContent = friendlyError(error);
+    requestDetailMessage.className = "message error";
+    button.disabled = false;
+  }
+});
+
+$("#copy-private-link").addEventListener("click", async (event) => {
+  if (!generatedPrivateLink) return;
+  const button = event.currentTarget;
+  await copyText(generatedPrivateLink, "");
+  button.textContent = "Enlace copiado";
+  window.setTimeout(() => { button.textContent = "Copiar enlace"; }, 1800);
+});
+
+$("#download-staff-summary").addEventListener("click", async (event) => {
+  const button = event.currentTarget;
+  button.disabled = true;
+  button.textContent = "Generando…";
+  requestDetailMessage.textContent = "Preparando resumen PDF…";
+  requestDetailMessage.className = "message";
+  try {
+    await downloadStaffSummary();
+    requestDetailMessage.textContent = "Resumen PDF generado.";
+    requestDetailMessage.className = "message success";
+  } catch (error) {
+    requestDetailMessage.textContent = friendlyError(error);
+    requestDetailMessage.className = "message error";
+  } finally {
+    button.disabled = false;
+    button.textContent = "Descargar resumen";
+  }
 });
 
 $("#request-contact-actions").addEventListener("click", (event) => {
