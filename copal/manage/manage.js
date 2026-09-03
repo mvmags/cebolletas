@@ -206,7 +206,7 @@ function friendlyError(error) {
   if (error?.message?.includes("rate_plan_versions_category_limits")) return "Los máximos por tipo de huésped no pueden exceder la capacidad física máxima.";
   if (error?.message?.includes("Gallery order conflict")) return "El orden de la galería cambió en otra sesión. Actualiza la galería e intenta nuevamente.";
   if (error?.message?.includes("maximum allowed size") || error?.statusCode === "413") return "La fotografía excede el tamaño máximo permitido.";
-  if (error?.message?.includes("row-level security") || error?.code === "42501") return "Tu cuenta no tiene permiso para modificar la galería.";
+  if (error?.message?.includes("row-level security") || error?.code === "42501") return "Tu cuenta no tiene permiso para realizar cambios.";
   if (/HEIC decoding failed|Failed to initialize HEIC decoder|Failed to render and encode image/i.test(error?.message || "")) {
     return "No fue posible convertir esta fotografía HEIC/HEIF. Intenta exportarla como JPEG o selecciónala nuevamente desde Fotos.";
   }
@@ -218,12 +218,16 @@ function setGalleryMessage(text = "", type = "") {
   galleryMessage.className = `message ${type}`.trim();
 }
 
-function canEditGallery() {
+function canEditManagement() {
   return managementProfile?.active && managementProfile.role === "admin";
 }
 
+function canEditGallery() {
+  return canEditManagement();
+}
+
 function canEditPrivateRequest() {
-  return managementProfile?.active && managementProfile.role === "admin";
+  return canEditManagement();
 }
 
 function activeDefaultRecipient() {
@@ -885,8 +889,11 @@ function filteredRecipients() {
 function renderRecipients() {
   const list = $("#recipient-list");
   const visible = filteredRecipients();
+  const editable = canEditManagement();
+  const mutationDisabled = editable ? "" : 'disabled title="Tu perfil tiene acceso de consulta"';
   list.replaceChildren();
   $("#recipient-empty").classList.toggle("hidden", recipients.length !== 0);
+  $("#add-recipient-button").disabled = !editable;
 
   visible.forEach((recipient) => {
     const row = document.createElement("div");
@@ -897,9 +904,9 @@ function renderRecipients() {
       <span>${escapeHtml(recipient.phone_e164)}</span>
       <span class="status-badge ${recipient.is_active ? "active" : "inactive"}">${recipient.is_active ? "Activo" : "Inactivo"}</span>
       <div class="row-actions">
-        ${!isDefault && recipient.is_active ? `<button data-action="default" data-id="${recipient.id}" type="button">Predeterminar</button>` : ""}
-        <button data-action="edit" data-id="${recipient.id}" type="button">Editar</button>
-        <button class="danger" data-action="delete" data-id="${recipient.id}" type="button" ${isDefault ? "disabled title=\"Selecciona otro predeterminado primero\"" : ""}>Eliminar</button>
+        ${!isDefault && recipient.is_active ? `<button data-action="default" data-id="${recipient.id}" type="button" ${mutationDisabled}>Predeterminar</button>` : ""}
+        <button data-action="edit" data-id="${recipient.id}" type="button" ${mutationDisabled}>Editar</button>
+        <button class="danger" data-action="delete" data-id="${recipient.id}" type="button" ${isDefault ? "disabled title=\"Selecciona otro predeterminado primero\"" : mutationDisabled}>Eliminar</button>
       </div>`;
     list.append(row);
   });
@@ -1285,7 +1292,10 @@ function filteredServices() {
 function renderServices() {
   const list = $("#service-list");
   const visible = filteredServices();
+  const editable = canEditManagement();
+  const mutationDisabled = editable ? "" : 'disabled title="Tu perfil tiene acceso de consulta"';
   list.replaceChildren();
+  $("#add-service-button").disabled = !editable;
 
   const emptyState = $("#service-empty");
   const hasMatches = visible.length > 0;
@@ -1323,9 +1333,9 @@ function renderServices() {
         <button data-service-action="copy" data-id="${service.id}" type="button">Copiar</button>
         <button data-service-action="calculate" data-id="${service.id}" type="button">Calcular</button>
         <button data-service-action="history" data-id="${service.id}" type="button">Historial</button>
-        <button data-service-action="edit" data-id="${service.id}" type="button">Nueva versi\u00f3n</button>
-        <button data-service-action="toggle" data-id="${service.id}" type="button">${service.is_active ? "Desactivar" : "Activar"}</button>
-        <button class="danger" data-service-action="delete" data-id="${service.id}" type="button">Eliminar</button>
+        <button data-service-action="edit" data-id="${service.id}" type="button" ${mutationDisabled}>Nueva versi\u00f3n</button>
+        <button data-service-action="toggle" data-id="${service.id}" type="button" ${mutationDisabled}>${service.is_active ? "Desactivar" : "Activar"}</button>
+        <button class="danger" data-service-action="delete" data-id="${service.id}" type="button" ${mutationDisabled}>Eliminar</button>
       </div>`;
     list.append(row);
   });
@@ -1452,6 +1462,7 @@ async function startSession(session) {
 }
 
 function openRecipientModal(recipient = null) {
+  if (!canEditManagement()) return;
   recipientForm.reset();
   $("#recipient-id").value = recipient?.id || "";
   $("#recipient-name").value = recipient?.display_name || "";
@@ -1582,6 +1593,7 @@ function updatePricingPreview() {
 }
 
 function openServiceModal(service = null) {
+  if (!canEditManagement()) return;
   const version = service ? currentVersion(service) : null;
   const rate = service ? currentRateVersion(service) : null;
   serviceForm.reset();
@@ -1667,6 +1679,7 @@ function closeServiceHistory() {
 }
 
 function requestStatusActions(request) {
+  if (!canEditManagement()) return "";
   const checkoutPassed = request.checkout_date < mexicoCityDate();
   if (request.status === "new") {
     return `
@@ -2152,9 +2165,11 @@ function renderRequestDetail(request) {
   $("#request-reason-label").classList.add("hidden");
   const hasActions = actionHost.children.length > 0;
   $("#request-status-notes").disabled = !hasActions;
-  $("#request-status-help").textContent = hasActions
-    ? "Solo se muestran las transiciones v\u00e1lidas para el estado actual."
-    : "Este estado es terminal y no admite m\u00e1s cambios.";
+  $("#request-status-help").textContent = !canEditManagement()
+    ? "Tu perfil tiene acceso de consulta. Solo un administrador puede cambiar el estado."
+    : hasActions
+      ? "Solo se muestran las transiciones v\u00e1lidas para el estado actual."
+      : "Este estado es terminal y no admite m\u00e1s cambios.";
 }
 
 async function loadRequestHistory(requestId) {
@@ -2225,6 +2240,7 @@ async function openDeepLinkedRequest() {
 }
 
 async function changeRequestStatus(button) {
+  if (!canEditManagement()) return;
   const request = informationRequests.find((item) => item.id === detailRequestId);
   if (!request) return;
   const nextStatus = button.dataset.nextStatus;
@@ -2304,6 +2320,7 @@ loginForm.addEventListener("submit", async (event) => {
 
 recipientForm.addEventListener("submit", async (event) => {
   event.preventDefault();
+  if (!canEditManagement()) return;
   const submit = recipientForm.querySelector('[type="submit"]');
   submit.disabled = true;
   $("#recipient-form-error").textContent = "";
@@ -2325,6 +2342,7 @@ recipientForm.addEventListener("submit", async (event) => {
 
 serviceForm.addEventListener("submit", async (event) => {
   event.preventDefault();
+  if (!canEditManagement()) return;
   const submit = serviceForm.querySelector('[type="submit"]');
   submit.disabled = true;
   $("#service-form-error").textContent = "";
@@ -2441,7 +2459,7 @@ serviceForm.addEventListener("submit", async (event) => {
 
 $("#recipient-list").addEventListener("click", async (event) => {
   const button = event.target.closest("button[data-action]");
-  if (!button) return;
+  if (!button || !canEditManagement()) return;
   const recipient = recipients.find((item) => item.id === button.dataset.id);
   if (!recipient) return;
   if (button.dataset.action === "edit") return openRecipientModal(recipient);
@@ -2481,6 +2499,7 @@ $("#service-list").addEventListener("click", async (event) => {
   }
   if (action === "edit") return openServiceModal(service);
   if (action === "history") return openServiceHistory(service);
+  if (!canEditManagement()) return;
   if (action === "delete" && !window.confirm(`\u00bfEliminar ${currentVersion(service)?.name_es}? Esta acci\u00f3n elimina todo su historial.`)) return;
 
   button.disabled = true;
@@ -2497,7 +2516,7 @@ $("#service-list").addEventListener("click", async (event) => {
 
 $("#service-history-list").addEventListener("click", async (event) => {
   const button = event.target.closest('button[data-history-action="make-current"]');
-  if (!button || !historyServiceId) return;
+  if (!button || !historyServiceId || !canEditManagement()) return;
 
   const service = services.find((item) => item.id === historyServiceId);
   const version = service?.service_versions?.find((item) => item.id === button.dataset.versionId);
@@ -2780,8 +2799,12 @@ refreshButton.addEventListener("click", async () => {
 });
 document.querySelectorAll("[data-view]").forEach((button) => button.addEventListener("click", () => openView(button.dataset.view)));
 document.querySelectorAll("[data-go]").forEach((button) => button.addEventListener("click", () => openView(button.dataset.go)));
-$("#add-recipient-button").addEventListener("click", () => openRecipientModal());
-$("#add-service-button").addEventListener("click", () => openServiceModal());
+$("#add-recipient-button").addEventListener("click", () => {
+  if (canEditManagement()) openRecipientModal();
+});
+$("#add-service-button").addEventListener("click", () => {
+  if (canEditManagement()) openServiceModal();
+});
 $("#close-recipient-modal").addEventListener("click", closeRecipientModal);
 $("#cancel-recipient").addEventListener("click", closeRecipientModal);
 $(".modal-backdrop").addEventListener("click", closeRecipientModal);
