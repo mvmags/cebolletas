@@ -2,3 +2,7 @@ project_id = "cebolletas-copal"
 
 [functions.notify-new-request]
 verify_jwt = false
+
+[functions.request-summary]
+verify_jwt = false
+static_files = ["./functions/request-summary/assets/*.png"]

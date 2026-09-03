@@ -293,6 +293,25 @@ fieldset input { width: auto; min-height: auto; }
 .request-quote-detail > small { color: var(--muted); }
 .request-detail-item span { display: block; margin-bottom: 6px; color: var(--muted); font-size: .7rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
 .request-detail-item strong, .request-detail-item p { margin: 0; font-size: .86rem; line-height: 1.5; overflow-wrap: anywhere; }
+.request-private-panel { margin-top: 24px; border: 1px solid var(--line); border-radius: 12px; padding: 20px; background: #faf8f4; }
+.request-private-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; }
+.request-private-heading h3 { margin: 0; font: 500 1.35rem Georgia, serif; }
+.request-private-heading > .muted { max-width: 390px; margin: 0; font-size: .75rem; line-height: 1.5; text-align: right; }
+.designated-contact-form { display: grid; grid-template-columns: 1.1fr .8fr 1.1fr auto; gap: 10px; align-items: end; margin-top: 16px; }
+.designated-contact-form label, .private-access-controls label, .staff-summary-controls label, .generated-private-link label { min-width: 0; margin: 0; }
+.designated-contact-form input, .private-access-controls select, .staff-summary-controls select, .generated-private-link input { margin-top: 7px; }
+.designated-contact-form button, .private-access-controls button, .staff-summary-controls button, .generated-private-link button { min-height: 46px; }
+.private-access-state { flex: none; border-radius: 999px; padding: 7px 10px; color: #655e55; background: #ece8e0; font-size: .72rem; }
+.private-access-state.active { color: #236346; background: #def0e5; }
+.private-access-controls { display: grid; grid-template-columns: minmax(180px, .8fr) auto auto; gap: 10px; align-items: end; margin-top: 16px; }
+.private-access-controls .primary-button { min-height: 46px; }
+.danger-button { border: 1px solid var(--danger); border-radius: 8px; padding: 8px 12px; color: var(--danger); background: #fff; font-weight: 750; }
+.danger-button:hover:not(:disabled) { color: #fff; background: var(--danger); }
+#private-access-help { margin: 12px 0 0; font-size: .76rem; line-height: 1.5; }
+.generated-private-link { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: end; margin-top: 16px; border-top: 1px solid var(--line); padding-top: 16px; }
+.generated-private-link input { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .74rem; }
+.generated-private-link small { grid-column: 1 / -1; color: var(--muted); line-height: 1.45; }
+.staff-summary-controls { display: grid; grid-template-columns: minmax(180px, .8fr) auto; gap: 10px; align-items: end; margin-top: 16px; border-top: 1px solid var(--line); padding-top: 16px; }
 .request-status-panel, .request-history { margin-top: 24px; border-top: 1px solid var(--line); padding-top: 22px; }
 .request-status-panel h3, .request-history h3 { margin: 0; font: 500 1.25rem Georgia, serif; }
 .request-status-panel > div:first-child { display: flex; align-items: baseline; justify-content: space-between; gap: 18px; }
@@ -407,6 +426,10 @@ fieldset input { width: auto; min-height: auto; }
   .form-grid .full { grid-column: auto; }
   .request-detail-grid { grid-template-columns: 1fr; }
   .request-detail-item.full { grid-column: auto; }
+  .request-private-heading { flex-direction: column; gap: 8px; }
+  .request-private-heading > .muted { text-align: left; }
+  .designated-contact-form, .private-access-controls, .staff-summary-controls, .generated-private-link { grid-template-columns: 1fr; }
+  .generated-private-link small { grid-column: 1; }
   .calculator-grid { grid-template-columns: repeat(2, 1fr); }
   .request-status-panel > div:first-child { align-items: flex-start; flex-direction: column; gap: 5px; }
   .request-history .history-item { grid-template-columns: 1fr; }
