@@ -1,0 +1,38 @@
+:root {
+  color-scheme: light;
+  --paper: #f8f5ed;
+  --ink: #1c231d;
+  --forest: #173f34;
+  --muted: #667067;
+  --line: #d9d6cc;
+  --valid: #24623d;
+  --voided: #7a1717;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; min-height: 100vh; background: #eeece5; color: var(--ink); font-family: Arial, sans-serif; }
+.verification-shell { width: min(92vw, 720px); margin: clamp(24px, 8vh, 80px) auto; background: var(--paper); border: 1px solid var(--line); box-shadow: 0 18px 55px rgba(22, 31, 25, .1); }
+.brand-row { min-height: 112px; padding: 22px 34px; display: flex; align-items: center; gap: 24px; border-bottom: 3px solid var(--forest); }
+.brand-row img:first-child { width: min(190px, 42vw); max-height: 62px; object-fit: contain; }
+.brand-row img:last-child { width: 70px; max-height: 70px; object-fit: contain; }
+.brand-row span { width: 1px; height: 45px; background: var(--line); }
+.state-card { padding: clamp(28px, 6vw, 58px); }
+.hidden { display: none !important; }
+.eyebrow { margin: 0 0 14px; color: var(--forest); font-size: .74rem; font-weight: 800; letter-spacing: .13em; text-transform: uppercase; }
+h1 { margin: 0; font-family: Georgia, serif; font-size: clamp(2rem, 7vw, 3.6rem); line-height: 1.03; }
+h2 { font-family: Georgia, serif; }
+.english-title { margin: 8px 0 0; color: var(--muted); font-size: 1rem; }
+.verification-grid { margin-top: 36px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); border-top: 1px solid var(--line); border-left: 1px solid var(--line); }
+.verification-grid div { min-height: 112px; padding: 20px; display: flex; flex-direction: column; gap: 10px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.verification-grid span { color: var(--muted); font-size: .76rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+.verification-grid strong { font-size: 1.12rem; overflow-wrap: anywhere; }
+.validity { color: var(--valid); }
+.validity.voided { color: var(--voided); }
+.privacy-note { margin: 28px 0 0; color: var(--muted); font-size: .82rem; line-height: 1.55; }
+hr { border: 0; border-top: 1px solid var(--line); margin: 30px 0; }
+@media (max-width: 540px) {
+  .verification-shell { width: 100%; min-height: 100vh; margin: 0; border: 0; }
+  .brand-row { padding: 18px 22px; }
+  .verification-grid { grid-template-columns: 1fr; }
+  .verification-grid div { min-height: 90px; }
+}

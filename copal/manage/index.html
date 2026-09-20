@@ -6,8 +6,8 @@
     <meta name="robots" content="noindex, nofollow">
     <meta name="theme-color" content="#183f32">
     <title>Gestión | Cebolletas Copal</title>
-    <link rel="stylesheet" href="./manage.css?v=10.6.0">
-    <script type="module" src="./manage.js?v=10.6.0"></script>
+    <link rel="stylesheet" href="./manage.css?v=10.7.0">
+    <script type="module" src="./manage.js?v=10.7.0-1"></script>
   </head>
   <body>
     <main id="login-view" class="login-shell">
@@ -61,6 +61,7 @@
             <nav aria-label="Módulos de gestión">
               <button class="nav-item active" data-view="overview" type="button"><span>⌂</span>Resumen</button>
               <button class="nav-item" data-view="whatsapp" type="button"><span>◉</span>WhatsApp</button>
+              <button class="nav-item" data-view="payment-methods" type="button"><span>$</span>Métodos de pago</button>
               <button class="nav-item" data-view="services" type="button"><span>◇</span>Servicios</button>
               <button class="nav-item" data-view="gallery" type="button"><span>▧</span>Galería</button>
               <button class="nav-item" data-view="requests" type="button"><span>✉</span>Solicitudes</button>
@@ -69,8 +70,8 @@
             </nav>
           </div>
           <div class="iteration-note">
-            <span>Versión 11 · Iteración 7</span>
-            <p>Alertas de nuevas solicitudes y acceso directo.</p>
+            <span>Versión 10.7.0</span>
+            <p>Enlaces recuperables, pagos verificados y recibos.</p>
           </div>
         </aside>
 
@@ -97,6 +98,7 @@
                 <div class="panel-head"><div><p class="eyebrow">Accesos directos</p><h2>¿Qué deseas gestionar?</h2></div></div>
                 <div class="quick-grid">
                   <button data-go="whatsapp" type="button"><span>◉</span><strong>WhatsApp</strong><small>Contactos y número principal</small></button>
+                  <button data-go="payment-methods" type="button"><span>$</span><strong>Métodos de pago</strong><small>Catálogo y referencias</small></button>
                   <button data-go="services" type="button"><span>◇</span><strong>Servicios</strong><small>Catálogo y precios</small></button>
                   <button data-go="gallery" type="button"><span>▧</span><strong>Galería</strong><small>Fotografías y secciones</small></button>
                   <button data-go="requests" type="button"><span>✉</span><strong>Solicitudes</strong><small>Consultas y seguimiento</small></button>
@@ -133,6 +135,18 @@
               <div class="table-head"><span>Contacto</span><span>Número</span><span>Estado</span><span></span></div>
               <div id="recipient-list" class="recipient-list"></div>
               <div id="recipient-empty" class="empty-state hidden"><span>◉</span><h2>No hay números registrados</h2><p>Agrega el primer contacto. Se establecerá automáticamente como predeterminado.</p></div>
+            </article>
+          </section>
+
+          <section class="view" data-page="payment-methods">
+            <div class="page-heading">
+              <div><p class="eyebrow">Configuración</p><h1>Métodos de pago</h1><p class="muted">Configura las opciones disponibles al registrar pagos verificados.</p></div>
+              <button id="add-payment-method-button" class="primary-action" type="button">+ Agregar método</button>
+            </div>
+            <p id="payment-method-message" class="message" role="status" aria-live="polite"></p>
+            <article class="panel table-panel">
+              <div class="table-head payment-methods"><span>Método</span><span>Código</span><span>Referencia</span><span>Orden</span><span>Estado</span><span></span></div>
+              <div id="payment-method-list" class="payment-method-list"></div>
             </article>
           </section>
 
@@ -321,6 +335,25 @@
           <button id="cancel-recipient" class="secondary-button" type="button">Cancelar</button>
           <button class="primary-button" type="submit">Guardar contacto</button>
         </div>
+      </form>
+    </div>
+
+    <div id="payment-method-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="payment-method-modal-title">
+      <button class="modal-backdrop payment-method-modal-backdrop" type="button" aria-label="Cerrar"></button>
+      <form id="payment-method-form" class="modal-card">
+        <div class="modal-head">
+          <div><p class="eyebrow">Configuración</p><h2 id="payment-method-modal-title">Agregar método de pago</h2></div>
+          <button id="close-payment-method-modal" class="icon-button" type="button" aria-label="Cerrar">×</button>
+        </div>
+        <input id="payment-method-id" type="hidden">
+        <label>Código estable<input id="payment-method-code" maxlength="40" pattern="[a-z][a-z0-9_]{1,39}" required></label>
+        <label>Etiqueta en español<input id="payment-method-label-es" maxlength="80" required></label>
+        <label>English label<input id="payment-method-label-en" maxlength="80" required></label>
+        <label>Comportamiento de referencia<select id="payment-method-reference-behavior"><option value="external_required">Referencia externa requerida</option><option value="internal_cash">Generar referencia interna</option></select></label>
+        <label>Orden<input id="payment-method-order" type="number" min="0" step="1" value="0" required></label>
+        <label class="checkbox-row"><input id="payment-method-active" type="checkbox" checked> Método activo</label>
+        <p id="payment-method-form-error" class="message error" role="alert"></p>
+        <div class="modal-actions"><button id="cancel-payment-method" class="secondary-button" type="button">Cancelar</button><button class="primary-button" type="submit">Guardar método</button></div>
       </form>
     </div>
 
@@ -545,12 +578,12 @@
           </div>
           <p id="private-access-help" class="muted"></p>
           <div id="generated-private-link" class="generated-private-link hidden">
-            <label>Enlace recién generado
+            <label>Enlace privado activo
               <input id="generated-private-link-value" type="text" readonly spellcheck="false">
             </label>
             <button id="copy-private-link" class="secondary-button" type="button">Copiar enlace</button>
-            <small>Este enlace solo se muestra ahora. Si se pierde, regenera el acceso.</small>
           </div>
+          <div id="private-access-history" class="private-access-history"></div>
           <div class="staff-summary-controls">
             <label>Idioma del PDF para gestión
               <select id="staff-summary-language">
@@ -560,6 +593,50 @@
             </label>
             <button id="download-staff-summary" class="secondary-button" type="button">Descargar resumen</button>
           </div>
+        </section>
+        <section class="request-financial-panel" aria-labelledby="request-financial-title">
+          <div class="request-private-heading">
+            <div><p class="eyebrow">Pagos verificados</p><h3 id="request-financial-title">Estado financiero</h3></div>
+            <strong id="financial-payment-status" class="private-access-state"></strong>
+          </div>
+          <div id="request-financial-summary" class="request-financial-summary"></div>
+          <p id="financial-review-warning" class="financial-review-warning hidden"></p>
+          <form id="quote-revision-form" class="financial-inline-form">
+            <label>Total cotizado (MXN)<input id="quote-total" type="number" min="0.01" step="0.01" required></label>
+            <label>Motivo del cambio<input id="quote-revision-reason" maxlength="500" placeholder="Requerido después de cualquier pago"></label>
+            <button id="save-quote-revision" class="secondary-button" type="submit">Actualizar cotización</button>
+            <small id="quote-revision-help" class="field-help"></small>
+          </form>
+          <details class="financial-action-card" open>
+            <summary>Registrar pago verificado</summary>
+            <form id="record-payment-form" class="financial-form-grid">
+              <input id="replacement-payment-id" type="hidden">
+              <label>Importe (MXN)<input id="payment-amount" type="number" min="0.01" step="0.01" required></label>
+              <label>Fecha del pago<input id="payment-date" type="date" required></label>
+              <label>Método<select id="payment-method" required></select></label>
+              <label id="payment-reference-label">Referencia<input id="payment-reference" maxlength="160"></label>
+              <label id="receipt-language-label">Idioma del recibo
+                <select id="receipt-language"><option value="es">Español</option><option value="en">English</option></select>
+              </label>
+              <div id="payment-preview" class="payment-preview full"></div>
+              <button id="record-payment-button" class="primary-button full" type="submit">Revisar y registrar pago</button>
+            </form>
+          </details>
+          <details id="credit-resolution-card" class="financial-action-card hidden">
+            <summary>Resolver saldo a favor</summary>
+            <form id="credit-resolution-form" class="financial-form-grid">
+              <label>Fecha de resolución<input id="credit-resolution-date" type="date" required></label>
+              <label>Referencia externa<input id="credit-resolution-reference" maxlength="160" required></label>
+              <label class="full">Nota interna opcional<textarea id="credit-resolution-note" maxlength="1000" rows="2"></textarea></label>
+              <button class="secondary-button full" type="submit">Marcar saldo completo como resuelto</button>
+            </form>
+          </details>
+        </section>
+        <section class="request-financial-panel" aria-labelledby="payment-history-title">
+          <div class="request-private-heading"><div><p class="eyebrow">Auditoría</p><h3 id="payment-history-title">Historial de pagos y recibos</h3></div></div>
+          <div id="staff-payment-history" class="staff-payment-history"></div>
+          <details class="quote-history-card"><summary>Historial de cotización</summary><div id="quote-revision-history" class="history-list"></div></details>
+          <details class="quote-history-card"><summary>Resoluciones de saldo a favor</summary><div id="credit-resolution-audit" class="history-list"></div></details>
         </section>
         <section class="request-status-panel">
           <div>

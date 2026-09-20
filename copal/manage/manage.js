@@ -1,5 +1,5 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
-import config from "../config/environment.js";
+import config from "../config/environment.js?v=10.7.0";
 import { calculateQuoteForUnits } from "../pricing-engine.mjs?v=10.4.0-2";
 
 const supabase = createClient(config.supabaseUrl, config.supabasePublishableKey);
@@ -15,6 +15,9 @@ const menuButton = $("#menu-button");
 const modal = $("#recipient-modal");
 const recipientForm = $("#recipient-form");
 const recipientMessage = $("#recipient-message");
+const paymentMethodModal = $("#payment-method-modal");
+const paymentMethodForm = $("#payment-method-form");
+const paymentMethodMessage = $("#payment-method-message");
 const serviceModal = $("#service-modal");
 const serviceForm = $("#service-form");
 const serviceMessage = $("#service-message");
@@ -29,6 +32,7 @@ const galleryMessage = $("#gallery-message");
 const refreshButton = $("#refresh-button");
 const refreshStatus = $("#refresh-status");
 let recipients = [];
+let paymentMethods = [];
 let defaultRecipientId = null;
 let services = [];
 let historyServiceId = null;
@@ -45,6 +49,7 @@ let heicConverterPromise = null;
 let galleryPreparationChain = Promise.resolve();
 let requestAccessState = null;
 let generatedPrivateLink = "";
+let requestFinancialState = null;
 
 const GALLERY_BUCKET = "copal-gallery";
 const GALLERY_MAX_FILE_SIZE = 50 * 1024 * 1024;
@@ -132,7 +137,6 @@ const REQUEST_REASON_LABELS = {
 };
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const PRIVATE_TOKEN_BYTES = 32;
 
 function showApp(show) {
   loginView.classList.toggle("hidden", show);
@@ -176,6 +180,11 @@ function setRecipientMessage(text = "", type = "") {
   recipientMessage.className = `message ${type}`.trim();
 }
 
+function setPaymentMethodMessage(text = "", type = "") {
+  paymentMethodMessage.textContent = text;
+  paymentMethodMessage.className = `message ${type}`.trim();
+}
+
 function setServiceMessage(text = "", type = "") {
   serviceMessage.textContent = text;
   serviceMessage.className = `message ${type}`.trim();
@@ -187,6 +196,18 @@ function setRequestMessage(text = "", type = "") {
 }
 
 function friendlyError(error) {
+  if (error?.message?.includes("authoritative positive quoted total")) return "Define primero un total cotizado mayor a cero.";
+  if (error?.message?.includes("Future payment")) return "La fecha del pago no puede estar en el futuro.";
+  if (error?.message?.includes("active payment method")) return "Selecciona un método de pago activo.";
+  if (error?.message?.includes("Payment reference is required")) return "Ingresa la referencia del pago.";
+  if (error?.message?.includes("Request status does not accept payments")) return "El estado actual de la solicitud no admite pagos.";
+  if (error?.message?.includes("void reason")) return "Escribe un motivo de anulación de al menos 5 caracteres.";
+  if (error?.message?.includes("resolved credit would exceed")) return "No se puede anular este pago porque dejaría una resolución de saldo a favor inconsistente.";
+  if (error?.message?.includes("Quoted total is locked")) return "La cotización está bloqueada porque ya se emitió un recibo final.";
+  if (error?.message?.includes("lower than active verified payments")) return "El total cotizado no puede ser menor que los pagos verificados activos.";
+  if (error?.message?.includes("quote revision reason")) return "Escribe el motivo del cambio de cotización.";
+  if (error?.message?.includes("No outstanding credit")) return "Ya no existe saldo a favor pendiente de resolver.";
+  if (error?.code === "23505" && detailRequestId) return "Ya existe un pago activo con esa referencia.";
   if (error?.code === "23505") return "Este n\u00famero ya est\u00e1 registrado.";
   if (error?.code === "23503") return "No se puede eliminar porque una solicitud conserva este servicio o una de sus versiones.";
   if (error?.message?.includes("default before")) return "Selecciona otro contacto predeterminado antes de continuar.";
@@ -232,27 +253,6 @@ function canEditPrivateRequest() {
 
 function activeDefaultRecipient() {
   return recipients.find((recipient) => recipient.id === defaultRecipientId && recipient.is_active) || null;
-}
-
-function createPrivateBearerToken() {
-  const bytes = crypto.getRandomValues(new Uint8Array(PRIVATE_TOKEN_BYTES));
-  const binary = Array.from(bytes, (byte) => String.fromCharCode(byte)).join("");
-  return btoa(binary).replaceAll("+", "-").replaceAll("/", "_").replace(/=+$/g, "");
-}
-
-async function sha256Hex(value) {
-  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
-  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
-}
-
-function privateRequestUrl(token) {
-  const local = ["localhost", "127.0.0.1", "[::1]"].includes(window.location.hostname)
-    || /^192\.168\./.test(window.location.hostname);
-  const url = local
-    ? new URL("../solicitud/", window.location.href)
-    : new URL("https://cebolletas.mx/copal/solicitud/");
-  url.hash = new URLSearchParams({ access: token }).toString();
-  return url.href;
 }
 
 function gallerySectionLabel(slug) {
@@ -1191,6 +1191,10 @@ function formatMoney(cents) {
   }).format(Number(cents || 0) / 100);
 }
 
+function pesosFromCents(cents) {
+  return (Number(cents) / 100).toFixed(2);
+}
+
 function serviceShareText(service, version = currentVersion(service)) {
   if (!version) return "";
   const lines = [
@@ -1396,11 +1400,61 @@ async function loadRecipients() {
   renderRecipients();
 }
 
+function renderPaymentMethods() {
+  const list = $("#payment-method-list");
+  list.innerHTML = paymentMethods.map((method) => `
+    <div class="payment-method-row">
+      <div><strong>${escapeHtml(method.label_es)}</strong><small>${escapeHtml(method.label_en)}</small></div>
+      <code>${escapeHtml(method.code)}</code>
+      <span>${method.reference_behavior === "internal_cash" ? "Referencia interna automática" : "Referencia externa requerida"}</span>
+      <span>${method.display_order}</span>
+      <span class="status-badge ${method.is_active ? "active" : "inactive"}">${method.is_active ? "Activo" : "Inactivo"}</span>
+      <div class="row-actions"><button data-payment-method-id="${method.id}" type="button" ${canEditManagement() ? "" : "disabled"}>Editar</button></div>
+    </div>`).join("");
+
+  const active = paymentMethods.filter((method) => method.is_active);
+  $("#payment-method").innerHTML = active.length
+    ? active.map((method) => `<option value="${method.id}">${escapeHtml(method.label_es)}</option>`).join("")
+    : '<option value="">Sin métodos activos</option>';
+  updatePaymentReferenceField();
+}
+
+async function loadPaymentMethods() {
+  const { data, error } = await supabase.from("payment_methods")
+    .select("id, code, label_es, label_en, reference_behavior, is_active, display_order, created_at, created_by, updated_at, updated_by")
+    .order("display_order").order("created_at");
+  if (error) throw error;
+  paymentMethods = data || [];
+  renderPaymentMethods();
+}
+
+function openPaymentMethodModal(method = null) {
+  if (!canEditManagement()) return;
+  paymentMethodForm.reset();
+  $("#payment-method-id").value = method?.id || "";
+  $("#payment-method-code").value = method?.code || "";
+  $("#payment-method-code").readOnly = Boolean(method);
+  $("#payment-method-label-es").value = method?.label_es || "";
+  $("#payment-method-label-en").value = method?.label_en || "";
+  $("#payment-method-reference-behavior").value = method?.reference_behavior || "external_required";
+  $("#payment-method-order").value = method?.display_order ?? paymentMethods.length * 10 + 10;
+  $("#payment-method-active").checked = method?.is_active ?? true;
+  $("#payment-method-modal-title").textContent = method ? "Editar método de pago" : "Agregar método de pago";
+  $("#payment-method-form-error").textContent = "";
+  paymentMethodModal.classList.remove("hidden");
+  $("#payment-method-label-es").focus();
+}
+
+function closePaymentMethodModal() {
+  paymentMethodModal.classList.add("hidden");
+}
+
 async function loadProfile(userId) {
   const { data, error } = await supabase.from("admin_profiles").select("display_name, role, active").eq("user_id", userId).single();
   if (error || !data?.active) throw new Error("Esta cuenta no tiene acceso administrativo activo.");
   managementProfile = data;
   $("#account-name").textContent = `${data.display_name} \u00b7 ${data.role}`;
+  $("#add-payment-method-button").disabled = !canEditManagement();
   syncGalleryEditorState();
 }
 
@@ -1415,6 +1469,7 @@ async function refreshManagementData({ announce = true } = {}) {
   try {
     await Promise.all([
       loadRecipients(),
+      loadPaymentMethods(),
       loadServices(),
       loadInformationRequests(),
       loadGalleryPhotos(),
@@ -1427,6 +1482,7 @@ async function refreshManagementData({ announce = true } = {}) {
         await Promise.all([
           loadRequestHistory(refreshedRequest.id),
           loadRequestAccessState(refreshedRequest.id),
+          loadRequestFinancialState(refreshedRequest.id),
         ]);
       } else {
         closeRequestDetail();
@@ -1476,10 +1532,6 @@ function openRecipientModal(recipient = null) {
 
 function closeRecipientModal() {
   modal.classList.add("hidden");
-}
-
-function pesosFromCents(cents) {
-  return Number(cents || 0) / 100;
 }
 
 function centsFromInput(selector) {
@@ -1970,19 +2022,22 @@ function closeCalculator() {
 
 function renderPrivateRequestPanel(request) {
   const editable = canEditPrivateRequest();
-  const eligible = request.status === "new";
+  const contactEditable = request.status === "new";
   const defaultContact = activeDefaultRecipient();
-  const active = Boolean(requestAccessState?.has_active_access);
+  const records = requestAccessState?.records || [];
+  const activeRecord = records.find((record) => record.active) || null;
+  const active = Boolean(activeRecord);
+  const eligible = Boolean(requestAccessState?.can_regenerate);
 
   $("#designated-contact-name").value = request.designated_contact_name || "";
   $("#designated-contact-phone").value = request.designated_contact_phone || "";
   $("#designated-contact-email").value = request.designated_contact_email || "";
   ["#designated-contact-name", "#designated-contact-phone", "#designated-contact-email", "#save-designated-contact"].forEach((selector) => {
-    $(selector).disabled = !editable || !eligible;
+    $(selector).disabled = !editable || !contactEditable;
   });
   $("#designated-contact-help").textContent = !editable
     ? "Tu perfil tiene acceso de consulta. Solo un administrador puede modificar este contacto."
-    : eligible
+    : contactEditable
       ? "Deja los tres campos vacíos para usar a la persona solicitante."
       : "El contacto designado solo puede cambiarse mientras la solicitud es nueva.";
 
@@ -1990,11 +2045,11 @@ function renderPrivateRequestPanel(request) {
   state.textContent = requestAccessState === null
     ? "Consultando…"
     : active
-      ? `Acceso activo · ${requestAccessState.language === "en" ? "English" : "Español"}`
+      ? `Acceso activo · ${activeRecord.language === "en" ? "English" : "Español"}`
       : "Sin acceso activo";
   state.classList.toggle("active", active);
 
-  const language = requestAccessState?.language || request.locale || "es";
+  const language = activeRecord?.language || records[0]?.language || request.locale || "es";
   $("#private-access-language").value = language === "en" ? "en" : "es";
   $("#staff-summary-language").value = language === "en" ? "en" : "es";
   $("#private-access-language").disabled = !editable || !eligible;
@@ -2006,23 +2061,39 @@ function renderPrivateRequestPanel(request) {
   $("#private-access-help").textContent = !editable
     ? "Tu perfil puede consultar y descargar el resumen, pero no publicar ni revocar enlaces."
     : !eligible
-      ? "Solo las solicitudes nuevas pueden publicar o regenerar enlaces. Un acceso vigente todavía puede revocarse."
+      ? "El estado o la vigencia de esta solicitud no permite generar un enlace utilizable."
       : !defaultContact
         ? "Activa y selecciona primero un contacto predeterminado de WhatsApp."
         : active
           ? "El idioma actual no cambia. Regenerar revoca inmediatamente el enlace anterior y publica uno nuevo."
-          : "El enlace contiene un token que solo se muestra una vez y no se guarda en texto legible.";
+          : records.some((record) => record.legacy)
+            ? "El enlace heredado sigue funcionando, pero no puede recuperarse. Regenera para crear uno recuperable."
+            : "El nuevo enlace se cifra en el servidor y podrá recuperarse por personal autorizado.";
 
+  generatedPrivateLink = activeRecord?.can_copy ? activeRecord.url : "";
   $("#generated-private-link").classList.toggle("hidden", !generatedPrivateLink);
   $("#generated-private-link-value").value = generatedPrivateLink;
+  const reasonLabels = { revoked: "Revocado", cancelled: "Solicitud cancelada", not_converted: "Solicitud no convertida", expired: "Vigencia terminada", terminal: "Estado terminal" };
+  $("#private-access-history").innerHTML = records.map((record) => `
+    <article class="private-access-record ${record.active ? "" : "inactive"}">
+      <strong>${record.active ? "Activo" : reasonLabels[record.inactive_reason] || "Inactivo"} · ${record.language === "en" ? "English" : "Español"}</strong>
+      <p>${formatDateTime(record.created_at)} · ${record.legacy ? "Enlace heredado no recuperable" : record.url ? escapeHtml(record.url) : "Enlace cifrado; la clave de esta versión no está disponible"}</p>
+    </article>`).join("");
+  renderFinancialState(request);
 }
 
 async function loadRequestAccessState(requestId) {
-  const { data, error } = await supabase.rpc("get_information_request_access_state", {
-    p_request_id: requestId,
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.access_token) throw new Error("Tu sesión terminó. Ingresa nuevamente.");
+  const response = await fetch(`${config.supabaseUrl}/functions/v1/private-access`, {
+    method: "POST",
+    headers: { authorization: `Bearer ${session.access_token}`, "content-type": "application/json" },
+    cache: "no-store",
+    referrerPolicy: "no-referrer",
+    body: JSON.stringify({ action: "list", request_id: requestId }),
   });
-  if (error) throw error;
-  requestAccessState = Array.isArray(data) ? data[0] || null : data;
+  if (!response.ok) throw new Error("No fue posible consultar el enlace privado.");
+  requestAccessState = await response.json();
   const request = informationRequests.find((item) => item.id === requestId);
   if (request) renderPrivateRequestPanel(request);
 }
@@ -2053,17 +2124,19 @@ async function saveDesignatedContact() {
 async function publishPrivateAccess() {
   const request = informationRequests.find((item) => item.id === detailRequestId);
   if (!request) return;
-  const rawToken = createPrivateBearerToken();
-  const tokenHash = await sha256Hex(rawToken);
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.access_token) throw new Error("Tu sesión terminó. Ingresa nuevamente.");
   const language = $("#private-access-language").value === "en" ? "en" : "es";
-  const { error } = await supabase.rpc("publish_information_request_access", {
-    p_request_id: request.id,
-    p_token_hash: tokenHash,
-    p_language: language,
+  const response = await fetch(`${config.supabaseUrl}/functions/v1/private-access`, {
+    method: "POST",
+    headers: { authorization: `Bearer ${session.access_token}`, "content-type": "application/json" },
+    cache: "no-store",
+    referrerPolicy: "no-referrer",
+    body: JSON.stringify({ action: "regenerate", request_id: request.id, language }),
   });
-  if (error) throw error;
-  generatedPrivateLink = privateRequestUrl(rawToken);
-  await loadRequestAccessState(request.id);
+  if (!response.ok) throw new Error("No fue posible generar el enlace privado.");
+  requestAccessState = await response.json();
+  renderPrivateRequestPanel(request);
 }
 
 async function revokePrivateAccess() {
@@ -2107,6 +2180,151 @@ async function downloadStaffSummary() {
   anchor.href = url;
   anchor.download = filename;
   anchor.rel = "noopener noreferrer";
+  document.body.append(anchor);
+  anchor.click();
+  anchor.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 30_000);
+}
+
+const PAYMENT_STATUS_LABELS = {
+  quote_required: "Cotización pendiente",
+  unpaid: "Sin pago",
+  partially_paid: "Pago parcial",
+  paid_in_full: "Pagado",
+  paid_in_full_with_credit: "Pagado con saldo a favor",
+};
+
+const RECEIPT_TYPE_LABELS = {
+  partial: "Recibo parcial",
+  final: "Recibo final",
+  final_credit: "Recibo final con saldo a favor",
+};
+
+function activeRecoverableLink() {
+  return requestAccessState?.records?.find((record) => record.active) || null;
+}
+
+function updatePaymentReferenceField() {
+  const method = paymentMethods.find((item) => item.id === $("#payment-method")?.value);
+  const automatic = method?.reference_behavior === "internal_cash";
+  $("#payment-reference-label")?.classList.toggle("hidden", automatic);
+  if ($("#payment-reference")) {
+    $("#payment-reference").required = !automatic;
+    if (automatic) $("#payment-reference").value = "";
+  }
+  renderPaymentPreview();
+}
+
+function renderPaymentPreview() {
+  const request = informationRequests.find((item) => item.id === detailRequestId);
+  const summary = requestFinancialState?.summary;
+  const amount = centsFromInput("#payment-amount");
+  const host = $("#payment-preview");
+  if (!request || !summary || amount <= 0 || !Number.isSafeInteger(summary.quoted_total_cents)) {
+    host.innerHTML = "";
+    return;
+  }
+  const gross = Number(summary.gross_verified_cents) + amount;
+  const effective = Math.max(gross - Number(summary.resolved_credit_cents), 0);
+  const balance = Math.max(Number(summary.quoted_total_cents) - effective, 0);
+  const credit = Math.max(gross - Number(summary.quoted_total_cents) - Number(summary.resolved_credit_cents), 0);
+  const receipt = effective < summary.quoted_total_cents ? "Recibo parcial" : credit > 0 ? "Recibo final con saldo a favor" : "Recibo final";
+  host.innerHTML = `<strong>Resultado previsto: ${receipt}</strong><br>Pagado verificado: ${formatMoney(effective)} · ${credit > 0 ? `Saldo a favor: ${formatMoney(credit)}` : `Saldo pendiente: ${formatMoney(balance)}`}${request.status === "new" ? "<br>La solicitud cambiará automáticamente de Nueva a Reservada." : ""}`;
+}
+
+function renderFinancialState(request) {
+  if (!requestFinancialState?.summary) {
+    $("#financial-payment-status").textContent = "Consultando…";
+    return;
+  }
+  const summary = requestFinancialState.summary;
+  $("#financial-payment-status").textContent = PAYMENT_STATUS_LABELS[summary.payment_status] || summary.payment_status;
+  $("#financial-payment-status").classList.toggle("active", summary.verified_paid_cents > 0);
+  $("#request-financial-summary").innerHTML = [
+    ["Total cotizado", summary.quoted_total_cents],
+    ["Pagado verificado", summary.verified_paid_cents],
+    ["Saldo pendiente", summary.balance_due_cents],
+    ["Saldo a favor", summary.credit_cents],
+  ].map(([label, value]) => `<article><span>${label}</span><strong>${value === null ? "Pendiente" : formatMoney(value)}</strong></article>`).join("");
+  $("#financial-review-warning").textContent = "Atención: esta reservación no conserva ningún pago verificado activo. Revisa si se requiere un reemplazo.";
+  $("#financial-review-warning").classList.toggle("hidden", !summary.staff_review_required);
+
+  $("#quote-total").value = summary.quoted_total_cents === null ? "" : pesosFromCents(summary.quoted_total_cents);
+  const quoteEditable = canEditManagement() && !summary.quote_locked && ["new", "booked"].includes(request.status);
+  $("#quote-total").disabled = !quoteEditable;
+  $("#quote-revision-reason").disabled = !quoteEditable;
+  $("#save-quote-revision").disabled = !quoteEditable;
+  $("#quote-revision-help").textContent = summary.quote_locked
+    ? "Bloqueada permanentemente porque ya se emitió un recibo final. Las correcciones se hacen anulando y reemplazando pagos."
+    : !canEditManagement()
+      ? "Solo un administrador puede cambiar la cotización."
+      : "Los cambios quedan auditados. Después de un pago, el motivo es obligatorio.";
+
+  const paymentAllowed = ["new", "booked"].includes(request.status)
+    && Number(summary.quoted_total_cents) > 0 && paymentMethods.some((method) => method.is_active);
+  $("#record-payment-form").querySelectorAll("input, select, button").forEach((control) => { control.disabled = !paymentAllowed; });
+  if (!$("#payment-date").value) $("#payment-date").value = mexicoCityDate();
+  $("#payment-date").max = mexicoCityDate();
+  const activeLink = activeRecoverableLink();
+  $("#receipt-language-label").classList.toggle("hidden", Boolean(activeLink));
+  $("#receipt-language").disabled = !paymentAllowed || Boolean(activeLink);
+  if (activeLink) $("#receipt-language").value = activeLink.language;
+  updatePaymentReferenceField();
+
+  $("#credit-resolution-card").classList.toggle("hidden", Number(summary.credit_cents) <= 0);
+  if (!$("#credit-resolution-date").value) $("#credit-resolution-date").value = mexicoCityDate();
+  $("#credit-resolution-date").max = mexicoCityDate();
+
+  const payments = requestFinancialState.payments || [];
+  $("#staff-payment-history").innerHTML = payments.length ? payments.map((payment) => `
+    <article class="staff-payment-item ${payment.voided_at ? "voided" : ""}">
+      <div class="staff-payment-item-head"><strong>${formatMoney(payment.amount_cents)} · ${escapeHtml(payment.method_label_es)}</strong><span class="status-badge ${payment.voided_at ? "inactive" : "active"}">${payment.voided_at ? "Anulado" : "Activo"}</span></div>
+      <p>Pago: ${formatDate(payment.payment_date)} · Referencia completa: ${escapeHtml(payment.reference_full)}<br>Registrado por ${escapeHtml(payment.recorded_by_name || payment.recorded_by)} · ${formatDateTime(payment.recorded_at)}<br>${escapeHtml(payment.receipt_number)} · ${RECEIPT_TYPE_LABELS[payment.receipt_type] || payment.receipt_type}${payment.replacement_for_payment_id ? `<br>Reemplaza el pago ${escapeHtml(payment.replacement_for_payment_id)}` : ""}${payment.voided_at ? `<br>Anulado por ${escapeHtml(payment.voided_by_name || payment.voided_by)} · ${formatDateTime(payment.voided_at)}<br>Motivo: ${escapeHtml(payment.void_reason)}` : ""}</p>
+      <div class="staff-payment-actions">
+        <button data-payment-action="receipt" data-receipt-id="${payment.receipt_id}" type="button">Descargar recibo</button>
+        ${payment.voided_at ? `<button data-payment-action="replace" data-payment-id="${payment.id}" type="button">Crear reemplazo</button>` : `<button class="danger" data-payment-action="void" data-payment-id="${payment.id}" type="button">Anular pago</button>`}
+      </div>
+    </article>`).join("") : '<p class="muted">Aún no hay pagos registrados.</p>';
+
+  $("#quote-revision-history").innerHTML = (requestFinancialState.quote_revisions || []).map((revision) => `
+    <article class="history-item"><strong>${revision.previous_total_cents === null ? "Sin cotización" : formatMoney(revision.previous_total_cents)} → ${formatMoney(revision.new_total_cents)}</strong><p>${escapeHtml(revision.reason || "Cotización inicial")}</p><p>${escapeHtml(revision.changed_by_name || revision.changed_by)} · ${formatDateTime(revision.changed_at)}</p></article>`).join("") || '<p class="muted">Sin revisiones.</p>';
+  $("#credit-resolution-audit").innerHTML = (requestFinancialState.credit_resolutions || []).map((resolution) => `
+    <article class="history-item"><strong>${formatMoney(resolution.amount_cents)} · ${formatDate(resolution.resolution_date)}</strong><p>Referencia completa: ${escapeHtml(resolution.reference_full)}</p>${resolution.internal_note ? `<p>${escapeHtml(resolution.internal_note)}</p>` : ""}<p>${escapeHtml(resolution.resolved_by_name || resolution.resolved_by)} · ${formatDateTime(resolution.resolved_at)}</p></article>`).join("") || '<p class="muted">Sin resoluciones.</p>';
+  renderPaymentPreview();
+}
+
+async function loadRequestFinancialState(requestId) {
+  const { data, error } = await supabase.rpc("get_information_request_financial_state", { p_request_id: requestId });
+  if (error) throw error;
+  requestFinancialState = data;
+  const request = informationRequests.find((item) => item.id === requestId);
+  if (request) renderFinancialState(request);
+}
+
+async function refreshOpenRequest(requestId) {
+  await loadInformationRequests();
+  const request = informationRequests.find((item) => item.id === requestId);
+  if (!request) return;
+  renderRequestDetail(request);
+  await Promise.all([loadRequestHistory(requestId), loadRequestAccessState(requestId), loadRequestFinancialState(requestId)]);
+}
+
+async function downloadPaymentReceipt(receiptId) {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.access_token) throw new Error("Tu sesión terminó. Ingresa nuevamente.");
+  const response = await fetch(`${config.supabaseUrl}/functions/v1/request-summary`, {
+    method: "POST",
+    headers: { authorization: `Bearer ${session.access_token}`, "content-type": "application/json" },
+    cache: "no-store",
+    referrerPolicy: "no-referrer",
+    body: JSON.stringify({ receipt_id: receiptId, format: "receipt_pdf" }),
+  });
+  if (!response.ok || !response.headers.get("content-type")?.includes("application/pdf")) throw new Error("No fue posible descargar el recibo.");
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = response.headers.get("content-disposition")?.match(/filename="([^"]+)"/)?.[1] || "Recibo_Cebolletas.pdf";
   document.body.append(anchor);
   anchor.click();
   anchor.remove();
@@ -2199,6 +2417,7 @@ async function loadRequestHistory(requestId) {
 async function openRequestDetail(request) {
   syncRequestUrl(request.id);
   requestAccessState = null;
+  requestFinancialState = null;
   generatedPrivateLink = "";
   renderRequestDetail(request);
   requestDetailModal.classList.remove("hidden");
@@ -2207,6 +2426,7 @@ async function openRequestDetail(request) {
     await Promise.all([
       loadRequestHistory(request.id),
       loadRequestAccessState(request.id),
+      loadRequestFinancialState(request.id),
     ]);
   } catch (error) {
     requestDetailMessage.textContent = friendlyError(error);
@@ -2217,6 +2437,7 @@ async function openRequestDetail(request) {
 function closeRequestDetail() {
   detailRequestId = null;
   requestAccessState = null;
+  requestFinancialState = null;
   generatedPrivateLink = "";
   requestDetailModal.classList.add("hidden");
   syncRequestUrl();
@@ -2290,6 +2511,7 @@ async function changeRequestStatus(button) {
       await Promise.all([
         loadRequestHistory(refreshed.id),
         loadRequestAccessState(refreshed.id),
+        loadRequestFinancialState(refreshed.id),
       ]);
       requestDetailMessage.textContent = `Estado actualizado a ${REQUEST_STATUS_LABELS[nextStatus].toLowerCase()}.`;
       requestDetailMessage.className = "message success";
@@ -2316,6 +2538,34 @@ loginForm.addEventListener("submit", async (event) => {
   submit.textContent = "Ingresar";
   if (error) return void (loginError.textContent = "Correo o contrase\u00f1a incorrectos.");
   await startSession(data.session);
+});
+
+paymentMethodForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  if (!canEditManagement()) return;
+  const submit = paymentMethodForm.querySelector('[type="submit"]');
+  submit.disabled = true;
+  $("#payment-method-form-error").textContent = "";
+  const { error } = await supabase.rpc("save_payment_method", {
+    p_method_id: $("#payment-method-id").value || null,
+    p_code: $("#payment-method-code").value.trim(),
+    p_label_es: $("#payment-method-label-es").value.trim(),
+    p_label_en: $("#payment-method-label-en").value.trim(),
+    p_reference_behavior: $("#payment-method-reference-behavior").value,
+    p_is_active: $("#payment-method-active").checked,
+    p_display_order: Number($("#payment-method-order").value),
+  });
+  submit.disabled = false;
+  if (error) return void ($("#payment-method-form-error").textContent = friendlyError(error));
+  closePaymentMethodModal();
+  await loadPaymentMethods();
+  setPaymentMethodMessage("Método de pago guardado.", "success");
+});
+
+$("#payment-method-list").addEventListener("click", (event) => {
+  const button = event.target.closest("[data-payment-method-id]");
+  const method = paymentMethods.find((item) => item.id === button?.dataset.paymentMethodId);
+  if (method) openPaymentMethodModal(method);
 });
 
 recipientForm.addEventListener("submit", async (event) => {
@@ -2571,6 +2821,144 @@ $("#request-status-actions").addEventListener("click", (event) => {
   if (button && !button.disabled) changeRequestStatus(button);
 });
 
+$("#payment-method").addEventListener("change", updatePaymentReferenceField);
+$("#payment-amount").addEventListener("input", renderPaymentPreview);
+
+$("#record-payment-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const request = informationRequests.find((item) => item.id === detailRequestId);
+  const amountCents = centsFromInput("#payment-amount");
+  const method = paymentMethods.find((item) => item.id === $("#payment-method").value);
+  if (!request || !requestFinancialState?.summary || amountCents <= 0 || !method) return;
+  const gross = Number(requestFinancialState.summary.gross_verified_cents) + amountCents;
+  const effective = Math.max(gross - Number(requestFinancialState.summary.resolved_credit_cents), 0);
+  const balance = Math.max(Number(requestFinancialState.summary.quoted_total_cents) - effective, 0);
+  const credit = Math.max(gross - Number(requestFinancialState.summary.quoted_total_cents) - Number(requestFinancialState.summary.resolved_credit_cents), 0);
+  const receiptType = effective < requestFinancialState.summary.quoted_total_cents ? "parcial" : credit > 0 ? "final con saldo a favor" : "final";
+  if (!window.confirm(`Registrar ${formatMoney(amountCents)} como pago verificado por ${method.label_es}?\n\nSe emitirá un recibo ${receiptType}. ${credit > 0 ? `Saldo a favor: ${formatMoney(credit)}.` : `Saldo pendiente: ${formatMoney(balance)}.`}${request.status === "new" ? "\nLa solicitud cambiará a Reservada." : ""}`)) return;
+
+  const button = $("#record-payment-button");
+  button.disabled = true;
+  requestDetailMessage.textContent = "Registrando pago y emitiendo recibo…";
+  requestDetailMessage.className = "message";
+  const { data, error } = await supabase.rpc("record_verified_payment", {
+    p_request_id: request.id,
+    p_amount_cents: amountCents,
+    p_payment_date: $("#payment-date").value,
+    p_payment_method_id: method.id,
+    p_reference: method.reference_behavior === "internal_cash" ? null : $("#payment-reference").value.trim(),
+    p_receipt_language: activeRecoverableLink() ? null : $("#receipt-language").value,
+    p_replacement_for_payment_id: $("#replacement-payment-id").value || null,
+  });
+  if (error) {
+    button.disabled = false;
+    requestDetailMessage.textContent = friendlyError(error);
+    requestDetailMessage.className = "message error";
+    return;
+  }
+  $("#record-payment-form").reset();
+  $("#replacement-payment-id").value = "";
+  $("#payment-date").value = mexicoCityDate();
+  await refreshOpenRequest(request.id);
+  requestDetailMessage.textContent = `Pago registrado. Se emitió ${data?.receipt_number || "el recibo correspondiente"}.`;
+  requestDetailMessage.className = "message success";
+});
+
+$("#quote-revision-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const request = informationRequests.find((item) => item.id === detailRequestId);
+  if (!request) return;
+  const newTotal = centsFromInput("#quote-total");
+  if (!window.confirm(`Cambiar el total cotizado de ${requestFinancialState?.summary?.quoted_total_cents === null ? "sin cotización" : formatMoney(requestFinancialState.summary.quoted_total_cents)} a ${formatMoney(newTotal)}?`)) return;
+  const button = $("#save-quote-revision");
+  button.disabled = true;
+  const { error } = await supabase.rpc("revise_information_request_quote", {
+    p_request_id: request.id,
+    p_new_total_cents: newTotal,
+    p_reason: $("#quote-revision-reason").value.trim() || null,
+  });
+  if (error) {
+    button.disabled = false;
+    requestDetailMessage.textContent = friendlyError(error);
+    requestDetailMessage.className = "message error";
+    return;
+  }
+  await refreshOpenRequest(request.id);
+  requestDetailMessage.textContent = "Cotización actualizada y registrada en el historial.";
+  requestDetailMessage.className = "message success";
+});
+
+$("#credit-resolution-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const request = informationRequests.find((item) => item.id === detailRequestId);
+  const credit = Number(requestFinancialState?.summary?.credit_cents || 0);
+  if (!request || credit <= 0) return;
+  if (!window.confirm(`Confirmar que el saldo a favor completo de ${formatMoney(credit)} fue resuelto fuera de la aplicación?`)) return;
+  const button = event.currentTarget.querySelector('[type="submit"]');
+  button.disabled = true;
+  const { error } = await supabase.rpc("resolve_information_request_credit", {
+    p_request_id: request.id,
+    p_resolution_date: $("#credit-resolution-date").value,
+    p_reference: $("#credit-resolution-reference").value.trim(),
+    p_internal_note: $("#credit-resolution-note").value.trim() || null,
+  });
+  if (error) {
+    button.disabled = false;
+    requestDetailMessage.textContent = friendlyError(error);
+    requestDetailMessage.className = "message error";
+    return;
+  }
+  event.currentTarget.reset();
+  await refreshOpenRequest(request.id);
+  requestDetailMessage.textContent = "Saldo a favor marcado como resuelto.";
+  requestDetailMessage.className = "message success";
+});
+
+$("#staff-payment-history").addEventListener("click", async (event) => {
+  const button = event.target.closest("[data-payment-action]");
+  if (!button) return;
+  const action = button.dataset.paymentAction;
+  if (action === "receipt") {
+    button.disabled = true;
+    try { await downloadPaymentReceipt(button.dataset.receiptId); }
+    catch (error) {
+      requestDetailMessage.textContent = friendlyError(error);
+      requestDetailMessage.className = "message error";
+    } finally { button.disabled = false; }
+    return;
+  }
+  const payment = requestFinancialState?.payments?.find((item) => item.id === button.dataset.paymentId);
+  if (!payment) return;
+  if (action === "replace") {
+    $("#replacement-payment-id").value = payment.id;
+    $("#payment-amount").value = pesosFromCents(payment.amount_cents);
+    $("#payment-date").value = mexicoCityDate();
+    if (paymentMethods.some((method) => method.id === payment.payment_method_id && method.is_active)) $("#payment-method").value = payment.payment_method_id;
+    $("#payment-reference").value = payment.reference_full;
+    updatePaymentReferenceField();
+    $("#record-payment-form").scrollIntoView({ behavior: "smooth", block: "center" });
+    requestDetailMessage.textContent = "Reemplazo preparado. Revisa todos los datos antes de confirmar.";
+    requestDetailMessage.className = "message";
+    return;
+  }
+  if (action === "void") {
+    const reason = window.prompt("Motivo obligatorio de la anulación:");
+    if (!reason) return;
+    if (!window.confirm(`Anular el pago de ${formatMoney(payment.amount_cents)}? El recibo quedará marcado como anulado.`)) return;
+    button.disabled = true;
+    const { error } = await supabase.rpc("void_verified_payment", { p_payment_id: payment.id, p_reason: reason.trim() });
+    if (error) {
+      button.disabled = false;
+      requestDetailMessage.textContent = friendlyError(error);
+      requestDetailMessage.className = "message error";
+      return;
+    }
+    await refreshOpenRequest(detailRequestId);
+    requestDetailMessage.textContent = "Pago anulado. La reservación conserva su estado.";
+    requestDetailMessage.className = "message success";
+  }
+});
+
 $("#designated-contact-form").addEventListener("submit", async (event) => {
   event.preventDefault();
   const button = $("#save-designated-contact");
@@ -2591,13 +2979,13 @@ $("#designated-contact-form").addEventListener("submit", async (event) => {
 $("#publish-private-access").addEventListener("click", async (event) => {
   const button = event.currentTarget;
   button.disabled = true;
-  requestDetailMessage.textContent = requestAccessState?.has_active_access
+  requestDetailMessage.textContent = activeRecoverableLink()
     ? "Regenerando acceso privado…"
     : "Generando acceso privado…";
   requestDetailMessage.className = "message";
   try {
     await publishPrivateAccess();
-    requestDetailMessage.textContent = "Enlace privado generado. Cópialo ahora; no volverá a mostrarse.";
+    requestDetailMessage.textContent = "Enlace privado generado y guardado cifrado para recuperación autorizada.";
     requestDetailMessage.className = "message success";
     $("#generated-private-link-value").focus();
     $("#generated-private-link-value").select();
@@ -2802,12 +3190,18 @@ document.querySelectorAll("[data-go]").forEach((button) => button.addEventListen
 $("#add-recipient-button").addEventListener("click", () => {
   if (canEditManagement()) openRecipientModal();
 });
+$("#add-payment-method-button").addEventListener("click", () => {
+  if (canEditManagement()) openPaymentMethodModal();
+});
 $("#add-service-button").addEventListener("click", () => {
   if (canEditManagement()) openServiceModal();
 });
 $("#close-recipient-modal").addEventListener("click", closeRecipientModal);
 $("#cancel-recipient").addEventListener("click", closeRecipientModal);
 $(".modal-backdrop").addEventListener("click", closeRecipientModal);
+$("#close-payment-method-modal").addEventListener("click", closePaymentMethodModal);
+$("#cancel-payment-method").addEventListener("click", closePaymentMethodModal);
+$(".payment-method-modal-backdrop").addEventListener("click", closePaymentMethodModal);
 $("#close-service-modal").addEventListener("click", closeServiceModal);
 $("#cancel-service").addEventListener("click", closeServiceModal);
 $(".service-modal-backdrop").addEventListener("click", closeServiceModal);

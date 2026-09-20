@@ -11,10 +11,17 @@ Supported requests:
 - `{ "token": "...", "format": "pdf" }` returns the current one-page PDF.
 - Authenticated management users may send `{ "request_id": "...", "language":
   "es", "format": "pdf" }` to generate a staff PDF after visitor access ends.
+- `{ "token": "...", "verification_code": "...", "format": "receipt_pdf" }`
+  returns an active receipt from its immutable issuance snapshot.
+- Authenticated management users may send `{ "receipt_id": "...", "format":
+  "receipt_pdf" }` to download any receipt retained in the staff audit history.
+- `{ "verification_code": "...", "format": "verification" }` returns only the
+  receipt identity, number, issue date, amount, currency, and current
+  valid/voided state.
 
 The function requires the standard hosted Supabase values `SUPABASE_URL`,
 `SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY`. Do not expose the service
 role key in browser configuration.
 
-Deploy only after applying the v10.6.0 migration. Deployment is intentionally
+Deploy only after applying the v10.7.0 migration. Deployment is intentionally
 outside the release commit workflow.

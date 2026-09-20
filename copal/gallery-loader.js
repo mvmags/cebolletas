@@ -77,7 +77,7 @@ async function loadGalleryManifest(config) {
 document.documentElement.dataset.gallerySource = "loading";
 try {
   const { default: config } = await withTimeout(
-    import("./config/environment.js"),
+    import("./config/environment.js?v=10.7.0"),
     "Gallery dependencies timed out."
   );
   publishGalleryManifest(await loadGalleryManifest(config), "supabase");

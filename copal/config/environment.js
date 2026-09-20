@@ -1,6 +1,6 @@
 const DEVELOPMENT_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
 const isDevelopment = DEVELOPMENT_HOSTS.has(window.location.hostname);
-const modulePath = isDevelopment ? "./development.js" : "./production.js";
+const modulePath = isDevelopment ? "./development.js?v=10.7.0" : "./production.js?v=10.7.0";
 
 let config;
 
@@ -17,8 +17,11 @@ try {
   throw error;
 }
 
+const isValidSupabaseUrl = config?.supabaseUrl?.startsWith("https://")
+  || (isDevelopment && config?.supabaseUrl?.startsWith("http://"));
+
 if (
-  !config?.supabaseUrl?.startsWith("https://") ||
+  !isValidSupabaseUrl ||
   !config?.supabasePublishableKey ||
   config.supabaseUrl.includes("YOUR_") ||
   config.supabasePublishableKey.includes("YOUR_")

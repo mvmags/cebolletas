@@ -6,3 +6,6 @@ verify_jwt = false
 [functions.request-summary]
 verify_jwt = false
 static_files = ["./functions/request-summary/assets/*.png"]
+
+[functions.private-access]
+verify_jwt = false

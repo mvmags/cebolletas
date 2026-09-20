@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
+    <meta name="referrer" content="no-referrer">
+    <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0">
+    <meta http-equiv="Pragma" content="no-cache">
+    <title>Verificar recibo | Cebolletas Copal</title>
+    <link rel="stylesheet" href="verificar-recibo.css?v=10.7.0">
+  </head>
+  <body>
+    <main class="verification-shell">
+      <header class="brand-row">
+        <img src="../assets/logo-xanadu.png" alt="Cebolletas">
+        <span></span>
+        <img src="../assets/logo-copal-black.png" alt="Cebolletas Copal">
+      </header>
+
+      <section id="loading-state" class="state-card" aria-live="polite">
+        <p class="eyebrow">Verificación segura · Secure verification</p>
+        <h1>Consultando recibo…</h1>
+      </section>
+
+      <section id="unavailable-state" class="state-card hidden" aria-live="polite">
+        <p class="eyebrow">Cebolletas · Cebolletas Copal</p>
+        <h1>Recibo no disponible</h1>
+        <p>No fue posible verificar este código.</p>
+        <hr>
+        <h2>Receipt unavailable</h2>
+        <p>We could not verify this code.</p>
+      </section>
+
+      <section id="receipt-state" class="state-card hidden" aria-live="polite">
+        <p class="eyebrow">Cebolletas · Cebolletas Copal</p>
+        <h1>Verificación de recibo</h1>
+        <p class="english-title">Receipt verification</p>
+        <div class="verification-grid">
+          <div><span>Recibo · Receipt</span><strong id="receipt-number"></strong></div>
+          <div><span>Fecha de emisión · Issue date</span><strong id="issued-at"></strong></div>
+          <div><span>Pago · Payment</span><strong id="payment-amount"></strong></div>
+          <div><span>Vigencia · Validity</span><strong id="validity" class="validity"></strong></div>
+        </div>
+        <p class="privacy-note">Esta página confirma únicamente los datos mostrados. No contiene información personal ni detalles de la reservación.<br>This page confirms only the information shown. It contains no personal or reservation details.</p>
+      </section>
+    </main>
+    <script type="module" src="verificar-recibo.js?v=10.7.0"></script>
+  </body>
+</html>

@@ -1,3 +1,5 @@
 .DS_Store
 copal/config/development.js
+copal/supabase/functions/.env.local
 copal/supabase/.branches/
+/tmp/
