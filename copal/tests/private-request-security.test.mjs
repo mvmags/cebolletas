@@ -29,6 +29,8 @@ assert.match(privateAccessEdge, /PRIVATE_LINK_ENCRYPTION_KEY_VERSION/);
 assert.match(privateAccessEdge, /PRIVATE_LINK_ENCRYPTION_KEYS/);
 assert.match(privateAccessEdge, /publish_recoverable_information_request_access/);
 assert.match(privateAccessEdge, /staff\.role !== "admin"/);
+assert.match(privateAccessEdge, /if \(encrypted\) \{[\s\S]*?url = privateUrl\(await decryptToken\(row\)\)/);
+assert.match(privateAccessEdge, /can_copy: active && Boolean\(url\)/);
 assert.doesNotMatch(privateAccessEdge, /console\.(?:log|error)\([^\n]*(?:token|url|ciphertext)/i);
 assert.match(verifiedPaymentsMigration, /token_ciphertext text/);
 assert.match(verifiedPaymentsMigration, /revoke execute on function public\.publish_information_request_access/);

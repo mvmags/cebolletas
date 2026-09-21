@@ -9,6 +9,7 @@ declare
   v_quote_request_id uuid;
   v_cash_request_id uuid;
   v_invalid_request_id uuid;
+  v_reference_scope_request_id uuid;
   v_access_id uuid := gen_random_uuid();
   v_spei_id uuid;
   v_cash_id uuid;
@@ -110,11 +111,33 @@ begin
     raise exception 'Public projection did not mask the payment reference: %', v_projection;
   end if;
 
+  -- Identical external text is allowed for different methods, but not for the
+  -- same request and payment method.
+  insert into public.information_requests (
+    submission_key, locale, customer_name, customer_email, customer_cellphone,
+    checkin_date, checkout_date, adults, children, infants, requested_services,
+    pricing_status, estimated_total_cents, currency_code, quote_snapshot
+  ) values (
+    gen_random_uuid(), 'es', 'Reference Scope Test', 'reference@example.com',
+    '+524495551006', current_date + 20, current_date + 21, 1, 0, 0,
+    array['copal'], 'estimated', 100000, 'MXN', '{}'::jsonb
+  ) returning id into v_reference_scope_request_id;
+  perform public.record_verified_payment(
+    v_reference_scope_request_id, 1000, v_today, v_spei_id, 'SHARED-REFERENCE-001', 'es', null
+  );
+  perform public.record_verified_payment(
+    v_reference_scope_request_id, 1000, v_today, v_deposit_id, 'SHARED-REFERENCE-001', 'es', null
+  );
+  if (select count(*) from public.reservation_payments
+      where information_request_id = v_reference_scope_request_id
+        and voided_at is null) <> 2 then
+    raise exception 'Same external reference was not retained across different methods';
+  end if;
   begin
     perform public.record_verified_payment(
-      v_request_id, 1000, v_today, v_deposit_id, 'SPEI-EXTERNAL-001', null, null
+      v_reference_scope_request_id, 1000, v_today, v_spei_id, 'SHARED-REFERENCE-001', 'es', null
     );
-    raise exception 'Duplicate active external reference was accepted across methods';
+    raise exception 'Duplicate active external reference was accepted for the same method';
   exception when unique_violation then null;
   end;
   begin

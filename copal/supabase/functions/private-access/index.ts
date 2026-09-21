@@ -220,9 +220,10 @@ async function listAccess(requestId: string): Promise<JsonObject> {
     const active = !row.revoked_at && eligible;
     let url: string | null = null;
     let recoveryError: string | null = null;
-    // Only the currently valid link is ever revealed. Historical envelopes stay
-    // encrypted for audit/key-rotation purposes and are never returned as URLs.
-    if (encrypted && active) {
+    // Authenticated management staff may recover both the active link and
+    // encrypted historical links. Inactive links remain permanently unusable
+    // and are never offered through the copy action.
+    if (encrypted) {
       try {
         url = privateUrl(await decryptToken(row));
       } catch {

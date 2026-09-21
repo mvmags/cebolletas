@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 
 const read = (path) => readFileSync(new URL(path, import.meta.url), "utf8");
 const migration = read("../supabase/migrations/20260908_v10_7_0_verified_payments.sql");
+const referenceScopeMigration = read("../supabase/migrations/20260921_v10_7_0_payment_reference_scope.sql");
 const manage = read("../manage/manage.js");
 const customer = read("../solicitud/solicitud.js");
 const edge = read("../supabase/functions/request-summary/index.ts");
@@ -23,6 +24,10 @@ assert.match(migration, /create function public\.resolve_information_request_cre
 assert.match(migration, /create function public\.save_payment_method[\s\S]*?public\.is_active_admin_writer\(\)/);
 assert.match(migration, /for update/);
 assert.match(migration, /reservation_payments_active_reference_unique/);
+assert.match(
+  referenceScopeMigration,
+  /information_request_id,\s*payment_method_id,\s*lower\(reference_full\)/,
+);
 assert.match(migration, /payment_receipts_no_update_or_delete/);
 assert.match(migration, /Request status does not accept payments/);
 assert.match(migration, /Future payment dates are not allowed/);
