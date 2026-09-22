@@ -19,6 +19,8 @@ assert.match(pageJs, /window\.location\.hash\.slice\(1\)/);
 assert.match(pageJs, /history\.replaceState/);
 assert.match(pageJs, /body: JSON\.stringify\(\{ token: accessToken, format: "json" \}\)/);
 assert.doesNotMatch(pageJs, /[?&](access|token)=/);
+assert.doesNotMatch(pageHtml, /pdf-action|Descargar Resumen de solicitud|Download Request summary/);
+assert.doesNotMatch(pageJs, /downloadPdf|format: "pdf"/);
 assert.doesNotMatch(pageHtml, /<script[^>]+(?:analytics|tagmanager|facebook|hotjar)/i);
 
 assert.doesNotMatch(manageJs, /PRIVATE_TOKEN_BYTES|createPrivateBearerToken|sha256Hex\(rawToken\)/);

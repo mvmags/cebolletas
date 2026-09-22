@@ -278,7 +278,19 @@ export async function generatePaymentReceiptPdf(data: PaymentReceiptSnapshot, as
   label(page, copy.verification, 145, verificationTop - 14, bold);
   page.drawText(safe(data.verification_code), { x: 145, y: verificationTop - 31, font: bold, size: 7.4, color: FOREST });
   drawWrapped(page, copy.verifyHint, 145, verificationTop - 48, 255, regular, 8.1, MUTED);
-  drawWrapped(page, "cebolletas.mx/copal/verificar-recibo/", 145, verificationTop - 72, 255, regular, 7.8, FOREST);
+  const verificationUrl = safe(data.verification_url);
+  const verificationUrlWidth = 419;
+  let verificationUrlSize = 7.2;
+  while (verificationUrlSize > 5.5 && regular.widthOfTextAtSize(verificationUrl, verificationUrlSize) > verificationUrlWidth) {
+    verificationUrlSize -= 0.2;
+  }
+  page.drawText(verificationUrl, {
+    x: 145,
+    y: verificationTop - 72,
+    font: regular,
+    size: verificationUrlSize,
+    color: FOREST,
+  });
 
   const disclaimer = `${copy.generalDisclaimer} ${data.receipt_type === "partial" ? copy.partialDisclaimer : copy.finalDisclaimer}`;
   page.drawRectangle({ x: 24, y: 24, width: 564, height: 84, color: rgb(0.96, 0.95, 0.92) });

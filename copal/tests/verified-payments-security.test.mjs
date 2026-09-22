@@ -54,6 +54,8 @@ assert.match(verification, /history\.replaceState/);
 
 assert.match(receiptPdf, /qrcode@1\.5\.4/);
 assert.match(receiptPdf, /Cebolletas Copal verified payments/);
+assert.match(receiptPdf, /const verificationUrl = safe\(data\.verification_url\)/);
+assert.doesNotMatch(receiptPdf, /drawWrapped\(page, "cebolletas\.mx\/copal\/verificar-recibo\/"/);
 assert.match(receiptPdf, /No constituye un CFDI ni sustituye una factura fiscal/);
 assert.match(receiptPdf, /does not replace a tax invoice/);
 assert.doesNotMatch(receiptPdf, /reference_full/);
