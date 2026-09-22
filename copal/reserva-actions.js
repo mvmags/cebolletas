@@ -1,6 +1,6 @@
 // Reserva validation and delivery actions.
 // Intentionally independent from the Version 4 navigation code.
-import config from "./config/environment.js";
+import config from "./config/environment.js?v=10.7.0";
 import { calculateQuote } from "./pricing-engine.mjs?v=10.4.0-3";
 
 (function initReservaActions() {

@@ -9,6 +9,8 @@ const edge = read("../supabase/functions/request-summary/index.ts");
 const pdf = read("../supabase/functions/request-summary/pdf.ts");
 const migration = read("../supabase/migrations/20260901_v10_6_0_private_request_access.sql");
 const config = read("../supabase/config.toml");
+const privateAccessEdge = read("../supabase/functions/private-access/index.ts");
+const verifiedPaymentsMigration = read("../supabase/migrations/20260908_v10_7_0_verified_payments.sql");
 
 assert.match(pageHtml, /meta name="robots" content="noindex, nofollow, noarchive, nosnippet"/);
 assert.match(pageHtml, /meta name="referrer" content="no-referrer"/);
@@ -19,11 +21,19 @@ assert.match(pageJs, /body: JSON\.stringify\(\{ token: accessToken, format: "jso
 assert.doesNotMatch(pageJs, /[?&](access|token)=/);
 assert.doesNotMatch(pageHtml, /<script[^>]+(?:analytics|tagmanager|facebook|hotjar)/i);
 
-assert.match(manageJs, /PRIVATE_TOKEN_BYTES = 32/);
-assert.match(manageJs, /crypto\.getRandomValues/);
-assert.match(manageJs, /sha256Hex\(rawToken\)/);
-assert.match(manageJs, /publish_information_request_access/);
+assert.doesNotMatch(manageJs, /PRIVATE_TOKEN_BYTES|createPrivateBearerToken|sha256Hex\(rawToken\)/);
+assert.match(manageJs, /functions\/v1\/private-access/);
 assert.doesNotMatch(manageJs, /SUPABASE_SERVICE_ROLE_KEY|service_role/i);
+assert.match(privateAccessEdge, /name: "AES-GCM"/);
+assert.match(privateAccessEdge, /PRIVATE_LINK_ENCRYPTION_KEY_VERSION/);
+assert.match(privateAccessEdge, /PRIVATE_LINK_ENCRYPTION_KEYS/);
+assert.match(privateAccessEdge, /publish_recoverable_information_request_access/);
+assert.match(privateAccessEdge, /staff\.role !== "admin"/);
+assert.match(privateAccessEdge, /if \(encrypted\) \{[\s\S]*?url = privateUrl\(await decryptToken\(row\)\)/);
+assert.match(privateAccessEdge, /can_copy: active && Boolean\(url\)/);
+assert.doesNotMatch(privateAccessEdge, /console\.(?:log|error)\([^\n]*(?:token|url|ciphertext)/i);
+assert.match(verifiedPaymentsMigration, /token_ciphertext text/);
+assert.match(verifiedPaymentsMigration, /revoke execute on function public\.publish_information_request_access/);
 
 assert.match(migration, /token_hash text not null unique/);
 assert.match(migration, /where revoked_at is null/);

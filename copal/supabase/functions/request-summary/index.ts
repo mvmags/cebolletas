@@ -3,6 +3,11 @@ import {
   requestSummaryFilename,
   RequestSummaryData,
 } from "./pdf.ts";
+import {
+  generatePaymentReceiptPdf,
+  paymentReceiptFilename,
+  PaymentReceiptSnapshot,
+} from "./receipt-pdf.ts";
 
 type JsonObject = Record<string, unknown>;
 
@@ -94,7 +99,7 @@ async function isRateLimited(request: Request, bucket: string, maximum: number):
 
 async function readBody(request: Request): Promise<JsonObject | null> {
   const length = Number(request.headers.get("content-length") || 0);
-  if (length > 2048) return null;
+  if (length > 4096) return null;
   try {
     const body = await request.json();
     return body && typeof body === "object" && !Array.isArray(body) ? body as JsonObject : null;
@@ -140,6 +145,63 @@ async function publicSummary(token: string): Promise<RequestSummaryData | null> 
   const tokenHash = await sha256Hex(token);
   const result = await rpc("resolve_public_information_request", { p_token_hash: tokenHash });
   return validSummary(result) ? result : null;
+}
+
+function validReceipt(value: unknown): value is PaymentReceiptSnapshot {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const data = value as Partial<PaymentReceiptSnapshot>;
+  return data.schema_version === 1
+    && typeof data.receipt_number === "string"
+    && ["partial", "final", "final_credit"].includes(data.receipt_type || "")
+    && (data.language === "es" || data.language === "en")
+    && typeof data.request_folio === "string"
+    && typeof data.issued_at === "string"
+    && typeof data.verification_code === "string"
+    && typeof data.verification_url === "string"
+    && Number.isSafeInteger(data.payment_amount_cents)
+    && Number.isSafeInteger(data.accumulated_verified_cents)
+    && Number.isSafeInteger(data.quoted_total_cents)
+    && Boolean(data.beneficiary?.name && data.beneficiary?.phone && data.beneficiary?.email);
+}
+
+async function publicReceipt(token: string, verificationCode: string): Promise<PaymentReceiptSnapshot | null> {
+  const result = await rpc("resolve_public_payment_receipt", {
+    p_token_hash: await sha256Hex(token),
+    p_verification_code_hash: await sha256Hex(verificationCode),
+  });
+  return validReceipt(result) ? result : null;
+}
+
+async function staffReceipt(request: Request, receiptId: string): Promise<PaymentReceiptSnapshot | null> {
+  const userId = await authenticatedStaffId(request);
+  if (!userId || !await hasActiveManagementProfile(userId)) return null;
+  const result = await rpc("build_payment_receipt_for_staff", { p_receipt_id: receiptId });
+  return validReceipt(result) ? result : null;
+}
+
+type ReceiptVerification = {
+  identity: string;
+  receipt_number: string;
+  issued_at: string;
+  payment_amount_cents: number;
+  currency_code: "MXN";
+  validity: "valid" | "voided";
+};
+
+async function receiptVerification(verificationCode: string): Promise<ReceiptVerification | null> {
+  const result = await rpc("resolve_payment_receipt_verification", {
+    p_verification_code_hash: await sha256Hex(verificationCode),
+  });
+  if (!result || typeof result !== "object" || Array.isArray(result)) return null;
+  const data = result as Partial<ReceiptVerification>;
+  return typeof data.identity === "string"
+      && typeof data.receipt_number === "string"
+      && typeof data.issued_at === "string"
+      && Number.isSafeInteger(data.payment_amount_cents)
+      && data.currency_code === "MXN"
+      && (data.validity === "valid" || data.validity === "voided")
+    ? data as ReceiptVerification
+    : null;
 }
 
 async function authenticatedStaffId(request: Request): Promise<string | null> {
@@ -208,6 +270,25 @@ async function pdfResponse(request: Request, summary: RequestSummaryData): Promi
   });
 }
 
+async function receiptPdfResponse(request: Request, receipt: PaymentReceiptSnapshot): Promise<Response> {
+  const bytes = await generatePaymentReceiptPdf(receipt, await loadLogoAssets());
+  const filename = paymentReceiptFilename(receipt).replace(/[^A-Za-z0-9_.-]/g, "_");
+  return new Response(bytes.slice().buffer as ArrayBuffer, {
+    status: 200,
+    headers: {
+      ...corsHeaders(request),
+      "content-type": "application/pdf",
+      "content-disposition": `attachment; filename="${filename}"`,
+      "cache-control": "private, no-store, max-age=0",
+      pragma: "no-cache",
+      expires: "0",
+      "x-content-type-options": "nosniff",
+      "x-robots-tag": "noindex, nofollow, noarchive",
+      "referrer-policy": "no-referrer",
+    },
+  });
+}
+
 Deno.serve(async (request) => {
   if (request.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: corsHeaders(request) });
@@ -222,10 +303,46 @@ Deno.serve(async (request) => {
   }
 
   try {
-    const format = body.format === "pdf" ? "pdf" : "json";
+    const format = typeof body.format === "string" ? body.format : "json";
     const token = typeof body.token === "string" ? body.token : "";
     const requestId = typeof body.request_id === "string" ? body.request_id : "";
+    const receiptId = typeof body.receipt_id === "string" ? body.receipt_id : "";
+    const verificationCode = typeof body.verification_code === "string" ? body.verification_code : "";
     const requestedLanguage = body.language === "en" ? "en" : "es";
+    if (format === "verification") {
+      if (!/^[0-9a-f]{48}$/.test(verificationCode)
+          || await isRateLimited(request, "receipt-verification", 60)) {
+        await delay(Math.max(0, 140 - (performance.now() - startedAt)));
+        return unavailableResponse(request);
+      }
+      const verification = await receiptVerification(verificationCode);
+      if (!verification) {
+        await delay(Math.max(0, 140 - (performance.now() - startedAt)));
+        return unavailableResponse(request);
+      }
+      return jsonResponse(request, 200, { receipt: verification });
+    }
+
+    if (format === "receipt_pdf") {
+      let receipt: PaymentReceiptSnapshot | null = null;
+      if (token && /^[0-9a-f]{48}$/.test(verificationCode)) {
+        if (!TOKEN_PATTERN.test(token) || await isRateLimited(request, "public-receipt-pdf", 20)) {
+          await delay(Math.max(0, 140 - (performance.now() - startedAt)));
+          return unavailableResponse(request);
+        }
+        receipt = await publicReceipt(token, verificationCode);
+      } else if (UUID_PATTERN.test(receiptId)) {
+        if (await isRateLimited(request, "staff-receipt-pdf", 40)) return unavailableResponse(request);
+        receipt = await staffReceipt(request, receiptId);
+      }
+      if (!receipt) {
+        await delay(Math.max(0, 140 - (performance.now() - startedAt)));
+        return unavailableResponse(request);
+      }
+      return await receiptPdfResponse(request, receipt);
+    }
+
+    if (format !== "json" && format !== "pdf") return unavailableResponse(request);
     let summary: RequestSummaryData | null = null;
 
     if (token) {
