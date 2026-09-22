@@ -1,4 +1,4 @@
-import config from "../config/environment.js?v=10.7.0";
+import config from "../config/environment.js?v=10.7.1";
 
 const $ = (selector) => document.querySelector(selector);
 const endpoint = `${config.supabaseUrl}/functions/v1/request-summary`;
@@ -41,9 +41,6 @@ const COPY = {
     whatsapp: "Preguntar por WhatsApp",
     whatsappUnavailable: "El contacto de WhatsApp no está disponible temporalmente. Comunícate con Cebolletas por otro medio.",
     whatsappMessage: (folio) => `Hola, tengo una pregunta sobre la solicitud ${folio}.`,
-    pdf: "Descargar Resumen de solicitud",
-    pdfLoading: "Preparando PDF...",
-    pdfError: "No fue posible descargar el PDF. Intenta nuevamente.",
     disclaimer: "Este resumen no confirma una reservación ni acredita la recepción de pago.",
     updated: "Última actualización",
     locale: "es-MX",
@@ -83,9 +80,6 @@ const COPY = {
     whatsapp: "Ask on WhatsApp",
     whatsappUnavailable: "The WhatsApp contact is temporarily unavailable. Please contact Cebolletas another way.",
     whatsappMessage: (folio) => `Hello, I have a question about request ${folio}.`,
-    pdf: "Download Request summary",
-    pdfLoading: "Preparing PDF...",
-    pdfError: "We could not download the PDF. Please try again.",
     disclaimer: "This summary does not confirm a reservation or acknowledge receipt of payment.",
     updated: "Last updated",
     locale: "en-US",
@@ -196,7 +190,6 @@ function renderRequest(request) {
     unavailable.textContent = copy.whatsappUnavailable;
   }
 
-  $("#pdf-action").textContent = copy.pdf;
   $("#disclaimer").textContent = copy.disclaimer;
   $("#last-updated").textContent = `${copy.updated}: ${formatDateTime(request.last_updated_at, language)}`;
   showState("request");
@@ -282,44 +275,6 @@ async function fetchSummary() {
   }
 }
 
-async function downloadPdf() {
-  if (!accessToken || !currentRequest) return;
-  const language = currentRequest.publication_language === "en" ? "en" : "es";
-  const copy = COPY[language];
-  const button = $("#pdf-action");
-  const message = $("#pdf-message");
-  button.disabled = true;
-  button.textContent = copy.pdfLoading;
-  message.textContent = "";
-  try {
-    const response = await fetch(endpoint, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      cache: "no-store",
-      referrerPolicy: "no-referrer",
-      body: JSON.stringify({ token: accessToken, format: "pdf" }),
-    });
-    if (!response.ok || !response.headers.get("content-type")?.includes("application/pdf")) throw new Error("PDF unavailable");
-    const blob = await response.blob();
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    const disposition = response.headers.get("content-disposition") || "";
-    const filename = disposition.match(/filename="([^"]+)"/)?.[1] || `${currentRequest.folio}.pdf`;
-    anchor.href = url;
-    anchor.download = filename;
-    anchor.rel = "noopener noreferrer";
-    document.body.append(anchor);
-    anchor.click();
-    anchor.remove();
-    window.setTimeout(() => URL.revokeObjectURL(url), 30_000);
-  } catch {
-    message.textContent = copy.pdfError;
-  } finally {
-    button.disabled = false;
-    button.textContent = copy.pdf;
-  }
-}
-
 async function downloadReceipt(button) {
   const code = button.dataset.receiptCode || "";
   if (!accessToken || !/^[0-9a-f]{48}$/.test(code)) return;
@@ -358,7 +313,6 @@ async function downloadReceipt(button) {
 }
 
 $("#retry-button").addEventListener("click", fetchSummary);
-$("#pdf-action").addEventListener("click", downloadPdf);
 $("#payment-history").addEventListener("click", (event) => {
   const button = event.target.closest("[data-receipt-code]");
   if (button) downloadReceipt(button);
