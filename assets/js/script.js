@@ -24,7 +24,8 @@ const content = {
     suggestions: ["Usa ropa y calzado c\u00F3modos", "Trae agua en un envase reutilizable", "Lleva sombrero o protecci\u00F3n para el sol", "Considera un paraguas durante temporada de lluvia", "Evita pl\u00E1sticos de un solo uso", "Mant\u00E9n un volumen que respete a visitantes y animales"],
     rulesEyebrow: "Lineamientos", rulesTitle: "Cuidar el lugar es parte de la visita.",
     rulesText: "Estas reglas protegen a las personas, la flora y la fauna de Cebolletas.",
-    rules: ["No se permiten bebidas alcoh\u00F3licas", "Estaciona \u00FAnicamente en las \u00E1reas designadas", "Respeta las indicaciones y medidas de seguridad", "No da\u00F1es, molestes ni interact\u00FAes con animales, insectos o plantas", "No dejes basura; todo lo que traigas debe regresar contigo", "No ingreses al arroyo usando protector solar"],
+    rulesAction: "Consultar reglamento completo",
+    rules: ["Est\u00E1n estrictamente prohibidos el alcohol, las drogas recreativas o ilegales y otras sustancias prohibidas", "No se permiten armas, r\u00E9plicas ni dispositivos recreativos que lancen proyectiles", "Solo pueden ingresar y permanecer personas registradas o autorizadas", "Estaciona \u00FAnicamente en las \u00E1reas designadas", "Respeta las indicaciones y medidas de seguridad", "No uses los puentes colgantes desde el anochecer y hasta que el personal autorice su reapertura", "No da\u00F1es, molestes ni interact\u00FAes con animales, insectos o plantas", "Evita unicel, bolsas pl\u00E1sticas y envases desechables de PET; prefiere opciones reutilizables y retira tus residuos", "No ingreses al arroyo usando protector solar"],
     faqEyebrow: "Preguntas frecuentes", faqTitle: "Lo que conviene saber.",
     faqs: [
       ["\u00BFC\u00F3mo llego a Cebolletas?", "El acceso est\u00E1 sobre la carretera a Calvillo, 2.4 km despu\u00E9s de la comunidad de El Sauz. Puedes abrir la ruta desde la secci\u00F3n Ubicaci\u00F3n."],
@@ -68,7 +69,8 @@ const content = {
     suggestions: ["Wear comfortable clothing and shoes", "Bring water in a reusable container", "Bring a hat or sun protection", "Consider an umbrella during rainy season", "Avoid single-use plastics", "Keep noise low out of respect for visitors and wildlife"],
     rulesEyebrow: "Guidelines", rulesTitle: "Caring for the place is part of the visit.",
     rulesText: "These rules protect visitors, flora and fauna at Cebolletas.",
-    rules: ["Alcoholic beverages are not allowed", "Park only in designated areas", "Follow all safety guidance and site instructions", "Do not harm, disturb or interact with animals, insects or plants", "Leave no waste; take everything you bring back with you", "Do not enter the stream while wearing sunscreen"],
+    rulesAction: "Read the complete rules",
+    rules: ["Alcohol, recreational or illegal drugs, and other prohibited substances are strictly prohibited", "Firearms, replicas and recreational projectile devices are not allowed", "Only registered or authorized people may enter and remain", "Park only in designated areas", "Follow all safety guidance and site instructions", "Do not use the suspension bridges from nightfall until staff authorize their reopening", "Do not harm, disturb or interact with animals, insects or plants", "Avoid foam products, plastic bags and disposable PET containers; prefer reusable options and remove your waste", "Do not enter the stream while wearing sunscreen"],
     faqEyebrow: "Frequently asked questions", faqTitle: "What you should know.",
     faqs: [
       ["How do I get to Cebolletas?", "The entrance is on the road to Calvillo, 2.4 km after El Sauz. Open the route from the Location section."],
@@ -154,7 +156,7 @@ function render() {
     </section>
     <section class="feature reverse" id="lineamientos">
       ${sectionImage("spotlight08.webp")}
-      <div class="feature-copy"><p class="eyebrow">${t.rulesEyebrow}</p><h2>${t.rulesTitle}</h2><p class="lead">${t.rulesText}</p>${list(t.rules)}</div>
+      <div class="feature-copy"><p class="eyebrow">${t.rulesEyebrow}</p><h2>${t.rulesTitle}</h2><p class="lead">${t.rulesText}</p>${list(t.rules)}<a class="primary-link" href="./reglamento/">${t.rulesAction}</a></div>
     </section>
     <section class="faq-section" id="faq">
       <div class="faq-layout"><div><p class="eyebrow">${t.faqEyebrow}</p><h2>${t.faqTitle}</h2></div><div class="faq-list">${t.faqs.map((item, index) => `<article class="faq-item ${index === 0 ? "open" : ""}"><button type="button" aria-expanded="${index === 0}"><span>${item[0]}</span><span>+</span></button><div class="faq-answer">${item[1]}</div></article>`).join("")}</div></div>

@@ -1,6 +1,6 @@
 // Reserva validation and delivery actions.
 // Intentionally independent from the Version 4 navigation code.
-import config from "./config/environment.js?v=10.7.0";
+import config from "./config/environment.js?v=10.7.2";
 import { calculateQuote } from "./pricing-engine.mjs?v=10.4.0-3";
 
 (function initReservaActions() {
@@ -19,7 +19,11 @@ import { calculateQuote } from "./pricing-engine.mjs?v=10.4.0-3";
     cell: 25,
     otherDetails: 1000
   });
+  const SERVICE_CATALOG_TIMEOUT_MS = 6000;
+  const SERVICE_CATALOG_ATTEMPTS = 2;
+  const SERVICE_CATALOG_RETRY_DELAY_MS = 500;
   let activeServices = [];
+  let serviceLoadSequence = 0;
 
   const messages = {
     es: {
@@ -48,6 +52,9 @@ import { calculateQuote } from "./pricing-engine.mjs?v=10.4.0-3";
       requestId: "ID de solicitud",
       closeConfirmation: "Cerrar",
       saveFailed: "No fue posible guardar la solicitud. Intenta nuevamente.",
+      servicesLoading: "Cargando servicios disponibles… La primera carga puede tardar unos segundos.",
+      servicesLoadFailed: "No fue posible cargar los servicios.",
+      retryServices: "Reintentar",
       automaticAction: "Solicitar Informaci\u00f3n/Reservar",
       manualAction: "Solicitar cotizaci\u00f3n"
     },
@@ -77,6 +84,9 @@ import { calculateQuote } from "./pricing-engine.mjs?v=10.4.0-3";
       requestId: "Request ID",
       closeConfirmation: "Close",
       saveFailed: "We could not save your request. Please try again.",
+      servicesLoading: "Loading available services… The first load may take a few seconds.",
+      servicesLoadFailed: "Services could not be loaded.",
+      retryServices: "Try again",
       automaticAction: "Request Information/Book",
       manualAction: "Request quotation"
     }
@@ -384,20 +394,83 @@ import { calculateQuote } from "./pricing-engine.mjs?v=10.4.0-3";
     return quote;
   }
 
+  function wait(milliseconds) {
+    return new Promise((resolve) => window.setTimeout(resolve, milliseconds));
+  }
+
+  function renderServiceLoading(form) {
+    const host = form?.querySelector("#br-service-options");
+    if (!host) return;
+    const legend = host.querySelector("legend")?.outerHTML || "";
+    host.innerHTML = `${legend}<p class="service-loading" role="status" aria-live="polite">${messages[getLanguage()].servicesLoading}</p>`;
+  }
+
+  function renderServiceLoadError(form) {
+    const host = form?.querySelector("#br-service-options");
+    if (!host) return;
+    const legend = host.querySelector("legend")?.outerHTML || "";
+    const text = messages[getLanguage()];
+    host.innerHTML = `${legend}<div class="service-empty" role="alert">
+      <p>${text.servicesLoadFailed}</p>
+      <button class="service-retry-button" data-retry-services type="button">${text.retryServices}</button>
+    </div>`;
+  }
+
+  async function requestActiveServices() {
+    let lastError;
+
+    for (let attempt = 1; attempt <= SERVICE_CATALOG_ATTEMPTS; attempt += 1) {
+      const controller = new AbortController();
+      const timeoutId = window.setTimeout(() => controller.abort(), SERVICE_CATALOG_TIMEOUT_MS);
+
+      try {
+        const response = await fetch(`${SUPABASE.url}/rest/v1/rpc/get_active_service_catalog`, {
+          method: "POST",
+          headers: {
+            apikey: SUPABASE.publishableKey,
+            Authorization: `Bearer ${SUPABASE.publishableKey}`,
+            "Content-Type": "application/json"
+          },
+          body: "{}",
+          cache: "no-store",
+          referrerPolicy: "no-referrer",
+          signal: controller.signal
+        });
+        if (!response.ok) throw new Error(`Catalog request failed with status ${response.status}`);
+        const services = await response.json();
+        if (!Array.isArray(services)) throw new Error("Catalog response is not a list");
+        return services;
+      } catch (error) {
+        lastError = error;
+      } finally {
+        window.clearTimeout(timeoutId);
+      }
+
+      if (attempt < SERVICE_CATALOG_ATTEMPTS) {
+        await wait(SERVICE_CATALOG_RETRY_DELAY_MS);
+      }
+    }
+
+    throw lastError || new Error("Catalog request failed");
+  }
+
   async function loadActiveServices(form) {
-    const response = await fetch(`${SUPABASE.url}/rest/v1/rpc/get_active_service_catalog`, {
-      method: "POST",
-      headers: {
-        apikey: SUPABASE.publishableKey,
-        "Content-Type": "application/json"
-      },
-      body: "{}"
-    });
-    if (!response.ok) throw new Error(`Catalog request failed with status ${response.status}`);
-    activeServices = await response.json();
-    renderServices(form);
-    configureServiceDates(form, true);
-    updateQuoteSummary(form);
+    const loadSequence = ++serviceLoadSequence;
+    renderServiceLoading(form);
+
+    try {
+      const services = await requestActiveServices();
+      if (loadSequence !== serviceLoadSequence || form !== getForm()) return;
+      activeServices = services;
+      renderServices(form);
+      configureServiceDates(form, true);
+      updateQuoteSummary(form);
+    } catch (error) {
+      if (loadSequence === serviceLoadSequence && form === getForm()) {
+        renderServiceLoadError(form);
+      }
+      throw error;
+    }
   }
 
   function getLocalDate() {
@@ -851,21 +924,14 @@ import { calculateQuote } from "./pricing-engine.mjs?v=10.4.0-3";
     configureDateLimits(form);
     updateStaySummary(form);
 
-    loadActiveServices(form).catch((error) => {
-      console.error(error);
+    if (activeServices.length) {
+      renderServices(form);
+      configureServiceDates(form, true);
+      updateQuoteSummary(form);
+      return;
+    }
 
-      const host = form.querySelector("#br-service-options");
-
-      if (host) {
-        const legend = host.querySelector("legend")?.outerHTML || "";
-
-        host.innerHTML = `${legend}<p class="service-empty">${
-          getLanguage() === "es"
-            ? "No fue posible cargar los servicios. Intenta nuevamente."
-            : "Services could not be loaded. Please try again."
-        }</p>`;
-      }
-    });
+    loadActiveServices(form).catch((error) => console.error(error));
   }
 
   document.addEventListener(
@@ -942,6 +1008,13 @@ import { calculateQuote } from "./pricing-engine.mjs?v=10.4.0-3";
   let pendingSubmission = null;
 
   document.addEventListener("click", async (event) => {
+    const retryButton = event.target.closest("[data-retry-services]");
+    if (retryButton) {
+      event.preventDefault();
+      retryButton.disabled = true;
+      loadActiveServices(getForm()).catch((error) => console.error(error));
+      return;
+    }
     const infoButton = event.target.closest("[data-service-info]");
     if (infoButton) {
       event.preventDefault();
