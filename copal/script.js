@@ -156,10 +156,18 @@ function refreshGalleryCollections() {
 function refreshGallerySection() {
   const current = region.querySelector("#gallery");
   if (!current) return;
+  const preserveBookingView = activeView === "booking" || window.location.hash === "#booking";
   document.body.classList.remove("gallery-open");
   galleryReturnFocus = null;
   current.outerHTML = gallery(copy[lang]);
   observeSections();
+  if (preserveBookingView) {
+    requestAnimationFrame(() => {
+      setActiveView("booking");
+      history.replaceState(null, "", "#booking");
+      scrollToSection("booking", "auto");
+    });
+  }
 }
 
 function renderNav() {
