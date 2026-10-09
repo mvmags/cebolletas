@@ -11,3 +11,5 @@ copal/supabase/.branches/
 *.backup
 copal/supabase/functions/.env*
 !copal/supabase/functions/.env.example
+
+/supabase/*.tar.gz
