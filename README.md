@@ -501,3 +501,9 @@ flowchart TD
     class C,G,L decision;
     class X stop;
 ```
+
+## v10.8.1 Supabase backup
+
+The one-time production export and recovery scope are documented in
+[copal/SUPABASE_BACKUP.md](copal/SUPABASE_BACKUP.md). Private backup artifacts
+are stored outside this public website repository.

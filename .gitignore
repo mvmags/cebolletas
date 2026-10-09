@@ -3,3 +3,11 @@ copal/config/development.js
 copal/supabase/functions/.env.local
 copal/supabase/.branches/
 /tmp/
+
+# Private Supabase exports must never be served by GitHub Pages.
+/backups/
+/supabase-backups/
+*.dump
+*.backup
+copal/supabase/functions/.env*
+!copal/supabase/functions/.env.example
